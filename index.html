@@ -368,7 +368,7 @@ function dbToListing(row){
     t:row.title||'', pr:give?{ko:'무료나눔',en:'Free',th:'แจกฟรี'}:(row.price_text||{ko:'가격문의',en:'Ask',th:'สอบถาม'}), loc:h?tx(h):'', desc:row.body||'', ago:relTime(row.created_at) };
 }
 async function loadListings(){
-  try{ const {data,error}=await sb.from('listings').select('*').order('created_at',{ascending:false}).limit(100);
+  try{ const {data,error}=await sb.from('listings').select('*').in('kind',['sell','buy','give']).order('created_at',{ascending:false}).limit(100);
     if(!error && Array.isArray(data)){ listings.length=0; data.forEach(r=>listings.push(dbToListing(r))); if(screen==='app') render(); }
   }catch(e){}
 }
@@ -398,6 +398,16 @@ function dbToPost(row){
 async function loadPosts(){
   try{ const {data,error}=await sb.from('posts').select('*').order('created_at',{ascending:false}).limit(100);
     if(!error && Array.isArray(data)){ info.length=0; data.forEach(r=>info.push(dbToPost(r))); if(screen==='app') render(); }
+  }catch(e){}
+}
+function dbToJob(row){
+  const h=hoodByDbId(row.hood_id);
+  return { kind:row.kind, city:h?h.region:'all', emo:(row.kind==='hire'?'💼':'🙋'), chats:0, live:false,
+    t:row.title||'', pr:(row.price_text||'-'), loc:h?tx(h):'', ago:relTime(row.created_at) };
+}
+async function loadJobs(){
+  try{ const {data,error}=await sb.from('listings').select('*').in('kind',['hire','seek']).order('created_at',{ascending:false}).limit(100);
+    if(!error && Array.isArray(data)){ jobs.length=0; data.forEach(r=>jobs.push(dbToJob(r))); if(screen==='app') render(); }
   }catch(e){}
 }
 async function applySession(session){
@@ -1417,7 +1427,7 @@ document.addEventListener('click',e=>{
       sb.from('stores').insert({owner_id:uid, name:subj||L().w_store, category:'etc', hood_id:hoodDbId(hid), is_service:true}).then(({error})=>{ if(error){toast(error.message);} else {loadStores();} });
       tab='shop'; shopCat=0;
     }else if(writeType===3||writeType===4){const kind=writeType===3?'hire':'seek';
-      jobs.unshift({kind,city:rc,emo:'🆕',chats:0,live:true,t:subj||L().w_subject,pr:price||'-',loc:locStr,ago});
+      sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:price||null, hood_id:hoodDbId(hid), status:'selling'}).then(({error})=>{ if(error){toast(error.message);} else {loadJobs();} });
       tab='jobs'; jseg=kind;
     }else if(writeType===5){
       sb.from('posts').insert({author_id:uid, category:'0', is_official:false, title:subj||L().w_subject, body:desc||null, hood_id:hoodDbId(hid)}).then(({error})=>{ if(error){toast(error.message);} else {loadPosts();} });
@@ -1495,7 +1505,7 @@ fab.addEventListener('click',()=>{if(!canAct())return;writeType=(tab==='shop'?6:
 document.addEventListener('input',e=>{if(e.target.id==='searchInput'){searchQ=e.target.value;renderFsView();}});
 document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){chats[chatOpen].msgs.push({me:true,tx:v});render();page.scrollTo(0,9999);}}});
 
-(async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} render(); loadListings(); loadStores(); loadPosts(); })();
+(async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} render(); loadListings(); loadStores(); loadPosts(); loadJobs(); })();
 </script>
 </body>
 </html>
