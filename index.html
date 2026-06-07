@@ -357,9 +357,9 @@ const sb = window.supabase.createClient(SB_URL, SB_KEY);
 let uid=null;
 function uname2email(u){return (u||'').toLowerCase().replace(/[^a-z0-9._-]/g,'')+'@thaimate.app';}
 let _hoodsFlat=null;
-function hoodsFlat(){ if(!_hoodsFlat){ _hoodsFlat=[]; ['bkk','cm','pty'].forEach(r=>REGIONS[r].hoods.forEach(h=>_hoodsFlat.push(Object.assign({region:r},h)))); } return _hoodsFlat; }
-function hoodByDbId(n){ return hoodsFlat()[n-1]||null; }
-function hoodDbId(localId){ const i=hoodsFlat().findIndex(h=>h.id===localId); return i>=0?i+1:null; }
+function hoodsFlat(){ if(!_hoodsFlat){ _hoodsFlat=[]; Object.keys(REGIONS).forEach(r=>REGIONS[r].hoods.forEach(h=>_hoodsFlat.push(Object.assign({region:r},h)))); } return _hoodsFlat; }
+function hoodByDbId(n){ return hoodsFlat().find(h=>h.dbId===n)||null; }
+function hoodDbId(localId){ const h=hoodsFlat().find(x=>x.id===localId); return h?h.dbId:null; }
 function relTime(ts){ try{ const m=Math.floor((Date.now()-new Date(ts).getTime())/60000); if(m<1)return {ko:'방금 전',en:'just now',th:'เมื่อกี้'}; if(m<60)return {ko:m+'분 전',en:m+'m',th:m+' นาที'}; const h=Math.floor(m/60); if(h<24)return {ko:h+'시간 전',en:h+'h',th:h+' ชม.'}; return {ko:Math.floor(h/24)+'일 전',en:Math.floor(h/24)+'d',th:Math.floor(h/24)+' วัน'}; }catch(e){return {ko:'',en:'',th:''};} }
 function dbToListing(row){
   const h=hoodByDbId(row.hood_id), give=row.kind==='give', buy=row.kind==='buy';
@@ -630,32 +630,108 @@ const T = {
 };
 
 /* ===================== data ===================== */
+// 권역(zone) → 주요도시/동네. dbId = neighborhoods 테이블의 고정 id (재배치해도 기존 글 안깨짐)
 const REGIONS={
  bkk:{nm:{ko:'방콕',en:'Bangkok',th:'กรุงเทพ'},hoods:[
-   {id:'sukhumvit',lat:13.738,lng:100.560,ko:'수쿰빗',en:'Sukhumvit',th:'สุขุมวิท'},
-   {id:'thonglor',lat:13.733,lng:100.583,ko:'통러',en:'Thonglor',th:'ทองหล่อ'},
-   {id:'asok',lat:13.737,lng:100.560,ko:'아속',en:'Asok',th:'อโศก'},
-   {id:'phrompong',lat:13.730,lng:100.570,ko:'프롬퐁',en:'Phrom Phong',th:'พร้อมพงษ์'},
-   {id:'onnut',lat:13.706,lng:100.601,ko:'온누트',en:'On Nut',th:'อ่อนนุช'},
-   {id:'rama9',lat:13.758,lng:100.565,ko:'라마9',en:'Rama 9',th:'พระราม 9'},
-   {id:'ratchada',lat:13.768,lng:100.574,ko:'라차다',en:'Ratchada',th:'รัชดา'},
-   {id:'silom',lat:13.724,lng:100.534,ko:'실롬·사톤',en:'Silom·Sathon',th:'สีลม·สาทร'},
-   {id:'bangna',lat:13.668,lng:100.604,ko:'방나',en:'Bangna',th:'บางนา'}
- ]},
- cm:{nm:{ko:'치앙마이',en:'Chiang Mai',th:'เชียงใหม่'},hoods:[
-   {id:'nimman',lat:18.799,lng:98.967,ko:'님만해민',en:'Nimman',th:'นิมมาน'},
-   {id:'oldcity',lat:18.788,lng:98.986,ko:'올드시티',en:'Old City',th:'เมืองเก่า'},
-   {id:'santitham',lat:18.802,lng:98.978,ko:'산티탐',en:'Santitham',th:'สันติธรรม'},
-   {id:'hangdong',lat:18.689,lng:98.921,ko:'항동',en:'Hang Dong',th:'หางดง'},
-   {id:'maerim',lat:18.916,lng:98.890,ko:'매림',en:'Mae Rim',th:'แม่ริม'},
-   {id:'sankamphaeng',lat:18.745,lng:99.118,ko:'산캄팽',en:'San Kamphaeng',th:'สันกำแพง'}
+   {id:'sukhumvit',dbId:1,lat:13.738,lng:100.560,ko:'수쿰빗',en:'Sukhumvit',th:'สุขุมวิท'},
+   {id:'thonglor',dbId:2,lat:13.733,lng:100.583,ko:'통러',en:'Thonglor',th:'ทองหล่อ'},
+   {id:'asok',dbId:3,lat:13.737,lng:100.560,ko:'아속',en:'Asok',th:'อโศก'},
+   {id:'phrompong',dbId:4,lat:13.730,lng:100.570,ko:'프롬퐁',en:'Phrom Phong',th:'พร้อมพงษ์'},
+   {id:'onnut',dbId:5,lat:13.706,lng:100.601,ko:'온눗',en:'On Nut',th:'อ่อนนุช'},
+   {id:'rama9',dbId:6,lat:13.758,lng:100.565,ko:'라마9',en:'Rama 9',th:'พระราม 9'},
+   {id:'rama3',dbId:34,lat:13.689,lng:100.543,ko:'라마3',en:'Rama 3',th:'พระราม 3'},
+   {id:'ratchada',dbId:7,lat:13.768,lng:100.574,ko:'라차다',en:'Ratchada',th:'รัชดา'},
+   {id:'silom',dbId:8,lat:13.724,lng:100.534,ko:'실롬·사톤',en:'Silom·Sathon',th:'สีลม·สาทร'},
+   {id:'bangna',dbId:9,lat:13.668,lng:100.604,ko:'방나',en:'Bangna',th:'บางนา'},
+   {id:'latkrabang',dbId:35,lat:13.722,lng:100.751,ko:'라끄라방',en:'Lat Krabang',th:'ลาดกระบัง'},
+   {id:'pinklao',dbId:36,lat:13.776,lng:100.476,ko:'삔까우',en:'Pinklao',th:'ปิ่นเกล้า'},
+   {id:'bangkhae',dbId:37,lat:13.696,lng:100.409,ko:'방케',en:'Bang Khae',th:'บางแค'},
+   {id:'bangkoknoi',dbId:38,lat:13.764,lng:100.470,ko:'방콕노이',en:'Bangkok Noi',th:'บางกอกน้อย'},
+   {id:'talingchan',dbId:39,lat:13.778,lng:100.456,ko:'딸링찬',en:'Taling Chan',th:'ตลิ่งชัน'},
+   {id:'bangsue',dbId:40,lat:13.809,lng:100.537,ko:'방수',en:'Bang Sue',th:'บางซื่อ'},
+   {id:'latphrao',dbId:41,lat:13.816,lng:100.606,ko:'랏프라오',en:'Lat Phrao',th:'ลาดพร้าว'},
+   {id:'chatuchak',dbId:42,lat:13.828,lng:100.559,ko:'짜뚜짝',en:'Chatuchak',th:'จตุจักร'},
+   {id:'laksi',dbId:43,lat:13.887,lng:100.579,ko:'락시',en:'Lak Si',th:'หลักสี่'},
+   {id:'nonthaburi',dbId:44,lat:13.859,lng:100.521,ko:'논타부리',en:'Nonthaburi',th:'นนทบุรี'},
+   {id:'pathumthani',dbId:45,lat:14.020,lng:100.525,ko:'빠툼타니',en:'Pathum Thani',th:'ปทุมธานี'},
+   {id:'samutprakan',dbId:46,lat:13.599,lng:100.597,ko:'사무쁘라깐',en:'Samut Prakan',th:'สมุทรปราการ'},
+   {id:'samutsakhon',dbId:47,lat:13.547,lng:100.274,ko:'사무사콘',en:'Samut Sakhon',th:'สมุทรสาคร'},
+   {id:'nakhonpathom',dbId:48,lat:13.819,lng:100.062,ko:'나콘파톰',en:'Nakhon Pathom',th:'นครปฐม'},
+   {id:'nakhonchaisi',dbId:49,lat:13.808,lng:100.181,ko:'나콘차이시',en:'Nakhon Chai Si',th:'นครชัยศรี'},
+   {id:'chonburi',dbId:50,lat:13.361,lng:100.985,ko:'촌부리',en:'Chonburi',th:'ชลบุรี'}
  ]},
  pty:{nm:{ko:'파타야',en:'Pattaya',th:'พัทยา'},hoods:[
-   {id:'central',lat:12.928,lng:100.877,ko:'중앙파타야',en:'Central Pattaya',th:'พัทยากลาง'},
-   {id:'jomtien',lat:12.893,lng:100.872,ko:'조무티엔',en:'Jomtien',th:'จอมเทียน'},
-   {id:'naklua',lat:12.962,lng:100.889,ko:'나끄루아',en:'Naklua',th:'นาเกลือ'},
-   {id:'banglamung',lat:13.046,lng:100.927,ko:'방라뭉',en:'Bang Lamung',th:'บางละมุง'},
-   {id:'pratamnak',lat:12.910,lng:100.863,ko:'프라타늑',en:'Pratamnak',th:'พระตำหนัก'}
+   {id:'central',dbId:16,lat:12.928,lng:100.877,ko:'파타야',en:'Pattaya',th:'พัทยา'},
+   {id:'jomtien',dbId:17,lat:12.893,lng:100.872,ko:'좀티엔',en:'Jomtien',th:'จอมเทียน'},
+   {id:'sriracha',dbId:51,lat:13.160,lng:100.927,ko:'시라차',en:'Sriracha',th:'ศรีราชา'}
+ ]},
+ east:{nm:{ko:'동부',en:'Eastern',th:'ภาคตะวันออก'},hoods:[
+   {id:'rayong',dbId:21,lat:12.681,lng:101.281,ko:'라용',en:'Rayong',th:'ระยอง'},
+   {id:'chanthaburi',dbId:22,lat:12.611,lng:102.104,ko:'짠타부리',en:'Chanthaburi',th:'จันทบุรี'},
+   {id:'trat',dbId:52,lat:12.240,lng:102.515,ko:'뜨랏',en:'Trat',th:'ตราด'},
+   {id:'chachoengsao',dbId:53,lat:13.690,lng:101.070,ko:'차층사오',en:'Chachoengsao',th:'ฉะเชิงเทรา'},
+   {id:'prachinburi',dbId:54,lat:14.050,lng:101.373,ko:'쁘라찐부리',en:'Prachinburi',th:'ปราจีนบุรี'},
+   {id:'sakaeo',dbId:55,lat:13.824,lng:102.064,ko:'사깨오',en:'Sa Kaeo',th:'สระแก้ว'}
+ ]},
+ west:{nm:{ko:'서부',en:'Western',th:'ภาคตะวันตก'},hoods:[
+   {id:'kanchanaburi',dbId:56,lat:14.022,lng:99.532,ko:'깐짜나부리',en:'Kanchanaburi',th:'กาญจนบุรี'},
+   {id:'ratchaburi',dbId:57,lat:13.527,lng:99.813,ko:'라차부리',en:'Ratchaburi',th:'ราชบุรี'},
+   {id:'phetchaburi',dbId:58,lat:13.111,lng:99.939,ko:'펫차부리',en:'Phetchaburi',th:'เพชรบุรี'},
+   {id:'huahin',dbId:59,lat:12.568,lng:99.958,ko:'후아힌',en:'Hua Hin',th:'หัวหิน'}
+ ]},
+ north:{nm:{ko:'북부',en:'Northern',th:'ภาคเหนือ'},hoods:[
+   {id:'chiangmai',dbId:23,lat:18.788,lng:98.986,ko:'치앙마이',en:'Chiang Mai',th:'เชียงใหม่'},
+   {id:'chiangrai',dbId:24,lat:19.910,lng:99.840,ko:'치앙라이',en:'Chiang Rai',th:'เชียงราย'},
+   {id:'lampang',dbId:60,lat:18.288,lng:99.491,ko:'람빵',en:'Lampang',th:'ลำปาง'},
+   {id:'lamphun',dbId:61,lat:18.574,lng:99.009,ko:'람푼',en:'Lamphun',th:'ลำพูน'},
+   {id:'maehongson',dbId:62,lat:19.301,lng:97.968,ko:'메홍손',en:'Mae Hong Son',th:'แม่ฮ่องสอน'},
+   {id:'phayao',dbId:63,lat:19.166,lng:99.902,ko:'파야오',en:'Phayao',th:'พะเยา'},
+   {id:'phrae',dbId:64,lat:18.145,lng:100.140,ko:'프래',en:'Phrae',th:'แพร่'},
+   {id:'nan',dbId:65,lat:18.787,lng:100.778,ko:'난',en:'Nan',th:'น่าน'},
+   {id:'uttaradit',dbId:66,lat:17.625,lng:100.094,ko:'우따라딧',en:'Uttaradit',th:'อุตรดิตถ์'}
+ ]},
+ central:{nm:{ko:'중부',en:'Central',th:'ภาคกลาง'},hoods:[
+   {id:'khaoyai',dbId:25,lat:14.440,lng:101.372,ko:'카오야이',en:'Khao Yai',th:'เขาใหญ่'},
+   {id:'korat',dbId:26,lat:14.973,lng:102.084,ko:'코랏',en:'Korat',th:'นครราชสีมา'},
+   {id:'ayutthaya',dbId:67,lat:14.353,lng:100.568,ko:'아유타야',en:'Ayutthaya',th:'อยุธยา'},
+   {id:'lopburi',dbId:68,lat:14.799,lng:100.653,ko:'롭부리',en:'Lopburi',th:'ลพบุรี'},
+   {id:'saraburi',dbId:69,lat:14.532,lng:100.910,ko:'사라부리',en:'Saraburi',th:'สระบุรี'},
+   {id:'nakhonsawan',dbId:70,lat:15.704,lng:100.137,ko:'나콘사완',en:'Nakhon Sawan',th:'นครสวรรค์'},
+   {id:'phitsanulok',dbId:71,lat:16.821,lng:100.265,ko:'핏사눌록',en:'Phitsanulok',th:'พิษณุโลก'},
+   {id:'suphanburi',dbId:72,lat:14.474,lng:100.122,ko:'수판부리',en:'Suphan Buri',th:'สุพรรณบุรี'},
+   {id:'phetchabun',dbId:73,lat:16.419,lng:101.160,ko:'펫차분',en:'Phetchabun',th:'เพชรบูรณ์'},
+   {id:'sukhothai',dbId:74,lat:17.007,lng:99.823,ko:'수코타이',en:'Sukhothai',th:'สุโขทัย'},
+   {id:'kamphaengphet',dbId:75,lat:16.484,lng:99.522,ko:'깜팽펫',en:'Kamphaeng Phet',th:'กำแพงเพชร'}
+ ]},
+ nisan:{nm:{ko:'북부 이산',en:'North Isan',th:'อีสานเหนือ'},hoods:[
+   {id:'khonkaen',dbId:27,lat:16.439,lng:102.835,ko:'콘캔',en:'Khon Kaen',th:'ขอนแก่น'},
+   {id:'udon',dbId:28,lat:17.413,lng:102.787,ko:'우돈',en:'Udon Thani',th:'อุดรธานี'},
+   {id:'nongkhai',dbId:76,lat:17.878,lng:102.742,ko:'농카이',en:'Nong Khai',th:'หนองคาย'},
+   {id:'loei',dbId:77,lat:17.490,lng:101.727,ko:'르이',en:'Loei',th:'เลย'},
+   {id:'sakonnakhon',dbId:78,lat:17.157,lng:104.146,ko:'사콘나콘',en:'Sakon Nakhon',th:'สกลนคร'},
+   {id:'nakhonphanom',dbId:79,lat:17.392,lng:104.769,ko:'나콘파놈',en:'Nakhon Phanom',th:'นครพนม'},
+   {id:'mukdahan',dbId:80,lat:16.545,lng:104.723,ko:'묵다한',en:'Mukdahan',th:'มุกดาหาร'}
+ ]},
+ eisan:{nm:{ko:'동부 이산',en:'East Isan',th:'อีสานตะวันออก'},hoods:[
+   {id:'buriram',dbId:29,lat:14.994,lng:103.103,ko:'부리람',en:'Buriram',th:'บุรีรัมย์'},
+   {id:'ubon',dbId:30,lat:15.243,lng:104.847,ko:'우본',en:'Ubon',th:'อุบลราชธานี'},
+   {id:'surin',dbId:81,lat:14.882,lng:103.494,ko:'수린',en:'Surin',th:'สุรินทร์'},
+   {id:'sisaket',dbId:82,lat:15.118,lng:104.322,ko:'시사껫',en:'Sisaket',th:'ศรีสะเกษ'},
+   {id:'yasothon',dbId:83,lat:15.794,lng:104.145,ko:'야소톤',en:'Yasothon',th:'ยโสธร'},
+   {id:'chaiyaphum',dbId:84,lat:15.806,lng:102.031,ko:'차이야품',en:'Chaiyaphum',th:'ชัยภูมิ'},
+   {id:'roiet',dbId:85,lat:16.057,lng:103.653,ko:'로이엣',en:'Roi Et',th:'ร้อยเอ็ด'}
+ ]},
+ south:{nm:{ko:'남부',en:'Southern',th:'ภาคใต้'},hoods:[
+   {id:'phuket',dbId:31,lat:7.880,lng:98.392,ko:'푸켓',en:'Phuket',th:'ภูเก็ต'},
+   {id:'samui',dbId:32,lat:9.512,lng:100.013,ko:'꼬사무이',en:'Koh Samui',th:'เกาะสมุย'},
+   {id:'krabi',dbId:33,lat:8.086,lng:98.906,ko:'끄라비',en:'Krabi',th:'กระบี่'},
+   {id:'hatyai',dbId:86,lat:7.008,lng:100.475,ko:'핫야이',en:'Hat Yai',th:'หาดใหญ่'},
+   {id:'songkhla',dbId:87,lat:7.199,lng:100.595,ko:'송클라',en:'Songkhla',th:'สงขลา'},
+   {id:'suratthani',dbId:88,lat:9.140,lng:99.333,ko:'수랏타니',en:'Surat Thani',th:'สุราษฎร์ธานี'},
+   {id:'nakhonsi',dbId:89,lat:8.432,lng:99.967,ko:'나콘시탐마랏',en:'Nakhon Si Thammarat',th:'นครศรีธรรมราช'},
+   {id:'trang',dbId:90,lat:7.559,lng:99.611,ko:'뜨랑',en:'Trang',th:'ตรัง'},
+   {id:'chumphon',dbId:91,lat:10.493,lng:99.180,ko:'춤폰',en:'Chumphon',th:'ชุมพร'},
+   {id:'phangnga',dbId:92,lat:8.451,lng:98.531,ko:'팡아',en:'Phang Nga',th:'พังงา'}
  ]}
 };
 function hoodById(id){for(const r in REGIONS){const h=REGIONS[r].hoods.find(x=>x.id===id);if(h)return h;}return null;}
@@ -682,7 +758,7 @@ const listings = [
  {kind:"sell",st:"sale",emo:"🛵",city:"bkk",hoodId:"asok",like:12,chats:3,live:true,
   t:{ko:"혼다 PCX 2023 (3천km, 풀옵션)",en:"Honda PCX 2023 (3,000km)",th:"Honda PCX 2023 (3,000km)"},
   pr:"฿58,000",loc:{ko:"방콕 아속",en:"Asok, BKK",th:"อโศก"},ago:{ko:"방금 전",en:"just now",th:"เมื่อกี้"}},
- {kind:"sell",st:"resv",emo:"📱",city:"cm",hoodId:"nimman",like:24,chats:5,live:false,
+ {kind:"sell",st:"resv",emo:"📱",city:"north",hoodId:"chiangmai",like:24,chats:5,live:false,
   t:{ko:"아이폰 15 프로 256 자급제",en:"iPhone 15 Pro 256GB",th:"iPhone 15 Pro 256GB"},
   pr:"฿29,500",loc:{ko:"치앙마이 님만",en:"Nimman, CM",th:"นิมมาน"},ago:{ko:"8분 전",en:"8 min ago",th:"8 นาที"}},
  {kind:"sell",st:"sale",emo:"🛋️",city:"bkk",hoodId:"thonglor",like:7,chats:1,live:false,
@@ -696,8 +772,8 @@ const listings = [
   pr:{ko:"예산 ฿1,500",en:"Budget ฿1,500",th:"งบ ฿1,500"},loc:{ko:"방콕 라마9",en:"Rama9",th:"พระราม 9"},ago:{ko:"30분 전",en:"30 min ago",th:"30 นาที"}},
  {kind:"give",st:"sale",emo:"🧥",city:"bkk",hoodId:"onnut",like:5,chats:2,live:true,
   t:{ko:"아이 옷 무료나눔 (3~5세, 한박스)",en:"Free: kids clothes (age 3-5)",th:"แจกฟรี: เสื้อผ้าเด็ก (3-5 ขวบ)"},
-  pr:{ko:"무료나눔",en:"Free",th:"แจกฟรี"},loc:{ko:"방콕 온누트",en:"On Nut",th:"อ่อนนุช"},ago:{ko:"방금 전",en:"just now",th:"เมื่อกี้"}},
- {kind:"give",st:"done",emo:"📚",city:"cm",hoodId:"oldcity",like:9,chats:0,live:false,
+  pr:{ko:"무료나눔",en:"Free",th:"แจกฟรี"},loc:{ko:"방콕 온눗",en:"On Nut",th:"อ่อนนุช"},ago:{ko:"방금 전",en:"just now",th:"เมื่อกี้"}},
+ {kind:"give",st:"done",emo:"📚",city:"north",hoodId:"chiangmai",like:9,chats:0,live:false,
   t:{ko:"한국 책 나눔 (소설·자기계발 20권)",en:"Free: Korean books (20)",th:"แจกฟรี: หนังสือเกาหลี 20 เล่ม"},
   pr:{ko:"무료나눔",en:"Free",th:"แจกฟรี"},loc:{ko:"치앙마이 올드시티",en:"Old City, CM",th:"เมืองเก่า"},ago:{ko:"3시간 전",en:"3h ago",th:"3 ชม."}}
 ];
@@ -708,7 +784,7 @@ const jobs = [
  {kind:"hire",city:"bkk",emo:"🏢",chats:2,live:false,
   t:{ko:"무역회사 한국어 사무직 (한·태)",en:"Korean-speaking office staff",th:"พนักงานออฟฟิศพูดเกาหลี"},
   pr:"฿35,000~",loc:{ko:"방콕",en:"Bangkok",th:"กรุงเทพ"},ago:{ko:"20분 전",en:"20 min ago",th:"20 นาที"}},
- {kind:"seek",city:"cm",emo:"🎨",chats:1,live:false,
+ {kind:"seek",city:"north",emo:"🎨",chats:1,live:false,
   t:{ko:"한국어 가능 그래픽 디자이너 구직 (재택 가능)",en:"Graphic designer seeking work (remote ok)",th:"กราฟิกดีไซเนอร์หางาน (รีโมทได้)"},
   pr:{ko:"희망 ฿30,000",en:"Want ฿30,000",th:"หวัง ฿30,000"},loc:{ko:"치앙마이",en:"Chiang Mai",th:"เชียงใหม่"},ago:{ko:"40분 전",en:"40 min ago",th:"40 นาที"}}
 ];
@@ -728,7 +804,7 @@ const stores = [
    {id:'b2',emo:'🍙',pr:90,nm:{ko:'김밥',en:'Gimbap',th:'คิมบับ'}},
    {id:'b3',emo:'🍜',pr:100,nm:{ko:'라면',en:'Ramen',th:'รามยอน'}}
   ]},
- {id:'s3',cat:1,ad:false,emo:'🥐',city:'cm',hoodId:'nimman',rating:4.9,reviews:210,min:'฿80',
+ {id:'s3',cat:1,ad:false,emo:'🥐',city:'north',hoodId:'chiangmai',rating:4.9,reviews:210,min:'฿80',
   nm:{ko:'K-베이커리',en:'K-Bakery',th:'เค-เบเกอรี่'},
   menu:[
    {id:'c1',emo:'🥐',pr:70,nm:{ko:'크로와상',en:'Croissant',th:'ครัวซองต์'}},
@@ -771,7 +847,7 @@ const chats = [
    {me:true,tx:{ko:"네 판매중입니다 :)",en:"Yes, still for sale :)",th:"ครับ ยังขายอยู่ :)"}},
    {me:false,tx:{ko:"혹시 네고 가능할까요?",en:"Any room on the price?",th:"ต่อราคาได้ไหมครับ"}}
   ]},
- {av:"🧔",unread:0,city:"cm",
+ {av:"🧔",unread:0,city:"north",
   who:{ko:"Somchai",en:"Somchai",th:"สมชาย"}, item:{ko:"아이폰 15 프로",en:"iPhone 15 Pro",th:"iPhone 15 Pro"}, price:"฿29,500",
   tm:{ko:"1시간 전",en:"1h",th:"1 ชม."}, last:{ko:"오늘 직접 볼 수 있을까요?",en:"Can I see it today?",th:"ขอดูวันนี้ได้ไหม"},
   msgs:[
@@ -795,7 +871,7 @@ const info=[
   t:{ko:"리타이어먼트 비자 갱신 후기 (2026 최신)",en:"Retirement visa renewal report (2026)",th:"รีวิวต่อวีซ่าเกษียณ (2026)"},
   e:{ko:"창왓 이민국 갱신 후기. 잔고 80만밧 조건이 또 바뀌었어요. 필요서류 체크리스트 공유합니다.",en:"Renewed at immigration — the 800k THB rule changed again. Sharing the checklist.",th:"ต่อที่ ตม. เงื่อนไข 800,000 บาทเปลี่ยนอีก แชร์เช็กลิสต์"},
   loc:{ko:"방콕",en:"Bangkok",th:"กรุงเทพ"},ago:{ko:"3시간 전",en:"3h ago",th:"3 ชม."}},
- {official:false,cat:3,city:"cm",help:89,save:61,view:540,
+ {official:false,cat:3,city:"north",help:89,save:61,view:540,
   t:{ko:"님만해민 새로 생긴 한식당 가봤어요",en:"Tried the new Korean place in Nimman",th:"ลองร้านเกาหลีใหม่ย่านนิมมาน"},
   e:{ko:"김치찌개가 진짜 한국맛. 220밧대로 가격도 무난하고 사장님 친절하세요. 위치 공유합니다.",en:"Kimchi stew tastes authentic, ~220 THB, friendly owner. Sharing the location.",th:"กิมจิจิเกรสชาติแท้ ~220 บาท เจ้าของใจดี แชร์พิกัด"},
   loc:{ko:"치앙마이",en:"Chiang Mai",th:"เชียงใหม่"},ago:{ko:"5시간 전",en:"5h ago",th:"5 ชม."}},
@@ -809,7 +885,7 @@ const clubs = [
   d:{ko:"태국 한인 골퍼 매칭. 같이 칠 사람 1:1 번개 매칭 · 중고채 거래. 골프존 방나점 파트너.",en:"Match Korean golfers in Thailand — 1:1 round matching & used-club trades. Partner: Golfzone Bangna.",th:"จับคู่นักกอล์ฟเกาหลีในไทย ออกรอบ 1:1 ซื้อขายไม้กอล์ฟ"}},
  {flag:false,grad:"linear-gradient(120deg,#2f6df0,#6f9bff)",emo:"🏃",city:"bkk",nm:{ko:"방콕 러닝메이트",en:"Bangkok Run Mate",th:"วิ่งกรุงเทพ"},members:312,
   d:{ko:"러닝 파트너 1:1 매칭. 페이스·지역 맞춰드려요.",en:"1:1 running-partner matching by pace & area.",th:"จับคู่เพื่อนวิ่งตามเพซและพื้นที่"}},
- {flag:false,grad:"linear-gradient(120deg,#b45309,#f5a524)",emo:"🗣️",city:"cm",nm:{ko:"치앙마이 언어교환",en:"Chiang Mai Lang Exchange",th:"แลกเปลี่ยนภาษาเชียงใหม่"},members:178,
+ {flag:false,grad:"linear-gradient(120deg,#b45309,#f5a524)",emo:"🗣️",city:"north",nm:{ko:"치앙마이 언어교환",en:"Chiang Mai Lang Exchange",th:"แลกเปลี่ยนภาษาเชียงใหม่"},members:178,
   d:{ko:"한·태·영 언어교환 파트너 1:1 매칭.",en:"1:1 KR·TH·EN language-exchange matching.",th:"จับคู่แลกภาษา เกาหลี·ไทย·อังกฤษ"}}
 ];
 /* Golf Mate 연동 (독립 앱 — 느슨한 결합) */
@@ -1060,7 +1136,7 @@ function renderGate(){
 function renderPicker(){
   if(!locPickerOpen){pickerEl.classList.add('hidden');pickerEl.innerHTML='';return;}
   pickerEl.classList.remove('hidden');
-  const regs=[['bkk',REGIONS.bkk],['cm',REGIONS.cm],['pty',REGIONS.pty]];
+  const regs=Object.keys(REGIONS).map(k=>[k,REGIONS[k]]);
   pickerEl.innerHTML=`
    <div class="pscrim" id="pscrim"></div>
    <div class="psheet">
