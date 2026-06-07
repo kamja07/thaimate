@@ -521,6 +521,7 @@ async function applySession(session){
   try{ await sb.from('profiles').upsert({id:u.id, username:acctId},{onConflict:'id'}); }catch(e){}
   try{ const {data:p}=await sb.from('profiles').select('email_verified').eq('id',u.id).single();
        emailVerified=!!(p && p.email_verified); }catch(e){}
+  try{ const {data:adm}=await sb.rpc('is_admin'); isAdmin=!!adm; if(screen==='app'&&tab==='me') render(); }catch(e){}
   loadChats();
 }
 async function doAuth(mode){
@@ -555,7 +556,7 @@ async function doAuth(mode){
   }
   toast(mode==='signup'?L().e_signup_ok:L().e_login_ok);
 }
-async function doLogout(){ try{await sb.auth.signOut();}catch(e){} authed=false; emailVerified=false; acctId=''; screen='gate'; gateMode='home'; render(); }
+async function doLogout(){ try{await sb.auth.signOut();}catch(e){} authed=false; emailVerified=false; isAdmin=false; acctId=''; screen='gate'; gateMode='home'; render(); }
 function vErrMsg(code){ const m={ email_taken:L().e_email_taken, bad_email:L().v_bad_email, too_soon:L().v_too_soon, no_key:L().v_no_key, no_request:L().v_expired, expired:L().v_expired, too_many:L().v_too_many, wrong_code:L().v_wrong, not_authed:L().v_need_login }; return m[code]||(code||'error'); }
 async function reqEmailCode(em){
   try{ const {data,error}=await sb.rpc('request_email_code',{p_email:em});
@@ -593,7 +594,7 @@ const T = {
   sec_chats:"진행 중인 매칭", flagship:"대표 모임", join:"가입", members:"명",
   me_name:"김교민", me_trust:"매너온도 36.5°C", me_sub:"거래 27회 · 재거래율 92%",
   me_menu:["판매·구매내역","내 가게 관리","관심목록","받은 매너후기","언어 설정","관리자에게 문의"],
-  lang_label:"한국어 / English / ไทย 동시 지원 — 태국인·외국인과도 매칭", logout:"로그아웃", do_login:"로그인하기",
+  lang_label:"한국어 / English / ไทย 동시 지원 — 태국인·외국인과도 매칭", logout:"로그아웃", do_login:"로그인하기", admin_console:"관리자 콘솔",
   e_id_taken:"이미 있는 아이디예요. 로그인해 주세요", e_email_taken:"이미 사용 중인 이메일이에요", e_signup_ok_verify:"가입 완료! 인증 메일을 보냈어요 ✉️ (링크 클릭 시 활동 가능)", e_signup_ok:"가입 완료! 둘러보세요 🙂", e_login_ok:"로그인됐어요",
   fab_market:"글쓰기", fab_jobs:"채용·구직 등록", fab_info:"소식 올리기", fab_shop:"내 가게 등록",
   reply_demo:"상대방에게 1:1 채팅이 전송됩니다 (프로토타입)",
@@ -645,7 +646,7 @@ const T = {
   sec_chats:"Active matches", flagship:"Flagship club", join:"Join", members:"members",
   me_name:"Kim", me_trust:"Manner 36.5°C", me_sub:"27 trades · 92% repeat",
   me_menu:["Sales·Purchases","My store","Saved","Manner reviews","Language","Contact admin"],
-  lang_label:"Korean / English / Thai — match with Thais & foreigners too", logout:"Log out", do_login:"Log in",
+  lang_label:"Korean / English / Thai — match with Thais & foreigners too", logout:"Log out", do_login:"Log in", admin_console:"Admin console",
   e_id_taken:"That ID is already taken. Please log in.", e_email_taken:"That email is already in use.", e_signup_ok_verify:"Signed up! Verification email sent ✉️ (click the link to start activity)", e_signup_ok:"Signed up! Have a look around 🙂", e_login_ok:"Logged in",
   fab_market:"Post", fab_jobs:"Post a job", fab_info:"Share news", fab_shop:"List my store",
   reply_demo:"Sent as a private 1:1 chat (prototype)",
@@ -697,7 +698,7 @@ const T = {
   sec_chats:"กำลังจับคู่", flagship:"ชมรมหลัก", join:"เข้าร่วม", members:"คน",
   me_name:"คุณคิม", me_trust:"เมตตา 36.5°C", me_sub:"27 ครั้ง · ซื้อซ้ำ 92%",
   me_menu:["ประวัติซื้อขาย","ร้านของฉัน","บันทึกไว้","รีวิวมารยาท","ภาษา","ติดต่อผู้ดูแล"],
-  lang_label:"เกาหลี / อังกฤษ / ไทย — จับคู่กับคนไทยและต่างชาติได้", logout:"ออกจากระบบ", do_login:"เข้าสู่ระบบ",
+  lang_label:"เกาหลี / อังกฤษ / ไทย — จับคู่กับคนไทยและต่างชาติได้", logout:"ออกจากระบบ", do_login:"เข้าสู่ระบบ", admin_console:"คอนโซลแอดมิน",
   e_id_taken:"มีไอดีนี้อยู่แล้ว กรุณาเข้าสู่ระบบ", e_email_taken:"อีเมลนี้ถูกใช้งานแล้ว", e_signup_ok_verify:"สมัครสำเร็จ! ส่งอีเมลยืนยันแล้ว ✉️ (คลิกลิงก์เพื่อเริ่มใช้งาน)", e_signup_ok:"สมัครสำเร็จ! ลองดูรอบ ๆ ได้เลย 🙂", e_login_ok:"เข้าสู่ระบบแล้ว",
   fab_market:"โพสต์", fab_jobs:"ลงประกาศงาน", fab_info:"แชร์ข่าว", fab_shop:"ลงร้านค้า",
   reply_demo:"ส่งเป็นแชทส่วนตัว 1:1 (ต้นแบบ)",
@@ -1045,7 +1046,7 @@ listings.forEach((x,i)=>x.id=x.id||('L'+i));
 info.forEach((x,i)=>x.id=x.id||('I'+i));
 
 /* ===================== state ===================== */
-let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gateMode="home", emailVerified=false, acctId="", verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null;
+let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null;
 const L=()=>T[lang];
 const gm=()=>GM[lang];
 const tx=o=> o==null?"":(typeof o==="string"?o:(o[lang]||o.ko));
@@ -1573,7 +1574,8 @@ function viewMe(){
      ${L().me_menu.map((m,i)=>`<div class="mrow"><span class="em">${["🧾","🏪","❤️","🌡️","🌐","📩"][i]}</span><span>${m}</span>
        ${i===4?`<span class="multilang-note">한·EN·ไทย</span>`:''}<span class="ar">›</span></div>`).join('')}
    </div>
-   ${authed?`<button class="gbtn line" data-logout style="width:100%;margin-top:14px;color:var(--red);border-color:#f6c9c4">↩ ${L().logout}</button>`:`<button class="gbtn primary" data-dologin style="width:100%;margin-top:14px">${L().do_login}</button>`}
+   ${isAdmin?`<a href="admin.html" class="gbtn line" style="display:block;box-sizing:border-box;width:100%;text-align:center;margin-top:14px;text-decoration:none;color:#2f6df0;border-color:#bcd2f7;background:#f3f7ff">🛠 ${L().admin_console}</a>`:''}
+   ${authed?`<button class="gbtn line" data-logout style="width:100%;margin-top:10px;color:var(--red);border-color:#f6c9c4">↩ ${L().logout}</button>`:`<button class="gbtn primary" data-dologin style="width:100%;margin-top:14px">${L().do_login}</button>`}
    <p style="text-align:center;font-size:11.5px;color:var(--sub);margin-top:16px;line-height:1.5">${L().lang_label}</p>`;
 }
 
