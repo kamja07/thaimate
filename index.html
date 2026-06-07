@@ -421,12 +421,11 @@ async function loadMyReactions(){
 }
 async function persistReaction(post,type,on){
   if(!uid||!post||!isUuid(post.id)) return;
-  const t=(type==='helpful')?'helpful':'save', col=(t==='helpful')?'helpful_count':'save_count';
+  const t=(type==='helpful')?'helpful':'save';
   try{
     if(on) await sb.from('post_reactions').upsert({post_id:post.id,user_id:uid,type:t},{onConflict:'post_id,user_id,type'});
     else   await sb.from('post_reactions').delete().eq('post_id',post.id).eq('user_id',uid).eq('type',t);
-    await sb.from('posts').update({[col]: Math.max(0,(t==='helpful'?post.help:post.save))}).eq('id',post.id);
-  }catch(e){}
+  }catch(e){}  // helpful_count/save_count는 DB 트리거(trg_post_counts)가 유지
 }
 async function persistListingStatus(listingId,status){
   if(!uid||!isUuid(listingId)) return;
