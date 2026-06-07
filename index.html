@@ -354,10 +354,27 @@
 const SB_URL='https://jhtsncdeoulanvytfwrl.supabase.co';
 const SB_KEY='sb_publishable_ChPPAnOQnOUWh-huy83ckg_pK4343IF';
 const sb = window.supabase.createClient(SB_URL, SB_KEY);
+let uid=null;
 function uname2email(u){return (u||'').toLowerCase().replace(/[^a-z0-9._-]/g,'')+'@thaimate.app';}
+let _hoodsFlat=null;
+function hoodsFlat(){ if(!_hoodsFlat){ _hoodsFlat=[]; ['bkk','cm','pty'].forEach(r=>REGIONS[r].hoods.forEach(h=>_hoodsFlat.push(Object.assign({region:r},h)))); } return _hoodsFlat; }
+function hoodByDbId(n){ return hoodsFlat()[n-1]||null; }
+function hoodDbId(localId){ const i=hoodsFlat().findIndex(h=>h.id===localId); return i>=0?i+1:null; }
+function relTime(ts){ try{ const m=Math.floor((Date.now()-new Date(ts).getTime())/60000); if(m<1)return {ko:'방금 전',en:'just now',th:'เมื่อกี้'}; if(m<60)return {ko:m+'분 전',en:m+'m',th:m+' นาที'}; const h=Math.floor(m/60); if(h<24)return {ko:h+'시간 전',en:h+'h',th:h+' ชม.'}; return {ko:Math.floor(h/24)+'일 전',en:Math.floor(h/24)+'d',th:Math.floor(h/24)+' วัน'}; }catch(e){return {ko:'',en:'',th:''};} }
+function dbToListing(row){
+  const h=hoodByDbId(row.hood_id), give=row.kind==='give', buy=row.kind==='buy';
+  const st=buy?'match':(row.status==='reserved'?'resv':(row.status==='done'?'done':'sale'));
+  return { id:row.id, kind:row.kind, st, emo:give?'🎁':(buy?'🔎':'🆕'), city:h?h.region:'all', hoodId:h?h.id:null, like:0, chats:0, live:false,
+    t:row.title||'', pr:give?{ko:'무료나눔',en:'Free',th:'แจกฟรี'}:(row.price_text||{ko:'가격문의',en:'Ask',th:'สอบถาม'}), loc:h?tx(h):'', desc:row.body||'', ago:relTime(row.created_at) };
+}
+async function loadListings(){
+  try{ const {data,error}=await sb.from('listings').select('*').order('created_at',{ascending:false}).limit(100);
+    if(!error && Array.isArray(data)){ listings.length=0; data.forEach(r=>listings.push(dbToListing(r))); if(screen==='app') render(); }
+  }catch(e){}
+}
 async function applySession(session){
-  if(!session||!session.user){authed=false;return;}
-  const u=session.user; authed=true;
+  if(!session||!session.user){authed=false;uid=null;return;}
+  const u=session.user; authed=true; uid=u.id;
   acctId=(u.email||'').split('@')[0];
   emailVerified=!!(u.email && !u.email.endsWith('@thaimate.app'));
   screen='app';
@@ -1366,8 +1383,7 @@ document.addEventListener('click',e=>{
     const desc=((document.getElementById('wDesc')||{}).value||'').trim();
     const rc=(city!=='all'?city:'bkk'), hid=hood?hood.id:null, locStr=hood?tx(hood):(L()['city_'+rc]||''), ago={ko:'방금 전',en:'just now',th:'เมื่อกี้'};
     if(writeType<=2){const kind=['sell','buy','give'][writeType];
-      listings.unshift({id:'L'+Date.now(),kind,st:kind==='buy'?'match':'sale',emo:'🆕',city:rc,hoodId:hid,like:0,chats:0,live:true,
-        t:subj||L().w_subject, pr:kind==='give'?{ko:'무료나눔',en:'Free',th:'แจกฟรี'}:(price||{ko:'가격문의',en:'Ask',th:'สอบถาม'}), loc:locStr, desc:desc, ago});
+      sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:(kind==='give'?'무료':(price||null)), body:desc||null, hood_id:hoodDbId(hid), status:'selling'}).then(({error})=>{ if(error){toast(error.message);} else {loadListings();} });
       tab='market'; mseg=kind; listingOpen=null;
     }else if(writeType===6){
       stores.unshift({id:'s'+Date.now(),cat:5,ad:false,emo:'🏪',city:rc,hoodId:hid,rating:5.0,reviews:0,service:true,
@@ -1452,7 +1468,7 @@ fab.addEventListener('click',()=>{if(!canAct())return;writeType=(tab==='shop'?6:
 document.addEventListener('input',e=>{if(e.target.id==='searchInput'){searchQ=e.target.value;renderFsView();}});
 document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){chats[chatOpen].msgs.push({me:true,tx:v});render();page.scrollTo(0,9999);}}});
 
-(async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} render(); })();
+(async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} render(); loadListings(); })();
 </script>
 </body>
 </html>
