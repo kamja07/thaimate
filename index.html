@@ -364,7 +364,7 @@ function relTime(ts){ try{ const m=Math.floor((Date.now()-new Date(ts).getTime()
 function dbToListing(row){
   const h=hoodByDbId(row.hood_id), give=row.kind==='give', buy=row.kind==='buy';
   const st=buy?'match':(row.status==='reserved'?'resv':(row.status==='done'?'done':'sale'));
-  return { id:row.id, kind:row.kind, st, emo:give?'🎁':(buy?'🔎':'🆕'), city:h?h.region:'all', hoodId:h?h.id:null, like:0, chats:0, live:false,
+  return { id:row.id, author_id:row.author_id, kind:row.kind, st, emo:give?'🎁':(buy?'🔎':'🆕'), city:h?h.region:'all', hoodId:h?h.id:null, like:0, chats:0, live:false,
     t:row.title||'', pr:give?{ko:'무료나눔',en:'Free',th:'แจกฟรี'}:(row.price_text||{ko:'가격문의',en:'Ask',th:'สอบถาม'}), loc:h?tx(h):'', desc:row.body||'', ago:relTime(row.created_at) };
 }
 async function loadListings(){
@@ -410,15 +410,86 @@ async function loadJobs(){
     if(!error && Array.isArray(data)){ jobs.length=0; data.forEach(r=>jobs.push(dbToJob(r))); if(screen==='app') render(); }
   }catch(e){}
 }
+/* ===================== 1:1 채팅 (DB + Realtime) ===================== */
+let chatSub=null;
+function chatToLocal(row, nameMap){
+  const iAmBuyer=(row.buyer_id===uid), otherId=iAmBuyer?row.seller_id:row.buyer_id, li=row.listings||{};
+  const ms=(row.messages||[]).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+  const lastM=ms.length?ms[ms.length-1]:null;
+  return { id:row.id, buyerId:row.buyer_id, sellerId:row.seller_id, listingId:row.listing_id,
+    av:'🧑', who:(nameMap&&nameMap[otherId])||(lang==='ko'?'사용자':'User'),
+    item:li.title||(lang==='ko'?'대화':'Chat'), price:li.price_text||'', city:'all',
+    unread: iAmBuyer?(row.buyer_unread||0):(row.seller_unread||0),
+    last: lastM?lastM.body:'', tm: relTime(row.last_message_at||row.created_at),
+    msgs: ms.map(m=>({me:m.sender_id===uid, tx:m.body, id:m.id})) };
+}
+async function loadChats(){
+  if(!uid) return;
+  try{
+    const {data,error}=await sb.from('chats').select('*, listings(title,price_text), messages(id,body,created_at,sender_id)').or(`buyer_id.eq.${uid},seller_id.eq.${uid}`).order('last_message_at',{ascending:false});
+    if(error||!Array.isArray(data)) return;
+    const otherIds=[...new Set(data.map(r=>r.buyer_id===uid?r.seller_id:r.buyer_id).filter(Boolean))];
+    let nameMap={};
+    if(otherIds.length){ const {data:ps}=await sb.from('profiles').select('id,username,nickname').in('id',otherIds); (ps||[]).forEach(p=>nameMap[p.id]=p.nickname||p.username); }
+    chats.length=0; data.forEach(r=>chats.push(chatToLocal(r,nameMap)));
+    if(screen==='app'&&tab==='chat'&&chatOpen===null) render();
+  }catch(e){}
+}
+async function openOrCreateChat(listing){
+  if(!listing||!listing.id||!listing.author_id){ toast(L().reply_demo); return; }   // 데모(비DB) 매물
+  if(listing.author_id===uid){ toast(lang==='ko'?'내 글에는 채팅할 수 없어요':'Cannot chat on your own post'); return; }
+  try{
+    let {data:ex}=await sb.from('chats').select('*').eq('listing_id',listing.id).eq('buyer_id',uid).maybeSingle();
+    let row=ex;
+    if(!row){ const ins=await sb.from('chats').insert({listing_id:listing.id, buyer_id:uid, seller_id:listing.author_id, last_message_at:new Date().toISOString()}).select().single(); if(ins.error){toast(ins.error.message);return;} row=ins.data; }
+    await loadChats(); listingOpen=null; tab='chat';
+    const idx=chats.findIndex(c=>c.id===row.id);
+    if(idx>=0) openChat(idx); else render();
+  }catch(e){ toast(String(e.message||e)); }
+}
+async function openChat(idx){
+  chatOpen=idx; const c=chats[idx]; render();
+  if(!c) return;
+  await loadMessages(c.id); subscribeChat(c.id);
+  try{ const fld=(c.sellerId===uid)?'seller_unread':'buyer_unread'; await sb.from('chats').update({[fld]:0}).eq('id',c.id); c.unread=0; }catch(e){}
+}
+async function loadMessages(chatId){
+  try{ const {data}=await sb.from('messages').select('*').eq('chat_id',chatId).order('created_at',{ascending:true});
+    const c=chats.find(x=>x.id===chatId); if(c&&Array.isArray(data)){ c.msgs=data.map(m=>({me:m.sender_id===uid,tx:m.body,id:m.id})); if(chatOpen!==null&&chats[chatOpen]&&chats[chatOpen].id===chatId){render();page.scrollTo(0,9999);} }
+  }catch(e){}
+}
+function subscribeChat(chatId){
+  try{ if(chatSub){ sb.removeChannel(chatSub); chatSub=null; } }catch(e){}
+  try{ chatSub=sb.channel('chat-'+chatId).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'chat_id=eq.'+chatId}, payload=>{
+    const m=payload.new; if(m.sender_id===uid) return;
+    const c=chats.find(x=>x.id===chatId); if(!c) return; c.msgs=c.msgs||[];
+    if(c.msgs.some(x=>x.id===m.id)) return;
+    c.msgs.push({me:false,tx:m.body,id:m.id});
+    if(chatOpen!==null&&chats[chatOpen]&&chats[chatOpen].id===chatId){ render(); page.scrollTo(0,9999); }
+  }).subscribe(); }catch(e){}
+}
+async function sendMessage(text){
+  if(chatOpen===null) return; const c=chats[chatOpen]; if(!c||!c.id) return;
+  const tmpId='tmp'+Date.now(); c.msgs=c.msgs||[]; c.msgs.push({me:true,tx:text,id:tmpId}); render(); page.scrollTo(0,9999);
+  try{
+    const ins=await sb.from('messages').insert({chat_id:c.id, sender_id:uid, body:text}).select().single();
+    if(ins.error){ toast(ins.error.message); return; }
+    const mm=c.msgs.find(x=>x.id===tmpId); if(mm) mm.id=ins.data.id;
+    const otherFld=(c.sellerId===uid)?'buyer_unread':'seller_unread';
+    try{ const {data:cur}=await sb.from('chats').select(otherFld).eq('id',c.id).single(); const nu=((cur&&cur[otherFld])||0)+1; await sb.from('chats').update({last_message_at:new Date().toISOString(),[otherFld]:nu}).eq('id',c.id); }catch(e){}
+  }catch(e){ toast(String(e.message||e)); }
+}
 async function applySession(session){
   if(!session||!session.user){authed=false;uid=null;return;}
   const u=session.user; authed=true; uid=u.id;
   acctId=(u.email||'').split('@')[0];
   emailVerified=false;
+  try{ if(session.access_token) sb.realtime.setAuth(session.access_token); }catch(e){}
   screen='app';
   try{ await sb.from('profiles').upsert({id:u.id, username:acctId},{onConflict:'id'}); }catch(e){}
   try{ const {data:p}=await sb.from('profiles').select('email_verified').eq('id',u.id).single();
        emailVerified=!!(p && p.email_verified); }catch(e){}
+  loadChats();
 }
 async function doAuth(mode){
   const id=((document.getElementById('auId')||{}).value||'').trim();
@@ -473,7 +544,7 @@ async function confirmEmailCode(cd){
 const T = {
  ko:{
   title:"교민 매칭·주문", nav_shop:"상점", nav_market:"장터·나눔", nav_jobs:"구인구직", nav_chat:"채팅", nav_community:"커뮤니티", nav_me:"내정보",
-  city_all:"전체", city_bkk:"방콕", city_cm:"치앙마이", city_pty:"파타야",
+  city_all:"전체", city_bkk:"방콕", city_cm:"치앙마이", city_pty:"파타야", city_east:"동부", city_west:"서부", city_north:"북부", city_central:"중부", city_nisan:"북부 이산", city_eisan:"동부 이산", city_south:"남부",
   seg_sell:"팝니다", seg_buy:"삽니다", seg_give:"나눔터", seg_hire:"구인", seg_seek:"구직",
   comm_info:"소식", comm_clubs:"모임",
   banner_t:"단톡방 댓글싸움 없이, 1:1로 바로 매칭", banner_p:"공개 댓글 없음 · 모든 대화는 비공개 채팅",
@@ -525,7 +596,7 @@ const T = {
  },
  en:{
   title:"Match · Order", nav_shop:"Shop", nav_market:"Market", nav_jobs:"Jobs", nav_chat:"Chat", nav_community:"Community", nav_me:"My",
-  city_all:"All", city_bkk:"Bangkok", city_cm:"Chiang Mai", city_pty:"Pattaya",
+  city_all:"All", city_bkk:"Bangkok", city_cm:"Chiang Mai", city_pty:"Pattaya", city_east:"Eastern", city_west:"Western", city_north:"Northern", city_central:"Central", city_nisan:"North Isan", city_eisan:"East Isan", city_south:"Southern",
   seg_sell:"For sale", seg_buy:"Wanted", seg_give:"Free", seg_hire:"Hiring", seg_seek:"Seeking",
   comm_info:"News", comm_clubs:"Clubs",
   banner_t:"Match 1:1 — no group-chat comment wars", banner_p:"No public comments · every chat is private",
@@ -577,7 +648,7 @@ const T = {
  },
  th:{
   title:"จับคู่ · สั่งซื้อ", nav_shop:"ร้านค้า", nav_market:"ตลาด", nav_jobs:"หางาน", nav_chat:"แชท", nav_community:"คอมมูนิตี้", nav_me:"ฉัน",
-  city_all:"ทั้งหมด", city_bkk:"กรุงเทพ", city_cm:"เชียงใหม่", city_pty:"พัทยา",
+  city_all:"ทั้งหมด", city_bkk:"กรุงเทพ", city_cm:"เชียงใหม่", city_pty:"พัทยา", city_east:"ภาคตะวันออก", city_west:"ภาคตะวันตก", city_north:"ภาคเหนือ", city_central:"ภาคกลาง", city_nisan:"อีสานเหนือ", city_eisan:"อีสานตะวันออก", city_south:"ภาคใต้",
   seg_sell:"ขาย", seg_buy:"ต้องการซื้อ", seg_give:"แจกฟรี", seg_hire:"รับสมัคร", seg_seek:"หางาน",
   comm_info:"ข่าว", comm_clubs:"ชมรม",
   banner_t:"จับคู่ 1:1 ไม่มีดราม่าในกลุ่มแชท", banner_p:"ไม่มีคอมเมนต์สาธารณะ · ทุกแชทเป็นส่วนตัว",
@@ -1614,17 +1685,17 @@ document.addEventListener('click',e=>{
   const rb=e.target.closest('.rb'); if(rb){rb.classList.toggle('on');return;}
   const lk=e.target.closest('[data-like]'); if(lk){const it=listings.find(x=>x.id===lk.dataset.like);if(it)it.liked=!it.liked;render();return;}
   if(e.target.closest('[data-ldback]')){listingOpen=null;render();page.scrollTo(0,0);return;}
-  const lch=e.target.closest('[data-lchat]'); if(lch){if(!canAct())return;listingOpen=null;tab='chat';chatOpen=0;chats[0].unread=0;render();return;}
+  const lch=e.target.closest('[data-lchat]'); if(lch){if(!canAct())return;const it=listings.find(x=>x.id===lch.dataset.lchat); openOrCreateChat(it); return;}
   const lo=e.target.closest('[data-listing]'); if(lo){listingOpen=lo.dataset.listing;render();page.scrollTo(0,0);return;}
-  const cr=e.target.closest('[data-chat]'); if(cr){chatOpen=+cr.dataset.chat;chats[chatOpen].unread=0;render();return;}
+  const cr=e.target.closest('[data-chat]'); if(cr){openChat(+cr.dataset.chat);return;}
   if(e.target.closest('#back')){chatOpen=null;render();return;}
-  if(e.target.closest('[data-matchchat]')){if(!canAct())return;tab='chat';chatOpen=2;chats[2].unread=0;render();return;}
-  if(e.target.closest('.abtn.chat')){if(!canAct())return;tab='chat';chatOpen=0;chats[0].unread=0;render();return;}
-  if(e.target.closest('#csend')){const i=document.getElementById('cin'); if(i&&i.value.trim()){chats[chatOpen].msgs.push({me:true,tx:i.value.trim()});render();page.scrollTo(0,9999);} return;}
+  if(e.target.closest('[data-matchchat]')){if(!canAct())return;tab='chat';chatOpen=null;render();return;}
+  if(e.target.closest('.abtn.chat')){if(!canAct())return;tab='chat';chatOpen=null;render();return;}
+  if(e.target.closest('#csend')){const i=document.getElementById('cin'); if(i&&i.value.trim()){sendMessage(i.value.trim());i.value='';} return;}
 });
 fab.addEventListener('click',()=>{if(!canAct())return;writeType=(tab==='shop'?6:(tab==='jobs'?3:(tab==='community'?5:0)));writeOpen=true;render();});
 document.addEventListener('input',e=>{if(e.target.id==='searchInput'){searchQ=e.target.value;renderFsView();}});
-document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){chats[chatOpen].msgs.push({me:true,tx:v});render();page.scrollTo(0,9999);}}});
+document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendMessage(v);e.target.value='';}}});
 
 (async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} render(); loadListings(); loadStores(); loadPosts(); loadJobs(); })();
 </script>
