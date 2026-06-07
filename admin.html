@@ -575,7 +575,7 @@ async function loadAdminData(){
     const [nb,pf,st,ls,ps]=await Promise.all([
       sb.from('neighborhoods').select('id,name_ko'),
       sb.from('profiles').select('username,nickname,hood_id,hood_verified,email_verified,manner_temp').limit(300),
-      sb.from('stores').select('name,category,hood_id,ad_tier,rating').order('ad_priority',{ascending:false}),
+      sb.from('stores').select('id,name,category,hood_id,ad_tier,rating').order('ad_priority',{ascending:false}),
       sb.from('listings').select('id,kind,title,status,hood_id,author_id,created_at').order('created_at',{ascending:false}).limit(300),
       sb.from('posts').select('id').limit(1000)
     ]);
