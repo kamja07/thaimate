@@ -1562,7 +1562,7 @@ function viewMe(){
   page.innerHTML=`
    <div class="profile">
      <div class="pav">😀</div>
-     <div class="pname">${tx(L().me_name)}</div>
+     <div class="pname">${authed&&acctId?acctId:tx(L().me_name)}</div>
      <div class="trust">🌡️ ${L().me_trust}</div>
      <div style="margin-top:8px">${(city!=='all'&&hood)?`<span class="vbadge${verified?'':' no'}">📍 ${tx(hood)} · ${verified?'✓ '+L().v_done:L().v_none}</span>`:`<span class="vbadge no">📍 ${L().loc_all}</span>`}
        ${authed?`<span class="acctbadge" style="${emailVerified?'color:var(--green);background:#eaf7ef':'color:var(--amber);background:#fdf3e0'}">${acctId?'🆔 '+acctId+' · ':''}${emailVerified?'✓ '+L().acct_verified:'✉️ '+L().acct_unverified}</span>`:`<span class="acctbadge" style="color:var(--sub);background:#eef0f3">👀 ${L().guest}</span>`}</div>
