@@ -414,9 +414,11 @@ async function applySession(session){
   if(!session||!session.user){authed=false;uid=null;return;}
   const u=session.user; authed=true; uid=u.id;
   acctId=(u.email||'').split('@')[0];
-  emailVerified=!!(u.email && !u.email.endsWith('@thaimate.app'));
+  emailVerified=false;
   screen='app';
   try{ await sb.from('profiles').upsert({id:u.id, username:acctId},{onConflict:'id'}); }catch(e){}
+  try{ const {data:p}=await sb.from('profiles').select('email_verified').eq('id',u.id).single();
+       emailVerified=!!(p && p.email_verified); }catch(e){}
 }
 async function doAuth(mode){
   const id=((document.getElementById('auId')||{}).value||'').trim();
@@ -445,16 +447,27 @@ async function doAuth(mode){
   const realEmail=(mode==='signup')?((document.getElementById('auEmail')||{}).value||'').trim():'';
   gateMode='home'; screen='app'; render();
   if(mode==='signup' && realEmail){
-    try{ const r=await sb.auth.updateUser({email:realEmail});
-      if(!r.error){ toast(L().e_signup_ok_verify); return; }
-      const em=(r.error.message||'').toLowerCase();
-      if(em.includes('already')||em.includes('registered')||em.includes('exists')){ toast(L().e_email_taken); return; }
-      toast(r.error.message); return;
-    }catch(e){}
+    verifyOpen=true; verifySent=false; vEmailVal=realEmail; render();
+    reqEmailCode(realEmail); return;
   }
   toast(mode==='signup'?L().e_signup_ok:L().e_login_ok);
 }
 async function doLogout(){ try{await sb.auth.signOut();}catch(e){} authed=false; emailVerified=false; acctId=''; screen='gate'; gateMode='home'; render(); }
+function vErrMsg(code){ const m={ email_taken:L().e_email_taken, bad_email:L().v_bad_email, too_soon:L().v_too_soon, no_key:L().v_no_key, no_request:L().v_expired, expired:L().v_expired, too_many:L().v_too_many, wrong_code:L().v_wrong, not_authed:L().v_need_login }; return m[code]||(code||'error'); }
+async function reqEmailCode(em){
+  try{ const {data,error}=await sb.rpc('request_email_code',{p_email:em});
+    if(error){ toast(error.message); return; }
+    if(data&&data.ok){ vEmailVal=em; verifySent=true; render(); toast(L().v_sent2); }
+    else { toast(vErrMsg(data&&data.error)); }
+  }catch(e){ toast(String(e.message||e)); }
+}
+async function confirmEmailCode(cd){
+  try{ const {data,error}=await sb.rpc('verify_email_code',{p_code:cd});
+    if(error){ toast(error.message); return; }
+    if(data&&data.ok){ emailVerified=true; verifyOpen=false; verifySent=false; vEmailVal=''; render(); toast(L().v_verified); }
+    else { toast(vErrMsg(data&&data.error)); }
+  }catch(e){ toast(String(e.message||e)); }
+}
 
 /* ===================== i18n ===================== */
 const T = {
@@ -502,6 +515,7 @@ const T = {
   v_banner:"이메일 인증을 하면 채팅·거래·글쓰기를 할 수 있어요", v_btn:"인증하기", v_title:"이메일 인증", v_email:"이메일 주소", v_send:"인증 메일 보내기",
   v_sent:"메일을 보냈어요. 받은편지함의 링크를 눌러 인증하세요.", v_demo:"이메일을 확인했어요 (새로고침)", v_done:"이메일 인증 완료! 이제 모든 활동이 가능해요",
   v_need_login:"로그인이 필요한 기능이에요", v_need_verify:"이메일 인증 후 이용할 수 있어요",
+  v_send2:"인증코드 받기", v_code_hint:"입력한 이메일로 6자리 인증코드를 보냅니다", v_sent2:"인증코드를 보냈어요. 받은편지함에서 6자리 코드를 확인하세요 (10분 유효)", v_code_label:"인증코드 6자리", v_confirm:"확인", v_resend:"코드 다시 보내기", v_verified:"이메일 인증 완료! 이제 모든 활동이 가능해요 🎉", v_bad_email:"이메일 형식을 확인하세요", v_too_soon:"잠시 후 다시 시도하세요", v_no_key:"메일 발송이 아직 설정되지 않았어요 (관리자)", v_expired:"코드가 만료됐어요. 다시 받아주세요", v_too_many:"시도 횟수가 많아요. 코드를 다시 받아주세요", v_wrong:"코드가 일치하지 않아요",
   gm_handi_q:"마지막으로, 골프 핸디캡만 알려주세요", gm_handi_ph:"예: 12 (모르면 비워두기)", acct_verified:"인증됨", acct_unverified:"이메일 미인증", guest:"게스트",
   noti_title:"알림", noti_empty:"새 알림이 없어요", search_ph:"매물·가게·구인·정보 검색", search_hint:"무엇을 찾으세요?", search_empty:"검색 결과가 없어요", search_cnt:"개 결과",
   w_title:"무엇을 올릴까요?", w_store:"내 가게 등록", w_subject:"제목", w_subject_ph:"제목을 입력하세요", w_price:"가격", w_price_ph:"฿ 가격 또는 무료·협의", w_desc:"설명", w_desc_ph:"상세 내용을 적어주세요", w_photo:"사진 추가", w_loc:"거래 동네", w_submit:"등록하기", w_posted:"등록되었습니다 (프로토타입)",
@@ -553,6 +567,7 @@ const T = {
   v_banner:"Verify your email to chat, trade & post", v_btn:"Verify", v_title:"Email verification", v_email:"Email address", v_send:"Send verification email",
   v_sent:"Email sent. Click the link in your inbox to verify.", v_demo:"I clicked the link (refresh)", v_done:"Email verified! You can now do everything",
   v_need_login:"This feature needs login", v_need_verify:"Available after email verification",
+  v_send2:"Send code", v_code_hint:"We'll send a 6-digit code to this email", v_sent2:"Code sent. Check your inbox for the 6-digit code (valid 10 min)", v_code_label:"6-digit code", v_confirm:"Confirm", v_resend:"Resend code", v_verified:"Email verified! You can now do everything 🎉", v_bad_email:"Check the email format", v_too_soon:"Please try again shortly", v_no_key:"Email sending isn't set up yet (admin)", v_expired:"Code expired. Please request a new one", v_too_many:"Too many attempts. Request a new code", v_wrong:"The code doesn't match",
   gm_handi_q:"Last step — just your golf handicap", gm_handi_ph:"e.g. 12 (leave blank if unsure)", acct_verified:"Verified", acct_unverified:"Email not verified", guest:"Guest",
   noti_title:"Notifications", noti_empty:"No new notifications", search_ph:"Search items, shops, jobs, info", search_hint:"What are you looking for?", search_empty:"No results", search_cnt:" results",
   w_title:"What do you want to post?", w_store:"List my store", w_subject:"Title", w_subject_ph:"Enter a title", w_price:"Price", w_price_ph:"฿ price or Free/Nego.", w_desc:"Description", w_desc_ph:"Write the details", w_photo:"Add photo", w_loc:"Deal area", w_submit:"Post", w_posted:"Posted (prototype)",
@@ -604,6 +619,7 @@ const T = {
   v_banner:"ยืนยันอีเมลเพื่อแชท·ซื้อขาย·โพสต์", v_btn:"ยืนยัน", v_title:"ยืนยันอีเมล", v_email:"อีเมล", v_send:"ส่งอีเมลยืนยัน",
   v_sent:"ส่งอีเมลแล้ว คลิกลิงก์ในกล่องจดหมายเพื่อยืนยัน", v_demo:"ฉันคลิกลิงก์แล้ว (รีเฟรช)", v_done:"ยืนยันอีเมลแล้ว! ใช้งานได้ทุกอย่าง",
   v_need_login:"ฟีเจอร์นี้ต้องเข้าสู่ระบบ", v_need_verify:"ใช้ได้หลังยืนยันอีเมล",
+  v_send2:"ขอรหัส", v_code_hint:"เราจะส่งรหัส 6 หลักไปยังอีเมลนี้", v_sent2:"ส่งรหัสแล้ว ตรวจสอบรหัส 6 หลักในกล่องจดหมาย (ใช้ได้ 10 นาที)", v_code_label:"รหัส 6 หลัก", v_confirm:"ยืนยัน", v_resend:"ส่งรหัสใหม่", v_verified:"ยืนยันอีเมลแล้ว! ใช้งานได้ทุกอย่าง 🎉", v_bad_email:"ตรวจสอบรูปแบบอีเมล", v_too_soon:"กรุณาลองใหม่อีกครู่", v_no_key:"ยังไม่ได้ตั้งค่าการส่งอีเมล (แอดมิน)", v_expired:"รหัสหมดอายุ กรุณาขอใหม่", v_too_many:"พยายามหลายครั้งเกินไป ขอรหัสใหม่", v_wrong:"รหัสไม่ตรงกัน",
   gm_handi_q:"ขั้นตอนสุดท้าย — แค่แฮนดิแคปกอล์ฟ", gm_handi_ph:"เช่น 12 (เว้นว่างถ้าไม่แน่ใจ)", acct_verified:"ยืนยันแล้ว", acct_unverified:"ยังไม่ยืนยันอีเมล", guest:"เกสต์",
   noti_title:"การแจ้งเตือน", noti_empty:"ไม่มีการแจ้งเตือนใหม่", search_ph:"ค้นหาสินค้า·ร้าน·งาน·ข้อมูล", search_hint:"กำลังหาอะไรอยู่?", search_empty:"ไม่พบผลลัพธ์", search_cnt:" รายการ",
   w_title:"ต้องการโพสต์อะไร?", w_store:"ลงร้านค้า", w_subject:"หัวข้อ", w_subject_ph:"ใส่หัวข้อ", w_price:"ราคา", w_price_ph:"฿ ราคา หรือ ฟรี/ต่อรอง", w_desc:"รายละเอียด", w_desc_ph:"เขียนรายละเอียด", w_photo:"เพิ่มรูป", w_loc:"ย่านซื้อขาย", w_submit:"โพสต์", w_posted:"โพสต์แล้ว (ต้นแบบ)",
@@ -850,7 +866,7 @@ listings.forEach((x,i)=>x.id=x.id||('L'+i));
 info.forEach((x,i)=>x.id=x.id||('I'+i));
 
 /* ===================== state ===================== */
-let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gateMode="home", emailVerified=false, acctId="", verifyOpen=false, verifySent=false, fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null;
+let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gateMode="home", emailVerified=false, acctId="", verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null;
 const L=()=>T[lang];
 const gm=()=>GM[lang];
 const tx=o=> o==null?"":(typeof o==="string"?o:(o[lang]||o.ko));
@@ -932,12 +948,15 @@ function renderVerify(){
   }else if(!verifySent){
     inner=`<div style="font-size:36px;text-align:center;margin:6px 0 8px">✉️</div>
       <div style="text-align:center;font-weight:800;font-size:15px;margin-bottom:4px">${L().v_need_verify}</div>
-      <div class="gfield" style="margin-top:14px"><label>${L().v_email}</label><input id="vEmail" type="email" placeholder="you@email.com"></div>
-      <button class="gbtn primary" id="vsend" style="width:100%;margin-top:12px">${L().v_send}</button>`;
+      <div style="text-align:center;font-size:12px;color:var(--sub);margin:6px 0 0">${L().v_code_hint}</div>
+      <div class="gfield" style="margin-top:14px"><label>${L().v_email}</label><input id="vEmail" type="email" placeholder="you@email.com" value="${vEmailVal||''}"></div>
+      <button class="gbtn primary" id="vsend" style="width:100%;margin-top:12px">${L().v_send2}</button>`;
   }else{
     inner=`<div style="font-size:36px;text-align:center;margin:6px 0 8px">📨</div>
-      <div style="text-align:center;font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 16px">${L().v_sent}</div>
-      <button class="gbtn primary" id="vdone" style="width:100%">${L().v_demo}</button>`;
+      <div style="text-align:center;font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 12px">${L().v_sent2}</div>
+      <div class="gfield"><label>${L().v_code_label}</label><input id="vCode" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px;font-weight:700"></div>
+      <button class="gbtn primary" id="vconfirm" style="width:100%;margin-top:12px">${L().v_confirm}</button>
+      <button class="gbtn line" id="vresend" style="width:100%;margin-top:8px">${L().v_resend}</button>`;
   }
   verifyEl.innerHTML=`<div class="pscrim" id="vclose"></div><div class="psheet"><div class="phead" style="position:relative"><b>✉️ ${L().v_title}</b><button class="pclose" id="vclose2" style="position:absolute;right:0">✕</button></div>${inner}</div>`;
 }
@@ -1426,8 +1445,9 @@ document.addEventListener('click',e=>{
   /* email verification */
   if(e.target.closest('[data-verify]')){verifyOpen=true;verifySent=false;render();return;}
   const vau=e.target.closest('[data-vauth]'); if(vau){verifyOpen=false;verifySent=false;screen='gate';gateMode=vau.dataset.vauth;render();return;}
-  if(e.target.closest('#vsend')){const em=((document.getElementById('vEmail')||{}).value||'').trim(); if(!em){toast(L().v_email);return;} sb.auth.updateUser({email:em}).then(r=>{ if(r.error){toast(r.error.message);} else {verifySent=true;render();} }); return;}
-  if(e.target.closest('#vdone')){ sb.auth.getSession().then(async({data})=>{ await applySession(data.session); if(emailVerified){verifyOpen=false;verifySent=false;render();toast(L().v_done);} else {render();toast(lang==='ko'?'아직 인증 전이에요. 메일의 링크를 눌러주세요':'Not verified yet — click the email link');} }); return;}
+  if(e.target.closest('#vsend')){ const em=((document.getElementById('vEmail')||{}).value||'').trim(); if(!em){toast(L().v_email);return;} reqEmailCode(em); return;}
+  if(e.target.closest('#vresend')){ reqEmailCode(vEmailVal); return;}
+  if(e.target.closest('#vconfirm')){ const cd=((document.getElementById('vCode')||{}).value||'').trim(); if(!cd){toast(L().v_code_label);return;} confirmEmailCode(cd); return;}
   if(e.target.closest('#vclose')||e.target.closest('#vclose2')){verifyOpen=false;verifySent=false;render();return;}
   if(e.target.closest('[data-vfromgm]')){gmGateOpen=false;verifyOpen=true;verifySent=false;render();return;}
   if(e.target.closest('[data-gmenter]')){const h=(document.getElementById('gmHandi')||{}).value||'';window.open(GM_URL+'/?sso=thaimate&handi='+encodeURIComponent(h),'_blank');return;}
