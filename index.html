@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Thai Mate — 교민 실시간 1:1 매칭 & 주문</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg:#f6f6f4; --card:#ffffff; --ink:#191b1d; --sub:#8a9099; --line:#ececec;
@@ -349,6 +350,38 @@
 </div>
 
 <script>
+/* ===================== Supabase ===================== */
+const SB_URL='https://jhtsncdeoulanvytfwrl.supabase.co';
+const SB_KEY='sb_publishable_ChPPAnOQnOUWh-huy83ckg_pK4343IF';
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
+function uname2email(u){return (u||'').toLowerCase().replace(/[^a-z0-9._-]/g,'')+'@thaimate.app';}
+async function applySession(session){
+  if(!session||!session.user){authed=false;return;}
+  const u=session.user; authed=true;
+  acctId=(u.email||'').split('@')[0];
+  emailVerified=!!(u.email && !u.email.endsWith('@thaimate.app'));
+  screen='app';
+  try{ await sb.from('profiles').upsert({id:u.id, username:acctId},{onConflict:'id'}); }catch(e){}
+}
+async function doAuth(mode){
+  const id=((document.getElementById('auId')||{}).value||'').trim();
+  const pw=((document.getElementById('auPw')||{}).value||'');
+  if(!id||!pw){toast(lang==='ko'?'아이디와 비밀번호를 입력하세요':'Enter ID & password');return;}
+  if(mode==='signup' && pw!==((document.getElementById('auPw2')||{}).value||'')){toast(lang==='ko'?'비밀번호가 일치하지 않아요':'Passwords do not match');return;}
+  const email=uname2email(id);
+  let res = (mode==='signup') ? await sb.auth.signUp({email,password:pw}) : await sb.auth.signInWithPassword({email,password:pw});
+  if(res.error){toast(res.error.message);return;}
+  let sess=res.data&&res.data.session; if(!sess){sess=(await sb.auth.getSession()).data.session;}
+  await applySession(sess); acctId=id;
+  const realEmail=(mode==='signup')?((document.getElementById('auEmail')||{}).value||'').trim():'';
+  gateMode='home'; screen='app'; render();
+  if(mode==='signup' && realEmail){
+    try{ const r=await sb.auth.updateUser({email:realEmail}); if(!r.error){toast(lang==='ko'?'가입 완료! 인증 메일을 보냈어요 ✉️ (링크 클릭 시 활동 가능)':'Signed up! Verification email sent');return;}else{toast(r.error.message);} }catch(e){}
+  }
+  toast(mode==='signup'?(lang==='ko'?'가입 완료! 둘러보세요 🙂':'Signed up!'):(lang==='ko'?'로그인됐어요':'Logged in'));
+}
+async function doLogout(){ try{await sb.auth.signOut();}catch(e){} authed=false; emailVerified=false; acctId=''; screen='gate'; gateMode='home'; render(); }
+
 /* ===================== i18n ===================== */
 const T = {
  ko:{
@@ -390,8 +423,9 @@ const T = {
   a_id:"아이디", a_pw:"비밀번호", a_pw2:"비밀번호 확인", a_login_btn:"로그인", a_signup_btn:"가입하고 시작하기",
   a_signup_note:"아이디·비밀번호만으로 바로 시작 — 이메일 인증은 활동할 때 받으면 돼요",
   a_to_signup:"계정이 없으신가요? 신규가입", a_to_login:"이미 계정이 있으신가요? 로그인",
+  a_email_opt:"이메일 (인증용 · 선택)", a_email_ph:"이메일 주소 (선택)", a_browse_only:"이메일 인증을 받지 않으면 둘러보기만 가능합니다.",
   v_banner:"이메일 인증을 하면 채팅·거래·글쓰기를 할 수 있어요", v_btn:"인증하기", v_title:"이메일 인증", v_email:"이메일 주소", v_send:"인증 메일 보내기",
-  v_sent:"메일을 보냈어요. 받은편지함의 링크를 눌러 인증하세요.", v_demo:"인증 완료 (데모)", v_done:"이메일 인증 완료! 이제 모든 활동이 가능해요",
+  v_sent:"메일을 보냈어요. 받은편지함의 링크를 눌러 인증하세요.", v_demo:"이메일을 확인했어요 (새로고침)", v_done:"이메일 인증 완료! 이제 모든 활동이 가능해요",
   v_need_login:"로그인이 필요한 기능이에요", v_need_verify:"이메일 인증 후 이용할 수 있어요",
   gm_handi_q:"마지막으로, 골프 핸디캡만 알려주세요", gm_handi_ph:"예: 12 (모르면 비워두기)", acct_verified:"인증됨", acct_unverified:"이메일 미인증", guest:"게스트",
   noti_title:"알림", noti_empty:"새 알림이 없어요", search_ph:"매물·가게·구인·정보 검색", search_hint:"무엇을 찾으세요?", search_empty:"검색 결과가 없어요", search_cnt:"개 결과",
@@ -439,8 +473,9 @@ const T = {
   a_id:"User ID", a_pw:"Password", a_pw2:"Confirm password", a_login_btn:"Log in", a_signup_btn:"Sign up & start",
   a_signup_note:"Start with just ID & password — verify email later (needed to act)",
   a_to_signup:"No account? Sign up", a_to_login:"Already have an account? Log in",
+  a_email_opt:"Email (for verification · optional)", a_email_ph:"Email address (optional)", a_browse_only:"Without email verification, you can only browse.",
   v_banner:"Verify your email to chat, trade & post", v_btn:"Verify", v_title:"Email verification", v_email:"Email address", v_send:"Send verification email",
-  v_sent:"Email sent. Click the link in your inbox to verify.", v_demo:"Mark verified (demo)", v_done:"Email verified! You can now do everything",
+  v_sent:"Email sent. Click the link in your inbox to verify.", v_demo:"I clicked the link (refresh)", v_done:"Email verified! You can now do everything",
   v_need_login:"This feature needs login", v_need_verify:"Available after email verification",
   gm_handi_q:"Last step — just your golf handicap", gm_handi_ph:"e.g. 12 (leave blank if unsure)", acct_verified:"Verified", acct_unverified:"Email not verified", guest:"Guest",
   noti_title:"Notifications", noti_empty:"No new notifications", search_ph:"Search items, shops, jobs, info", search_hint:"What are you looking for?", search_empty:"No results", search_cnt:" results",
@@ -488,8 +523,9 @@ const T = {
   a_id:"ไอดี", a_pw:"รหัสผ่าน", a_pw2:"ยืนยันรหัสผ่าน", a_login_btn:"เข้าสู่ระบบ", a_signup_btn:"สมัครและเริ่ม",
   a_signup_note:"เริ่มด้วยไอดี·รหัสผ่าน — ยืนยันอีเมลภายหลัง (จำเป็นตอนใช้งาน)",
   a_to_signup:"ยังไม่มีบัญชี? สมัคร", a_to_login:"มีบัญชีแล้ว? เข้าสู่ระบบ",
+  a_email_opt:"อีเมล (ยืนยัน · ไม่บังคับ)", a_email_ph:"อีเมล (ไม่บังคับ)", a_browse_only:"หากไม่ยืนยันอีเมล จะดูได้อย่างเดียว",
   v_banner:"ยืนยันอีเมลเพื่อแชท·ซื้อขาย·โพสต์", v_btn:"ยืนยัน", v_title:"ยืนยันอีเมล", v_email:"อีเมล", v_send:"ส่งอีเมลยืนยัน",
-  v_sent:"ส่งอีเมลแล้ว คลิกลิงก์ในกล่องจดหมายเพื่อยืนยัน", v_demo:"ทำเป็นยืนยันแล้ว (เดโม)", v_done:"ยืนยันอีเมลแล้ว! ใช้งานได้ทุกอย่าง",
+  v_sent:"ส่งอีเมลแล้ว คลิกลิงก์ในกล่องจดหมายเพื่อยืนยัน", v_demo:"ฉันคลิกลิงก์แล้ว (รีเฟรช)", v_done:"ยืนยันอีเมลแล้ว! ใช้งานได้ทุกอย่าง",
   v_need_login:"ฟีเจอร์นี้ต้องเข้าสู่ระบบ", v_need_verify:"ใช้ได้หลังยืนยันอีเมล",
   gm_handi_q:"ขั้นตอนสุดท้าย — แค่แฮนดิแคปกอล์ฟ", gm_handi_ph:"เช่น 12 (เว้นว่างถ้าไม่แน่ใจ)", acct_verified:"ยืนยันแล้ว", acct_unverified:"ยังไม่ยืนยันอีเมล", guest:"เกสต์",
   noti_title:"การแจ้งเตือน", noti_empty:"ไม่มีการแจ้งเตือนใหม่", search_ph:"ค้นหาสินค้า·ร้าน·งาน·ข้อมูล", search_hint:"กำลังหาอะไรอยู่?", search_empty:"ไม่พบผลลัพธ์", search_cnt:" รายการ",
@@ -888,7 +924,8 @@ function renderGate(){
        <div class="gfield"><label>${L().a_id}</label><input id="auId" placeholder="${L().a_id}" autocomplete="off"></div>
        <div class="gfield"><label>${L().a_pw}</label><input id="auPw" type="password" placeholder="••••••••"></div>
        ${isLogin?'':`<div class="gfield"><label>${L().a_pw2}</label><input id="auPw2" type="password" placeholder="••••••••"></div>`}
-       ${isLogin?'':`<div class="gnote">ℹ️ ${L().a_signup_note}</div>`}
+       ${isLogin?'':`<div class="gfield"><label>${L().a_email_opt}</label><input id="auEmail" type="email" placeholder="${L().a_email_ph}"></div>`}
+       ${isLogin?'':`<div class="gnote">ℹ️ ${L().a_browse_only}</div>`}
        <button class="gbtn primary" data-ausubmit="${gateMode}" style="margin-top:6px;width:100%">${isLogin?L().a_login_btn:L().a_signup_btn}</button>
        <div class="gswitch" data-gmode="${isLogin?'signup':'login'}">${isLogin?L().a_to_signup.replace(/(신규가입|Sign up|สมัคร)/, '<b>$1</b>'):L().a_to_login.replace(/(로그인|Log in|เข้าสู่ระบบ)/, '<b>$1</b>')}</div>
      </div>`;
@@ -1305,14 +1342,12 @@ document.addEventListener('click',e=>{
     if(m==='browse'){authed=false;emailVerified=false;screen='app';}else{gateMode=m;}
     render();return;}
   const gmo=e.target.closest('[data-gmode]'); if(gmo){gateMode=gmo.dataset.gmode;render();return;}
-  const aus=e.target.closest('[data-ausubmit]'); if(aus){
-    const idel=document.getElementById('auId'); acctId=(idel&&idel.value.trim())||"";
-    authed=true; emailVerified=(aus.dataset.ausubmit==='login'); gateMode='home'; screen='app'; render(); return;}
+  const aus=e.target.closest('[data-ausubmit]'); if(aus){doAuth(aus.dataset.ausubmit);return;}
   /* email verification */
   if(e.target.closest('[data-verify]')){verifyOpen=true;verifySent=false;render();return;}
   const vau=e.target.closest('[data-vauth]'); if(vau){verifyOpen=false;verifySent=false;screen='gate';gateMode=vau.dataset.vauth;render();return;}
-  if(e.target.closest('#vsend')){verifySent=true;render();return;}
-  if(e.target.closest('#vdone')){emailVerified=true;verifyOpen=false;verifySent=false;render();toast(L().v_done);return;}
+  if(e.target.closest('#vsend')){const em=((document.getElementById('vEmail')||{}).value||'').trim(); if(!em){toast(L().v_email);return;} sb.auth.updateUser({email:em}).then(r=>{ if(r.error){toast(r.error.message);} else {verifySent=true;render();} }); return;}
+  if(e.target.closest('#vdone')){ sb.auth.getSession().then(async({data})=>{ await applySession(data.session); if(emailVerified){verifyOpen=false;verifySent=false;render();toast(L().v_done);} else {render();toast(lang==='ko'?'아직 인증 전이에요. 메일의 링크를 눌러주세요':'Not verified yet — click the email link');} }); return;}
   if(e.target.closest('#vclose')||e.target.closest('#vclose2')){verifyOpen=false;verifySent=false;render();return;}
   if(e.target.closest('[data-vfromgm]')){gmGateOpen=false;verifyOpen=true;verifySent=false;render();return;}
   if(e.target.closest('[data-gmenter]')){const h=(document.getElementById('gmHandi')||{}).value||'';window.open(GM_URL+'/?sso=thaimate&handi='+encodeURIComponent(h),'_blank');return;}
@@ -1417,7 +1452,7 @@ fab.addEventListener('click',()=>{if(!canAct())return;writeType=(tab==='shop'?6:
 document.addEventListener('input',e=>{if(e.target.id==='searchInput'){searchQ=e.target.value;renderFsView();}});
 document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){chats[chatOpen].msgs.push({me:true,tx:v});render();page.scrollTo(0,9999);}}});
 
-render();
+(async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} render(); })();
 </script>
 </body>
 </html>
