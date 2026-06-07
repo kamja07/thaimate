@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Thai Mate — 교민 실시간 1:1 매칭 & 주문</title>
+<style>
+  :root{
+    --bg:#f6f6f4; --card:#ffffff; --ink:#191b1d; --sub:#8a9099; --line:#ececec;
+    --pri:#ff7a33; --pri-soft:#fff1e8; --blue:#2f6df0; --green:#15a05a; --gold:#f5a524; --red:#ef4444;
+    --shadow:0 1px 2px rgba(20,24,30,.05),0 8px 22px rgba(20,24,30,.05);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#d7dae0;font-family:"Apple SD Gothic Neo","Noto Sans KR","Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  .device{max-width:430px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(0,0,0,.18)}
+  .top{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line)}
+  .top-row{display:flex;align-items:center;gap:8px;padding:12px 14px 10px}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:18px;letter-spacing:-.3px}
+  .brand .logo{width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,var(--pri),#ffa869);color:#fff;display:grid;place-items:center;font-size:15px;font-weight:900}
+  .ttl{font-weight:700;font-size:13.5px;color:var(--sub)}
+  .spacer{flex:1}
+  .icon-btn{width:36px;height:36px;border:none;background:transparent;border-radius:10px;font-size:18px;display:grid;place-items:center;cursor:pointer}
+  .lang{display:flex;background:#f0f1f4;border-radius:10px;padding:3px}
+  .lang button{border:none;background:transparent;font-size:11.5px;font-weight:700;color:var(--sub);padding:5px 8px;border-radius:8px;cursor:pointer}
+  .lang button.on{background:#fff;color:var(--pri);box-shadow:var(--shadow)}
+  .cities{display:flex;gap:7px;padding:0 14px 11px;overflow-x:auto;scrollbar-width:none}
+  .cities::-webkit-scrollbar{display:none}
+  .city{flex:0 0 auto;border:1px solid var(--line);background:#fff;color:var(--sub);font-weight:700;font-size:12.5px;padding:7px 13px;border-radius:999px;cursor:pointer;white-space:nowrap}
+  .city.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .seg{display:flex;background:#f0f1f4;border-radius:12px;padding:4px;margin:0 0 14px}
+  .seg button{flex:1;border:none;background:transparent;font-weight:800;font-size:13px;color:var(--sub);padding:9px 0;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:var(--shadow)}
+  .page{flex:1;overflow-y:auto;padding:14px 14px 96px}
+  .page::-webkit-scrollbar{display:none}
+  .vbanner{display:flex;align-items:center;gap:10px;background:linear-gradient(100deg,#fff1e8,#fff8f3);border:1px solid #ffd9c2;border-radius:13px;padding:11px 13px;margin-bottom:14px}
+  .vbanner .em{font-size:20px}
+  .vbanner b{font-size:13px;letter-spacing:-.2px}
+  .vbanner p{margin:2px 0 0;font-size:11.5px;color:#b9620f;line-height:1.35}
+  .livebar{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#15a05a;margin:0 2px 12px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#15a05a;animation:pulse 1.6s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(21,160,90,.45)}70%{box-shadow:0 0 0 9px rgba(21,160,90,0)}100%{box-shadow:0 0 0 0 rgba(21,160,90,0)}}
+  .list{display:flex;flex-direction:column;gap:11px}
+  /* C2C listing card */
+  .card{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:15px;padding:12px;box-shadow:var(--shadow);cursor:pointer}
+  .thumb{width:84px;height:84px;flex:0 0 84px;border-radius:12px;background:linear-gradient(135deg,#eef1f6,#e2e7f0);display:grid;place-items:center;font-size:36px;position:relative;overflow:hidden}
+  .thumb.want{background:linear-gradient(135deg,#fff1e8,#ffe2cf)}
+  .thumb.give{background:linear-gradient(135deg,#e7f7ee,#d2f0e0)}
+  .badge{position:absolute;left:5px;top:5px;font-size:9.5px;font-weight:800;padding:3px 6px;border-radius:6px;color:#fff}
+  .badge.sale{background:var(--green)} .badge.resv{background:var(--gold)} .badge.done{background:#9aa0a8} .badge.match{background:var(--pri)}
+  .cbody{flex:1;min-width:0}
+  .ctitle{font-size:14.5px;font-weight:700;line-height:1.32;letter-spacing:-.2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .cmeta{font-size:11.5px;color:var(--sub);margin-top:4px}
+  .price{font-size:16px;font-weight:900;margin-top:6px}
+  .actions{display:flex;align-items:center;gap:8px;margin-top:9px}
+  .abtn{border:1px solid var(--line);background:#fff;border-radius:9px;font-size:12px;font-weight:700;color:#4b5563;padding:7px 11px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+  .abtn.chat{background:var(--pri);border-color:var(--pri);color:#fff}
+  .live-mini{margin-left:auto;font-size:11px;color:var(--green);font-weight:700}
+  .abtn.like.on{color:var(--red);border-color:#f6c9c4;background:#fdeceb}
+  /* listing detail */
+  .ldphoto{height:210px;display:grid;place-items:center;font-size:80px;position:relative;background:linear-gradient(135deg,#eef1f6,#e2e7f0);border-radius:16px;margin-bottom:6px}
+  .ldphoto.want{background:linear-gradient(135deg,#fff1e8,#ffe2cf)} .ldphoto.give{background:linear-gradient(135deg,#e7f7ee,#d2f0e0)}
+  .ldphoto .badge{left:12px;top:12px;font-size:11px;padding:4px 9px}
+  .ldseller{display:flex;align-items:center;gap:11px;padding:13px 2px;border-bottom:1px solid var(--line)}
+  .ldseller .avatar{width:44px;height:44px;flex:0 0 44px}
+  .ldseller b{font-size:14px} .ldseller .lds{font-size:11.5px;color:var(--sub);margin-top:2px}
+  .ldtitle{font-size:18px;font-weight:800;letter-spacing:-.3px;margin:15px 2px 6px;line-height:1.35}
+  .ldmeta{font-size:12px;color:var(--sub);margin:0 2px}
+  .ldprice{font-size:22px;font-weight:900;margin:11px 2px}
+  .lddesc{font-size:14px;color:#374151;line-height:1.65;margin:0 2px;white-space:pre-wrap}
+  .ldbar{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;background:#fff;border-top:1px solid var(--line);padding:12px 2px;margin:18px -14px 0}
+  .ldbar .ldlike{width:50px;height:50px;flex:0 0 50px;border:1px solid var(--line);border-radius:13px;background:#fff;font-size:22px;cursor:pointer;margin-left:14px}
+  .ldbar .ldlike.on{border-color:#f6c9c4;background:#fdeceb}
+  .ldbar .ldchat{flex:1;border:none;background:var(--pri);color:#fff;font-weight:800;font-size:15px;padding:15px;border-radius:13px;cursor:pointer;margin-right:14px}
+  /* shop (광고) */
+  .scard{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:15px;padding:12px;box-shadow:var(--shadow);cursor:pointer;margin-bottom:11px}
+  .sthumb{width:72px;height:72px;flex:0 0 72px;border-radius:13px;background:linear-gradient(135deg,#fff1e8,#ffe2cf);display:grid;place-items:center;font-size:34px;position:relative}
+  .adb{position:absolute;left:4px;top:4px;font-size:9px;font-weight:800;background:#191b1d;color:#ffd27a;padding:2px 6px;border-radius:6px}
+  .sbody{flex:1;min-width:0}
+  .snm{font-size:15px;font-weight:800;letter-spacing:-.2px}
+  .smeta{font-size:12px;color:#4b5563;margin-top:3px}
+  .sgray{color:var(--sub)}
+  .spills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .pill{font-size:11px;font-weight:700;color:#4b5563;background:#f1f3f6;border-radius:8px;padding:5px 9px}
+  .sgo{align-self:center;color:#c2c7d0;font-size:20px}
+  .orderbtn{font-size:12px;font-weight:800;color:#fff;background:var(--pri);border-radius:9px;padding:8px 12px}
+  /* store detail */
+  .detail-head{display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:10}
+  .back{border:none;background:transparent;font-size:24px;cursor:pointer;padding:0 4px;line-height:1}
+  .detail-head .hn{font-size:15px;font-weight:800}
+  .detail-head .hs{font-size:11.5px;color:var(--sub);margin-top:2px}
+  .storebanner{height:120px;display:grid;place-items:center;font-size:56px;background:linear-gradient(135deg,#fff1e8,#ffe0cb)}
+  .msec{font-size:13px;font-weight:800;color:var(--sub);margin:12px 2px 8px}
+  .mrow2{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid #f4f4f2}
+  .memo{width:52px;height:52px;flex:0 0 52px;border-radius:11px;background:#f4f5f7;display:grid;place-items:center;font-size:26px}
+  .mmid{flex:1;min-width:0}
+  .mnm{font-size:14px;font-weight:600}
+  .mpr{font-size:14px;font-weight:900;margin-top:3px}
+  .stepper{display:flex;align-items:center;gap:9px}
+  .stbtn{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:17px;font-weight:800;color:var(--ink);cursor:pointer;display:grid;place-items:center}
+  .stbtn.add{background:var(--pri);border-color:var(--pri);color:#fff}
+  .qn{min-width:18px;text-align:center;font-weight:800;font-size:14px}
+  .cartbar{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;background:#191b1d;color:#fff;border-radius:14px;padding:11px 12px 11px 16px;margin:14px 2px 0;box-shadow:0 8px 22px rgba(0,0,0,.25)}
+  .cc{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:var(--pri);font-size:12px;font-weight:800;padding:0 6px}
+  .ct{font-size:14px;font-weight:800}
+  .orderfab{margin-left:auto;border:none;background:var(--pri);color:#fff;font-weight:800;font-size:14px;padding:11px 18px;border-radius:11px;cursor:pointer}
+  .bigbtn{width:100%;border:none;background:var(--pri);color:#fff;font-weight:800;font-size:15px;padding:14px;border-radius:13px;cursor:pointer;margin-top:14px}
+  /* chat */
+  .chatrow{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow);cursor:pointer}
+  .avatar{width:46px;height:46px;flex:0 0 46px;border-radius:50%;display:grid;place-items:center;font-size:22px;background:#eef1f6}
+  .chatrow .ci{flex:1;min-width:0}
+  .chatrow .cn{font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px}
+  .chip{font-size:10px;font-weight:800;color:var(--pri);background:var(--pri-soft);border-radius:6px;padding:2px 6px}
+  .chatrow .lastmsg{font-size:12.5px;color:#6b7280;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chatrow .cr{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .chatrow .tm{font-size:11px;color:var(--sub)}
+  .unread{min-width:19px;height:19px;border-radius:999px;background:var(--pri);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 5px}
+  .secure{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:#15a05a;background:#eaf7ef;padding:8px;margin:0}
+  .deal{display:flex;gap:10px;align-items:center;background:#fff;border-bottom:1px solid var(--line);padding:10px 12px}
+  .deal .dn{font-size:12.5px;font-weight:700}
+  .deal .dp{font-size:13px;font-weight:900}
+  .msgs{padding:14px 12px;display:flex;flex-direction:column;gap:9px;background:#f6f6f4;min-height:42vh}
+  .bub{max-width:76%;padding:9px 12px;border-radius:14px;font-size:13px;line-height:1.4}
+  .bub.them{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:4px}
+  .bub.me{align-self:flex-end;background:var(--pri);color:#fff;border-bottom-right-radius:4px}
+  .inbar{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:#fff;position:sticky;bottom:0}
+  .inbar input{flex:1;border:1px solid var(--line);border-radius:999px;padding:11px 14px;font-size:13px;outline:none}
+  .inbar .send{border:none;background:var(--pri);color:#fff;border-radius:999px;width:42px;font-size:18px;cursor:pointer}
+  /* info */
+  .ipost{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:13px 14px;box-shadow:var(--shadow);margin-bottom:11px}
+  .imeta{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .itag{font-size:10.5px;font-weight:800;color:var(--blue);background:#eaf2ff;border-radius:7px;padding:3px 8px}
+  .otag{font-size:10.5px;font-weight:800;color:#fff;background:var(--red);border-radius:7px;padding:3px 8px}
+  .idot{font-size:11.5px;color:var(--sub);margin-left:auto}
+  .ititle{margin:0;font-size:15px;font-weight:700;line-height:1.35;letter-spacing:-.2px}
+  .iexc{margin:5px 0 0;font-size:12.5px;color:#4b5563;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .ireact{display:flex;align-items:center;gap:8px;margin-top:11px;flex-wrap:wrap}
+  .rb{border:1px solid var(--line);background:#fff;border-radius:9px;font-size:11.5px;font-weight:700;color:#5b6472;padding:6px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+  .rb b{font-weight:800}
+  .rb.on{color:var(--pri);border-color:var(--pri);background:var(--pri-soft)}
+  .rb.ask{color:var(--pri);border-color:#ffd2b8;background:var(--pri-soft)}
+  .iviews{font-size:11px;color:var(--sub);margin-left:auto}
+  /* clubs */
+  .club{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);cursor:pointer;margin-bottom:12px}
+  .club .banner{height:92px;display:flex;align-items:flex-end;padding:12px 14px;color:#fff;font-weight:800;font-size:17px;text-shadow:0 1px 6px rgba(0,0,0,.35)}
+  .club .cbody2{padding:12px 14px}
+  .club .desc{font-size:12.5px;color:#4b5563;line-height:1.45}
+  .club .cfoot{display:flex;align-items:center;gap:12px;margin-top:10px;font-size:12px;color:var(--sub)}
+  .flag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:var(--gold);background:#fff7e8;border:1px solid #ffe6b3;border-radius:999px;padding:4px 10px}
+  .join{margin-left:auto;border:none;background:var(--pri);color:#fff;font-weight:800;font-size:12.5px;padding:8px 16px;border-radius:10px;cursor:pointer}
+  /* me */
+  .profile{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow);text-align:center;margin-bottom:14px}
+  .pav{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--pri),#ffa869);color:#fff;display:grid;place-items:center;font-size:28px;margin:0 auto 10px}
+  .pname{font-size:17px;font-weight:800}
+  .trust{display:inline-flex;align-items:center;gap:6px;margin-top:7px;background:#eaf7ef;color:var(--green);font-weight:800;font-size:12px;padding:5px 12px;border-radius:999px}
+  .mannerbar{height:7px;border-radius:999px;background:#eef1f6;margin:14px 0 4px;overflow:hidden}
+  .mannerbar i{display:block;height:100%;width:88%;background:linear-gradient(90deg,#ffd27a,var(--green))}
+  .menu{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);margin-top:14px}
+  .mrow{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);font-size:14px;font-weight:600;cursor:pointer}
+  .mrow:last-child{border-bottom:none}
+  .mrow .ar{margin-left:auto;color:#c2c7d0}
+  .mrow .em{font-size:18px;width:24px;text-align:center}
+  .multilang-note{font-size:10.5px;color:var(--sub);background:#eef0f3;border-radius:7px;padding:2px 7px;margin-left:6px}
+  .sech{font-size:15px;margin:2px 2px 11px;letter-spacing:-.3px;font-weight:800}
+  .empty{text-align:center;color:var(--sub);font-size:13px;padding:46px 0}
+  /* fab + nav + toast */
+  .fab{position:absolute;right:16px;bottom:84px;z-index:25;height:50px;border-radius:999px;background:var(--pri);color:#fff;border:none;font-size:14px;font-weight:800;box-shadow:0 8px 22px rgba(255,122,51,.45);cursor:pointer;display:flex;align-items:center;gap:7px;padding:0 18px}
+  .nav{position:sticky;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(6,1fr);background:#fff;border-top:1px solid var(--line);padding:6px 2px 10px}
+  .nav button{border:none;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;cursor:pointer;color:#9aa1ad;font-size:10px;font-weight:700;position:relative}
+  .nav button .ic{font-size:20px;line-height:1}
+  .nav button.on{color:var(--pri)}
+  .nav .ndot{position:absolute;top:2px;right:50%;transform:translateX(14px);min-width:15px;height:15px;border-radius:999px;background:var(--red);color:#fff;font-size:9.5px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+  .toast{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);background:#191b1d;color:#fff;font-size:12.5px;font-weight:600;padding:11px 16px;border-radius:11px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:40;max-width:88%;text-align:center;box-shadow:0 8px 22px rgba(0,0,0,.3)}
+  .toast.show{opacity:1}
+  /* gate */
+  .gate{display:none;flex-direction:column;min-height:100vh;background:linear-gradient(165deg,#ffffff,#fff6f0 52%,#ffe7d6);padding:0 22px;position:relative}
+  .glang{position:absolute;top:14px;right:16px}
+  .ghero{text-align:center;padding:62px 0 6px}
+  .glogo{width:74px;height:74px;border-radius:23px;background:linear-gradient(135deg,var(--pri),#ffa869);color:#fff;display:grid;place-items:center;font-size:38px;font-weight:900;margin:0 auto 16px;box-shadow:0 14px 30px rgba(255,122,51,.42)}
+  .gname{font-size:27px;font-weight:900;letter-spacing:-.6px}
+  .gname span{color:var(--pri)}
+  .gtag{font-size:13.5px;color:var(--sub);margin-top:9px;line-height:1.55;font-weight:600}
+  .gmid{flex:1;display:flex;flex-direction:column;justify-content:center;gap:13px;padding:8px 0}
+  .loccard{background:#fff;border:2px solid var(--pri);border-radius:20px;padding:17px 18px;box-shadow:0 14px 32px rgba(255,122,51,.2);cursor:pointer}
+  .loccard .lh{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--pri)}
+  .loccard .lv{display:flex;align-items:center;gap:10px;margin-top:9px}
+  .loccard .pin{font-size:30px}
+  .loccard .lname{font-size:22px;font-weight:900;letter-spacing:-.4px;flex:1;line-height:1.2}
+  .loccard .lname.empty{color:#c2c7d0;font-size:19px}
+  .loccard .lsub{font-size:12px;color:var(--sub);font-weight:600;margin-top:2px}
+  .loccard .lchev{font-size:22px;color:var(--pri);font-weight:800}
+  .locnote{display:flex;align-items:center;justify-content:center;gap:7px;font-size:12px;color:#b9620f;font-weight:700;background:#fff1e8;border-radius:11px;padding:11px;text-align:center;line-height:1.4}
+  .gbtns{padding:6px 0 28px;display:flex;flex-direction:column;gap:10px}
+  .gbtn{border:none;border-radius:14px;font-size:15.5px;font-weight:800;padding:15px;cursor:pointer}
+  .gbtn.primary{background:var(--pri);color:#fff;box-shadow:0 8px 20px rgba(255,122,51,.4)}
+  .gbtn.line{background:#fff;color:var(--ink);border:1.5px solid #e0e2e6}
+  .gbtn.ghost{background:transparent;color:var(--sub);font-weight:700;font-size:13.5px;padding:6px;text-decoration:underline}
+  /* auth forms */
+  .gform{display:flex;flex-direction:column;gap:12px;flex:1;justify-content:center;padding:0 0 26px}
+  .gfield label{font-size:12px;font-weight:800;color:var(--sub);margin:0 2px 6px;display:block}
+  .gfield input{width:100%;border:1.5px solid #e0e2e6;border-radius:13px;padding:14px 15px;font-size:15px;outline:none;background:#fff;box-sizing:border-box}
+  .gfield input:focus{border-color:var(--pri)}
+  .gnote{font-size:11.5px;color:#b9620f;background:#fff1e8;border-radius:11px;padding:11px;line-height:1.5}
+  .gswitch{text-align:center;font-size:12.5px;color:var(--sub);font-weight:700;margin-top:8px;cursor:pointer}
+  .gswitch b{color:var(--pri)}
+  .gtitle{font-size:23px;font-weight:900;letter-spacing:-.5px;margin:6px 0 2px}
+  .vbanner2{display:flex;align-items:center;gap:9px;background:#fff8e8;border-bottom:1px solid #ffe6b3;padding:9px 14px}
+  .vbanner2 .vt{flex:1;font-size:11.5px;color:#9a6a12;font-weight:700;line-height:1.35}
+  .vbanner2 .vb{border:none;background:var(--pri);color:#fff;font-weight:800;font-size:11.5px;padding:7px 12px;border-radius:9px;cursor:pointer;white-space:nowrap}
+  .acctbadge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;border-radius:999px;padding:4px 11px;margin-top:8px}
+  /* full-screen view (알림·검색) */
+  .fsview{position:fixed;inset:0;z-index:45;max-width:430px;margin:0 auto;background:var(--bg);display:none;flex-direction:column}
+  .fshead{display:flex;align-items:center;gap:10px;padding:12px 12px;background:#fff;border-bottom:1px solid var(--line)}
+  .fshead b{font-size:15.5px;font-weight:800}
+  .fshead .searchin{flex:1;border:1px solid var(--line);border-radius:999px;padding:11px 15px;font-size:14px;outline:none;background:#f6f6f4}
+  .fshead .searchin:focus{border-color:var(--pri);background:#fff}
+  .fsbody{flex:1;overflow-y:auto;padding:12px 14px 30px}
+  .fsbody::-webkit-scrollbar{display:none}
+  .notirow{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px;box-shadow:var(--shadow);margin-bottom:9px;cursor:pointer}
+  .notirow.un{background:#fffaf5;border-color:#ffe0c7}
+  .notirow .nic{width:38px;height:38px;flex:0 0 38px;border-radius:10px;display:grid;place-items:center;font-size:18px}
+  .notirow .nbd{flex:1;min-width:0}
+  .notirow .nt{font-size:13.5px;font-weight:700;line-height:1.35}
+  .notirow .nb{font-size:12px;color:#6b7280;margin-top:3px;line-height:1.4}
+  .notirow .ntm{font-size:11px;color:var(--sub);white-space:nowrap}
+  .srow{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:13px;padding:11px 12px;box-shadow:var(--shadow);margin-bottom:9px;cursor:pointer}
+  .srow .semoji{width:42px;height:42px;flex:0 0 42px;border-radius:11px;background:#f4f5f7;display:grid;place-items:center;font-size:22px}
+  .srow .sbd{flex:1;min-width:0}
+  .srow .stt{font-size:13.5px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+  .srow .sss{font-size:11.5px;color:var(--sub);margin-top:3px}
+  .srow .stag{font-size:10.5px;font-weight:800;color:var(--pri);background:var(--pri-soft);border-radius:7px;padding:3px 8px;white-space:nowrap}
+  /* write sheet */
+  .wtypes{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+  .wtype{border:1px solid var(--line);background:#fff;border-radius:999px;font-size:12.5px;font-weight:800;color:var(--sub);padding:8px 13px;cursor:pointer}
+  .wtype.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+  .wta{width:100%;border:1.5px solid #e0e2e6;border-radius:13px;padding:13px 15px;font-size:14px;outline:none;min-height:84px;resize:none;font-family:inherit;box-sizing:border-box}
+  .wta:focus{border-color:var(--pri)}
+  .wrow{display:flex;align-items:center;gap:12px;margin:4px 0 6px}
+  .wphoto{border:1.5px dashed #cfd3d9;background:#fafbfc;border-radius:12px;font-size:12.5px;font-weight:700;color:var(--sub);padding:12px 16px;cursor:pointer}
+  .wloc{font-size:12.5px;font-weight:700;color:var(--pri);margin-left:auto}
+  .top-row .icon-btn{position:relative}
+  .top-row .nb{position:absolute;top:2px;right:2px;min-width:15px;height:15px;border-radius:999px;background:var(--red);color:#fff;font-size:9.5px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+  /* chat deal status + report/review */
+  .dealctl{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+  .dbtn{border:1px solid var(--pri);background:#fff;color:var(--pri);font-weight:800;font-size:11.5px;padding:7px 11px;border-radius:9px;cursor:pointer;white-space:nowrap}
+  .dbtn.rev{background:var(--pri);color:#fff}
+  .dbadge2{font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px}
+  .dbadge2.resv{background:#fef3da;color:#b9770f} .dbadge2.done{background:#e7f7ee;color:var(--green)}
+  .repreason{text-align:left;border:1px solid var(--line);background:#fff;border-radius:11px;font-size:13.5px;font-weight:700;color:#374151;padding:13px 14px;cursor:pointer}
+  .repreason:active{background:#f6f6f4}
+  /* picker */
+  .picker-wrap{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center}
+  .picker-wrap.hidden{display:none}
+  .pscrim{position:absolute;inset:0;background:rgba(18,20,24,.46)}
+  .psheet{position:relative;width:100%;max-width:430px;background:#fff;border-radius:22px 22px 0 0;padding:18px 18px 26px;max-height:84vh;overflow-y:auto;box-shadow:0 -10px 40px rgba(0,0,0,.28);animation:slideup .22s ease}
+  @keyframes slideup{from{transform:translateY(34px);opacity:.5}to{transform:translateY(0);opacity:1}}
+  .psheet::-webkit-scrollbar{display:none}
+  .phead{display:flex;align-items:center;margin-bottom:14px}
+  .phead b{font-size:17px;font-weight:900}
+  .pclose{margin-left:auto;border:none;background:#f0f1f4;width:32px;height:32px;border-radius:10px;font-size:17px;cursor:pointer}
+  .gps{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;border:1.5px solid var(--pri);background:var(--pri-soft);color:var(--pri);font-weight:800;font-size:13.5px;padding:13px;border-radius:13px;cursor:pointer;margin-bottom:18px}
+  .plabel{font-size:12px;font-weight:800;color:var(--sub);margin:0 2px 9px}
+  .pregions{display:flex;gap:8px;margin-bottom:16px}
+  .pregions button{flex:1;border:1px solid var(--line);background:#fff;border-radius:11px;font-weight:800;font-size:13.5px;padding:11px 0;cursor:pointer;color:var(--sub)}
+  .pregions button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .phoods{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .hood{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:13px 12px;font-size:13.5px;font-weight:700;cursor:pointer}
+  .hood.on{border-color:var(--pri);background:var(--pri-soft);color:var(--pri)}
+  .hood .hp{font-size:16px}
+  .pall{margin-top:16px;text-align:center}
+  .pall button{border:none;background:transparent;color:var(--sub);font-size:13px;font-weight:700;text-decoration:underline;cursor:pointer}
+  /* location pill (app top) */
+  .locpill{display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;font-size:17px;font-weight:900;letter-spacing:-.4px;cursor:pointer;padding:0;color:var(--ink)}
+  .locpill .lpin{color:var(--pri);font-size:15px}
+  .locpill .lcv{font-size:12px;color:var(--sub)}
+  .myhood{color:var(--green);font-weight:800}
+  /* Golf Mate hub */
+  .gmback{display:flex;align-items:center;gap:6px;border:none;background:transparent;font-size:14px;font-weight:700;color:var(--sub);cursor:pointer;padding:2px 0 12px}
+  .gmhero{border-radius:18px;padding:18px;color:#fff;background:linear-gradient(125deg,#0b7a3b,#16a34a);box-shadow:0 12px 28px rgba(11,122,59,.28);margin-bottom:13px}
+  .gmhero .gt{display:flex;align-items:center;gap:9px;font-size:21px;font-weight:900;letter-spacing:-.4px}
+  .gmhero .gp{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;background:rgba(255,255,255,.22);border-radius:999px;padding:4px 10px;margin-top:9px}
+  .gmhero .gs{font-size:12.5px;opacity:.95;margin-top:9px;font-weight:600}
+  .gmlink{display:flex;align-items:center;gap:8px;background:#eaf7ef;border:1px solid #bfe9cf;border-radius:12px;padding:10px 12px;font-size:11.5px;color:#0d8a47;font-weight:700;margin-bottom:14px;line-height:1.4}
+  .gmacts{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px}
+  .gmact{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 6px;text-align:center;cursor:pointer;box-shadow:var(--shadow)}
+  .gmact .e{font-size:24px} .gmact .l{font-size:11.5px;font-weight:700;margin-top:6px;color:#374151}
+  .gmact .nb{display:inline-block;font-size:9px;font-weight:800;color:#fff;background:var(--pri);border-radius:5px;padding:1px 5px;margin-top:4px}
+  .gmround{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--line);border-radius:13px;padding:11px 13px;box-shadow:var(--shadow);margin-bottom:9px}
+  .gmround .rw{font-size:13.5px;font-weight:800}
+  .gmround .rc{font-size:12px;color:#4b5563;margin-top:2px}
+  .gmround .rs{margin-left:auto;text-align:right}
+  .gmround .seat{font-size:11.5px;color:var(--green);font-weight:800}
+  .gmround .jb{margin-top:5px;border:none;background:#0b7a3b;color:#fff;font-weight:800;font-size:11.5px;padding:6px 13px;border-radius:9px;cursor:pointer}
+  .gmpart{display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .gmpart::-webkit-scrollbar{display:none}
+  .gmpc{flex:0 0 auto;background:var(--card);border:1px solid var(--line);border-radius:13px;padding:12px;box-shadow:var(--shadow);min-width:128px;position:relative}
+  .gmpc .pe{font-size:26px} .gmpc .pn{font-size:12.5px;font-weight:800;margin-top:6px} .gmpc .pcat{font-size:11px;color:var(--sub);margin-top:2px}
+  .gmpc .sb{position:absolute;right:8px;top:8px;font-size:9px;font-weight:800;color:#b9770f;background:#fef3da;border-radius:5px;padding:2px 6px}
+  .gmss{display:flex;gap:11px;align-items:flex-start;background:linear-gradient(100deg,#eef3ff,#f6f9ff);border:1px solid #cfe0ff;border-radius:14px;padding:13px;margin:14px 0}
+  .gmss .e{font-size:22px}
+  .gmss b{font-size:13px;color:#1e40af} .gmss p{margin:3px 0 0;font-size:11.5px;color:#3a5bbf;line-height:1.5}
+  .gmss .soon{font-size:9.5px;font-weight:800;color:#fff;background:#2f6df0;border-radius:5px;padding:2px 6px;margin-left:6px}
+  .gmfull{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:1.5px solid #0b7a3b;background:#fff;color:#0b7a3b;font-weight:800;font-size:14px;padding:14px;border-radius:13px;cursor:pointer;text-decoration:none;margin-top:4px}
+  .vbadge{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:800;color:var(--green);background:#e7f7ee;border-radius:6px;padding:2px 7px}
+  .vbadge.no{color:var(--sub);background:#eef0f3}
+  .rangechip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:#fff;color:#4b5563;font-weight:700;font-size:12px;padding:7px 12px;border-radius:999px;cursor:pointer;margin:0 0 12px}
+  .rangechip b{color:var(--pri)}
+  .matchban{display:flex;align-items:center;gap:11px;background:linear-gradient(100deg,#fff0e6,#ffe3d0);border:1.5px solid var(--pri);border-radius:14px;padding:12px;margin-bottom:13px}
+  .matchban .mbi{font-size:22px}
+  .matchban .mbt{flex:1;min-width:0}
+  .matchban .mbt b{font-size:12.5px;color:#b9420f}
+  .matchban .mbt p{margin:2px 0 0;font-size:11.5px;color:#7a4a2a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .matchban .mbb{border:none;background:var(--pri);color:#fff;font-weight:800;font-size:12px;padding:9px 13px;border-radius:10px;cursor:pointer;white-space:nowrap}
+  .pradio{display:flex;gap:7px;flex-wrap:wrap}
+  .pradio button{flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:10px;font-weight:800;font-size:12.5px;padding:9px 13px;cursor:pointer;color:var(--sub)}
+  .pradio button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+  /* payment (직거래 QR) */
+  .dbadge{font-size:10px;font-weight:800;color:var(--green);background:#e7f7ee;border-radius:6px;padding:2px 7px;margin-left:4px}
+  .paywarn{background:#fff3f3;border:1px solid #ffd0d0;border-radius:12px;padding:12px 13px;margin-bottom:14px}
+  .paywarn b{font-size:13px;color:var(--red)}
+  .paywarn p{margin:4px 0 0;font-size:11.5px;color:#9a3b3b;line-height:1.5}
+  .paystore{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;margin-bottom:12px}
+  .payamt{margin-left:auto;font-size:17px;font-weight:900;color:var(--pri)}
+  .qrbox{text-align:center;margin-bottom:14px}
+  .qrbox img{width:206px;height:206px;border:1px solid var(--line);border-radius:14px;padding:9px;background:#fff;object-fit:contain}
+  .qrppt{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#003d7a;background:#eaf2ff;border-radius:8px;padding:5px 11px;margin-bottom:10px}
+  .qrcap{font-size:12px;color:var(--sub);font-weight:700;margin-top:9px}
+  .payrows{background:#f6f6f4;border-radius:12px;padding:2px 14px;margin-bottom:14px}
+  .payrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #ececec;font-size:13px}
+  .payrow:last-child{border-bottom:none}
+  .payrow span{color:var(--sub);font-weight:600;white-space:nowrap}
+  .payrow b{font-weight:800;text-align:right}
+</style>
+</head>
+<body>
+<div class="device">
+  <div class="gate" id="gate"></div>
+  <div class="top" id="top"></div>
+  <div class="page" id="page"></div>
+  <button class="fab" id="fab"></button>
+  <div class="nav" id="nav"></div>
+  <div class="picker-wrap hidden" id="picker"></div>
+  <div class="picker-wrap hidden" id="pay"></div>
+  <div class="picker-wrap hidden" id="gmgate"></div>
+  <div class="picker-wrap hidden" id="verify"></div>
+  <div class="picker-wrap hidden" id="write"></div>
+  <div class="picker-wrap hidden" id="report"></div>
+  <div class="picker-wrap hidden" id="review"></div>
+  <div class="fsview" id="fsview"></div>
+</div>
+
+<script>
+/* ===================== i18n ===================== */
+const T = {
+ ko:{
+  title:"교민 매칭·주문", nav_shop:"상점", nav_market:"장터·나눔", nav_jobs:"구인구직", nav_chat:"채팅", nav_community:"커뮤니티", nav_me:"내정보",
+  city_all:"전체", city_bkk:"방콕", city_cm:"치앙마이", city_pty:"파타야",
+  seg_sell:"팝니다", seg_buy:"삽니다", seg_give:"나눔터", seg_hire:"구인", seg_seek:"구직",
+  comm_info:"소식", comm_clubs:"모임",
+  banner_t:"단톡방 댓글싸움 없이, 1:1로 바로 매칭", banner_p:"공개 댓글 없음 · 모든 대화는 비공개 채팅",
+  shop_banner_t:"교민 업체 광고 · 앱에서 바로 주문", shop_banner_p:"식당·마트·서비스까지 한 곳에서 주문·예약",
+  info_banner_t:"정보·소식도 댓글싸움 없이 깔끔하게", info_banner_p:"공개 댓글 대신 도움돼요·저장 · 질문은 작성자에게 1:1로",
+  info_cats:["공지","비자·행정","생활·꿀팁","맛집·플레이스","부동산","환전·송금"],
+  shop_cats:["식당","카페·베이커리","마트·식자재","뷰티·헬스","생활서비스","기타업종"],
+  live:"명이 지금 거래 중", status_sale:"판매중", status_resv:"예약중", status_done:"거래완료", status_match:"매칭대기", status_give:"나눔중", status_give_done:"나눔완료",
+  btn_like:"관심", btn_chat:"채팅하기", btn_apply:"문의하기", budget:"예산",
+  ad_badge:"광고", btn_order:"주문하기", btn_menu:"메뉴보기", btn_inquire:"예약·문의", min_order:"최소주문", delivery:"배달", pickup:"포장",
+  cart:"장바구니", total:"합계", menu_label:"메뉴", products_label:"상품", order_done:"주문이 접수되었습니다 (프로토타입)",
+  chat_secure:"1:1 비공개 대화 · 단톡방처럼 공개되지 않아요", input_ph:"메시지 보내기…",
+  r_help:"도움돼요", r_save:"저장", r_ask:"1:1 질문", official:"공지",
+  sec_chats:"진행 중인 매칭", flagship:"대표 모임", join:"가입", members:"명",
+  me_name:"김교민", me_trust:"매너온도 36.5°C", me_sub:"거래 27회 · 재거래율 92%",
+  me_menu:["판매·구매내역","내 가게 관리","관심목록","받은 매너후기","언어 설정","관리자에게 문의"],
+  lang_label:"한국어 / English / ไทย 동시 지원 — 태국인·외국인과도 매칭",
+  fab_market:"글쓰기", fab_jobs:"채용·구직 등록", fab_info:"소식 올리기", fab_shop:"내 가게 등록",
+  reply_demo:"상대방에게 1:1 채팅이 전송됩니다 (프로토타입)",
+  g_tag:"태국 한인 실시간 1:1 매칭\n내 동네에서 사고, 팔고, 만나요",
+  g_loc_title:"내 동네 설정", g_loc_empty:"동네를 선택하세요", g_loc_sub:"매칭의 기준이 되는 내 위치예요",
+  g_loc_note:"실시간 매칭은 '내 동네'에서 시작돼요",
+  g_login:"로그인", g_signup:"신규가입", g_browse:"로그인 없이 둘러보기",
+  p_title:"지역·동네 선택", p_gps:"현재 위치로 자동 설정 (GPS)", p_region:"지역", p_hood:"동네 선택",
+  p_all:"🌏 전체 지역 보기", loc_all:"전체 지역", my_hood:"내 동네", loc_set:"으로 설정했어요",
+  r_range:"매칭 범위", r_only:"내 동네만", r_all:"지역 전체",
+  v_done:"동네 인증됨", v_none:"미인증", gps_locating:"현재 위치 확인 중…", gps_denied:"위치 권한을 허용해 주세요", v_suffix:" 동네로 인증됐어요 ✓",
+  match_alert:"내 동네에 딱 맞는 '구해요'가 떴어요!", within:"이내", near:"근처",
+  direct_badge:"직거래", pay_title:"결제 (직거래)", pay_warn_t:"직거래입니다",
+  pay_warn_p:"ThaiMate는 결제를 중개하지 않아요. 아래 QR로 판매자에게 직접 송금한 뒤, 채팅으로 확인하세요. 분쟁·환불 책임은 거래 당사자에게 있습니다.",
+  pay_pp:"프롬페이(PromptPay)", pay_holder:"예금주", pay_amount:"결제금액", pay_scan:"QR을 스캔해 직접 송금하세요", pay_done:"송금 완료 · 판매자와 채팅", pay_info:"결제정보 (직거래 QR)",
+  gm_enter_title:"Golf Mate 입장", gm_auto:"ThaiMate 계정으로 자동 로그인됩니다", gm_auto_sub:"별도 가입 없이 ThaiMate 계정 그대로 사용",
+  gm_enter_btn:"Golf Mate 입장하기", gm_need:"Golf Mate 이용엔 계정이 필요해요", gm_need_sub:"ThaiMate와 같은 계정 — 한 번 가입으로 두 앱 모두",
+  a_id:"아이디", a_pw:"비밀번호", a_pw2:"비밀번호 확인", a_login_btn:"로그인", a_signup_btn:"가입하고 시작하기",
+  a_signup_note:"아이디·비밀번호만으로 바로 시작 — 이메일 인증은 활동할 때 받으면 돼요",
+  a_to_signup:"계정이 없으신가요? 신규가입", a_to_login:"이미 계정이 있으신가요? 로그인",
+  v_banner:"이메일 인증을 하면 채팅·거래·글쓰기를 할 수 있어요", v_btn:"인증하기", v_title:"이메일 인증", v_email:"이메일 주소", v_send:"인증 메일 보내기",
+  v_sent:"메일을 보냈어요. 받은편지함의 링크를 눌러 인증하세요.", v_demo:"인증 완료 (데모)", v_done:"이메일 인증 완료! 이제 모든 활동이 가능해요",
+  v_need_login:"로그인이 필요한 기능이에요", v_need_verify:"이메일 인증 후 이용할 수 있어요",
+  gm_handi_q:"마지막으로, 골프 핸디캡만 알려주세요", gm_handi_ph:"예: 12 (모르면 비워두기)", acct_verified:"인증됨", acct_unverified:"이메일 미인증", guest:"게스트",
+  noti_title:"알림", noti_empty:"새 알림이 없어요", search_ph:"매물·가게·구인·정보 검색", search_hint:"무엇을 찾으세요?", search_empty:"검색 결과가 없어요", search_cnt:"개 결과",
+  w_title:"무엇을 올릴까요?", w_store:"내 가게 등록", w_subject:"제목", w_subject_ph:"제목을 입력하세요", w_price:"가격", w_price_ph:"฿ 가격 또는 무료·협의", w_desc:"설명", w_desc_ph:"상세 내용을 적어주세요", w_photo:"사진 추가", w_loc:"거래 동네", w_submit:"등록하기", w_posted:"등록되었습니다 (프로토타입)",
+  d_to_reserved:"거래중으로 변경", d_reserved:"거래중", d_to_done:"거래완료 처리", d_done:"거래완료", d_locked:"거래완료 · 채팅 잠김", d_review:"매너후기 남기기",
+  rep_title:"신고하기", rep_block:"이 사용자 차단", rep_reasons:["사기 의심","허위 매물","욕설·비방","광고·스팸","기타"], rep_done:"신고가 접수되었어요", block_done:"차단했어요",
+  rv_title:"매너후기", rv_q:"이 거래는 어떠셨나요?", rv_good:["시간 약속을 잘 지켜요","친절하고 매너가 좋아요","상품이 설명과 같아요","응답이 빨라요"], rv_submit:"후기 남기기", rv_done:"후기 등록 완료 — 매너온도가 올라요!"
+ },
+ en:{
+  title:"Match · Order", nav_shop:"Shop", nav_market:"Market", nav_jobs:"Jobs", nav_chat:"Chat", nav_community:"Community", nav_me:"My",
+  city_all:"All", city_bkk:"Bangkok", city_cm:"Chiang Mai", city_pty:"Pattaya",
+  seg_sell:"For sale", seg_buy:"Wanted", seg_give:"Free", seg_hire:"Hiring", seg_seek:"Seeking",
+  comm_info:"News", comm_clubs:"Clubs",
+  banner_t:"Match 1:1 — no group-chat comment wars", banner_p:"No public comments · every chat is private",
+  shop_banner_t:"Local business ads · order in-app", shop_banner_p:"Restaurants, marts & services — order or book in one place",
+  info_banner_t:"News & info — clean, no comment wars", info_banner_p:"Helpful & Save instead of public comments · ask the author 1:1",
+  info_cats:["Notice","Visa·Admin","Life tips","Food·Places","Real estate","Exchange"],
+  shop_cats:["Restaurant","Cafe·Bakery","Mart·Grocery","Beauty·Health","Services","Other"],
+  live:"people trading now", status_sale:"For sale", status_resv:"Reserved", status_done:"Sold", status_match:"Matching", status_give:"Available", status_give_done:"Gone",
+  btn_like:"Save", btn_chat:"Chat", btn_apply:"Apply", budget:"Budget",
+  ad_badge:"AD", btn_order:"Order", btn_menu:"Menu", btn_inquire:"Book·Ask", min_order:"Min", delivery:"Delivery", pickup:"Pickup",
+  cart:"Cart", total:"Total", menu_label:"Menu", products_label:"Products", order_done:"Order placed (prototype)",
+  chat_secure:"Private 1:1 — never public like a group chat", input_ph:"Send a message…",
+  r_help:"Helpful", r_save:"Save", r_ask:"Ask 1:1", official:"Notice",
+  sec_chats:"Active matches", flagship:"Flagship club", join:"Join", members:"members",
+  me_name:"Kim", me_trust:"Manner 36.5°C", me_sub:"27 trades · 92% repeat",
+  me_menu:["Sales·Purchases","My store","Saved","Manner reviews","Language","Contact admin"],
+  lang_label:"Korean / English / Thai — match with Thais & foreigners too",
+  fab_market:"Post", fab_jobs:"Post a job", fab_info:"Share news", fab_shop:"List my store",
+  reply_demo:"Sent as a private 1:1 chat (prototype)",
+  g_tag:"Real-time 1:1 matching for Koreans in Thailand\nBuy, sell & meet in your neighborhood",
+  g_loc_title:"Set your neighborhood", g_loc_empty:"Choose your area", g_loc_sub:"This is your matching location",
+  g_loc_note:"Real-time matching starts in your neighborhood",
+  g_login:"Log in", g_signup:"Sign up", g_browse:"Browse without login",
+  p_title:"Choose area · neighborhood", p_gps:"Use current location (GPS)", p_region:"Region", p_hood:"Neighborhood",
+  p_all:"🌏 See all regions", loc_all:"All regions", my_hood:"My area", loc_set:" set",
+  r_range:"Match range", r_only:"My area only", r_all:"Whole region",
+  v_done:"Area verified", v_none:"Not verified", gps_locating:"Locating…", gps_denied:"Please allow location access", v_suffix:" verified ✓",
+  match_alert:"A 'wanted' near you just matched!", within:"within", near:"near",
+  direct_badge:"Direct deal", pay_title:"Payment (direct deal)", pay_warn_t:"This is a direct deal",
+  pay_warn_p:"ThaiMate does not process payments. Pay the seller directly via the QR below, then confirm in chat. Disputes & refunds are between the two parties.",
+  pay_pp:"PromptPay", pay_holder:"Account name", pay_amount:"Amount", pay_scan:"Scan the QR to pay directly", pay_done:"Paid · chat with seller", pay_info:"Payment info (direct QR)",
+  gm_enter_title:"Enter Golf Mate", gm_auto:"Auto-login with your ThaiMate account", gm_auto_sub:"No separate signup — same ThaiMate account",
+  gm_enter_btn:"Enter Golf Mate", gm_need:"Golf Mate needs an account", gm_need_sub:"Same account as ThaiMate — one signup for both apps",
+  a_id:"User ID", a_pw:"Password", a_pw2:"Confirm password", a_login_btn:"Log in", a_signup_btn:"Sign up & start",
+  a_signup_note:"Start with just ID & password — verify email later (needed to act)",
+  a_to_signup:"No account? Sign up", a_to_login:"Already have an account? Log in",
+  v_banner:"Verify your email to chat, trade & post", v_btn:"Verify", v_title:"Email verification", v_email:"Email address", v_send:"Send verification email",
+  v_sent:"Email sent. Click the link in your inbox to verify.", v_demo:"Mark verified (demo)", v_done:"Email verified! You can now do everything",
+  v_need_login:"This feature needs login", v_need_verify:"Available after email verification",
+  gm_handi_q:"Last step — just your golf handicap", gm_handi_ph:"e.g. 12 (leave blank if unsure)", acct_verified:"Verified", acct_unverified:"Email not verified", guest:"Guest",
+  noti_title:"Notifications", noti_empty:"No new notifications", search_ph:"Search items, shops, jobs, info", search_hint:"What are you looking for?", search_empty:"No results", search_cnt:" results",
+  w_title:"What do you want to post?", w_store:"List my store", w_subject:"Title", w_subject_ph:"Enter a title", w_price:"Price", w_price_ph:"฿ price or Free/Nego.", w_desc:"Description", w_desc_ph:"Write the details", w_photo:"Add photo", w_loc:"Deal area", w_submit:"Post", w_posted:"Posted (prototype)",
+  d_to_reserved:"Mark reserved", d_reserved:"Reserved", d_to_done:"Mark sold", d_done:"Sold", d_locked:"Sold · chat locked", d_review:"Leave a manner review",
+  rep_title:"Report", rep_block:"Block this user", rep_reasons:["Suspected scam","Fake listing","Abuse·insults","Ad·spam","Other"], rep_done:"Report received", block_done:"User blocked",
+  rv_title:"Manner review", rv_q:"How was this deal?", rv_good:["On time","Kind & polite","As described","Quick replies"], rv_submit:"Submit review", rv_done:"Review posted — manner score up!"
+ },
+ th:{
+  title:"จับคู่ · สั่งซื้อ", nav_shop:"ร้านค้า", nav_market:"ตลาด", nav_jobs:"หางาน", nav_chat:"แชท", nav_community:"คอมมูนิตี้", nav_me:"ฉัน",
+  city_all:"ทั้งหมด", city_bkk:"กรุงเทพ", city_cm:"เชียงใหม่", city_pty:"พัทยา",
+  seg_sell:"ขาย", seg_buy:"ต้องการซื้อ", seg_give:"แจกฟรี", seg_hire:"รับสมัคร", seg_seek:"หางาน",
+  comm_info:"ข่าว", comm_clubs:"ชมรม",
+  banner_t:"จับคู่ 1:1 ไม่มีดราม่าในกลุ่มแชท", banner_p:"ไม่มีคอมเมนต์สาธารณะ · ทุกแชทเป็นส่วนตัว",
+  shop_banner_t:"โฆษณาร้านเกาหลี · สั่งในแอป", shop_banner_p:"ร้านอาหาร มาร์ท บริการ สั่งหรือจองที่เดียว",
+  info_banner_t:"ข่าวสารแบบสะอาด ไม่มีดราม่าคอมเมนต์", info_banner_p:"ใช้ 'มีประโยชน์' และบันทึก แทนคอมเมนต์ · ถามผู้โพสต์ 1:1",
+  info_cats:["ประกาศ","วีซ่า","เคล็ดลับ","ร้าน·สถานที่","อสังหา","แลกเงิน"],
+  shop_cats:["ร้านอาหาร","คาเฟ่·เบเกอรี่","มาร์ท·ของชำ","บิวตี้·สุขภาพ","บริการ","อื่นๆ"],
+  live:"คนกำลังซื้อขายอยู่", status_sale:"ขายอยู่", status_resv:"จองแล้ว", status_done:"ขายแล้ว", status_match:"รอจับคู่", status_give:"แจกอยู่", status_give_done:"หมดแล้ว",
+  btn_like:"บันทึก", btn_chat:"แชท", btn_apply:"สอบถาม", budget:"งบ",
+  ad_badge:"โฆษณา", btn_order:"สั่งซื้อ", btn_menu:"ดูเมนู", btn_inquire:"จอง·สอบถาม", min_order:"ขั้นต่ำ", delivery:"เดลิเวอรี", pickup:"รับเอง",
+  cart:"ตะกร้า", total:"รวม", menu_label:"เมนู", products_label:"สินค้า", order_done:"สั่งซื้อสำเร็จ (ต้นแบบ)",
+  chat_secure:"แชทส่วนตัว 1:1 · ไม่เปิดเผยเหมือนกลุ่ม", input_ph:"พิมพ์ข้อความ…",
+  r_help:"มีประโยชน์", r_save:"บันทึก", r_ask:"ถาม 1:1", official:"ประกาศ",
+  sec_chats:"กำลังจับคู่", flagship:"ชมรมหลัก", join:"เข้าร่วม", members:"คน",
+  me_name:"คุณคิม", me_trust:"เมตตา 36.5°C", me_sub:"27 ครั้ง · ซื้อซ้ำ 92%",
+  me_menu:["ประวัติซื้อขาย","ร้านของฉัน","บันทึกไว้","รีวิวมารยาท","ภาษา","ติดต่อผู้ดูแล"],
+  lang_label:"เกาหลี / อังกฤษ / ไทย — จับคู่กับคนไทยและต่างชาติได้",
+  fab_market:"โพสต์", fab_jobs:"ลงประกาศงาน", fab_info:"แชร์ข่าว", fab_shop:"ลงร้านค้า",
+  reply_demo:"ส่งเป็นแชทส่วนตัว 1:1 (ต้นแบบ)",
+  g_tag:"จับคู่ 1:1 เรียลไทม์ สำหรับคนเกาหลีในไทย\nซื้อ ขาย และพบกันในย่านของคุณ",
+  g_loc_title:"ตั้งย่านของคุณ", g_loc_empty:"เลือกย่านของคุณ", g_loc_sub:"นี่คือตำแหน่งสำหรับจับคู่",
+  g_loc_note:"การจับคู่เรียลไทม์เริ่มที่ย่านของคุณ",
+  g_login:"เข้าสู่ระบบ", g_signup:"สมัครสมาชิก", g_browse:"ดูแบบไม่ล็อกอิน",
+  p_title:"เลือกพื้นที่ · ย่าน", p_gps:"ใช้ตำแหน่งปัจจุบัน (GPS)", p_region:"พื้นที่", p_hood:"เลือกย่าน",
+  p_all:"🌏 ดูทุกพื้นที่", loc_all:"ทุกพื้นที่", my_hood:"ย่านฉัน", loc_set:" แล้ว",
+  r_range:"ระยะจับคู่", r_only:"เฉพาะย่านฉัน", r_all:"ทั้งพื้นที่",
+  v_done:"ยืนยันย่านแล้ว", v_none:"ยังไม่ยืนยัน", gps_locating:"กำลังหาตำแหน่ง…", gps_denied:"กรุณาอนุญาตตำแหน่ง", v_suffix:" ยืนยันแล้ว ✓",
+  match_alert:"มีโพสต์ 'ต้องการ' ใกล้คุณ!", within:"ภายใน", near:"ใกล้",
+  direct_badge:"ซื้อขายตรง", pay_title:"ชำระเงิน (ซื้อขายตรง)", pay_warn_t:"เป็นการซื้อขายโดยตรง",
+  pay_warn_p:"ThaiMate ไม่ได้เป็นตัวกลางการชำระเงิน โอนให้ผู้ขายโดยตรงผ่าน QR ด้านล่าง แล้วยืนยันในแชท ข้อพิพาท/คืนเงินเป็นความรับผิดชอบของคู่กรณี",
+  pay_pp:"พร้อมเพย์ (PromptPay)", pay_holder:"ชื่อบัญชี", pay_amount:"ยอดชำระ", pay_scan:"สแกน QR เพื่อโอนโดยตรง", pay_done:"โอนแล้ว · แชทผู้ขาย", pay_info:"ข้อมูลชำระเงิน (QR ซื้อขายตรง)",
+  gm_enter_title:"เข้า Golf Mate", gm_auto:"ล็อกอินอัตโนมัติด้วยบัญชี ThaiMate", gm_auto_sub:"ไม่ต้องสมัครใหม่ — ใช้บัญชี ThaiMate เดิม",
+  gm_enter_btn:"เข้า Golf Mate", gm_need:"Golf Mate ต้องมีบัญชี", gm_need_sub:"บัญชีเดียวกับ ThaiMate — สมัครครั้งเดียวใช้ได้สองแอป",
+  a_id:"ไอดี", a_pw:"รหัสผ่าน", a_pw2:"ยืนยันรหัสผ่าน", a_login_btn:"เข้าสู่ระบบ", a_signup_btn:"สมัครและเริ่ม",
+  a_signup_note:"เริ่มด้วยไอดี·รหัสผ่าน — ยืนยันอีเมลภายหลัง (จำเป็นตอนใช้งาน)",
+  a_to_signup:"ยังไม่มีบัญชี? สมัคร", a_to_login:"มีบัญชีแล้ว? เข้าสู่ระบบ",
+  v_banner:"ยืนยันอีเมลเพื่อแชท·ซื้อขาย·โพสต์", v_btn:"ยืนยัน", v_title:"ยืนยันอีเมล", v_email:"อีเมล", v_send:"ส่งอีเมลยืนยัน",
+  v_sent:"ส่งอีเมลแล้ว คลิกลิงก์ในกล่องจดหมายเพื่อยืนยัน", v_demo:"ทำเป็นยืนยันแล้ว (เดโม)", v_done:"ยืนยันอีเมลแล้ว! ใช้งานได้ทุกอย่าง",
+  v_need_login:"ฟีเจอร์นี้ต้องเข้าสู่ระบบ", v_need_verify:"ใช้ได้หลังยืนยันอีเมล",
+  gm_handi_q:"ขั้นตอนสุดท้าย — แค่แฮนดิแคปกอล์ฟ", gm_handi_ph:"เช่น 12 (เว้นว่างถ้าไม่แน่ใจ)", acct_verified:"ยืนยันแล้ว", acct_unverified:"ยังไม่ยืนยันอีเมล", guest:"เกสต์",
+  noti_title:"การแจ้งเตือน", noti_empty:"ไม่มีการแจ้งเตือนใหม่", search_ph:"ค้นหาสินค้า·ร้าน·งาน·ข้อมูล", search_hint:"กำลังหาอะไรอยู่?", search_empty:"ไม่พบผลลัพธ์", search_cnt:" รายการ",
+  w_title:"ต้องการโพสต์อะไร?", w_store:"ลงร้านค้า", w_subject:"หัวข้อ", w_subject_ph:"ใส่หัวข้อ", w_price:"ราคา", w_price_ph:"฿ ราคา หรือ ฟรี/ต่อรอง", w_desc:"รายละเอียด", w_desc_ph:"เขียนรายละเอียด", w_photo:"เพิ่มรูป", w_loc:"ย่านซื้อขาย", w_submit:"โพสต์", w_posted:"โพสต์แล้ว (ต้นแบบ)",
+  d_to_reserved:"ทำเป็นจอง", d_reserved:"จองแล้ว", d_to_done:"ทำเป็นขายแล้ว", d_done:"ขายแล้ว", d_locked:"ขายแล้ว · ล็อกแชท", d_review:"ให้รีวิวมารยาท",
+  rep_title:"รายงาน", rep_block:"บล็อกผู้ใช้นี้", rep_reasons:["สงสัยหลอกลวง","ประกาศปลอม","ด่าทอ","โฆษณา·สแปม","อื่นๆ"], rep_done:"รับเรื่องแล้ว", block_done:"บล็อกแล้ว",
+  rv_title:"รีวิวมารยาท", rv_q:"ดีลนี้เป็นอย่างไร?", rv_good:["ตรงเวลา","สุภาพ","ตรงตามรายละเอียด","ตอบเร็ว"], rv_submit:"ส่งรีวิว", rv_done:"โพสต์รีวิวแล้ว — คะแนนมารยาทเพิ่ม!"
+ }
+};
+
+/* ===================== data ===================== */
+const REGIONS={
+ bkk:{nm:{ko:'방콕',en:'Bangkok',th:'กรุงเทพ'},hoods:[
+   {id:'sukhumvit',lat:13.738,lng:100.560,ko:'수쿰빗',en:'Sukhumvit',th:'สุขุมวิท'},
+   {id:'thonglor',lat:13.733,lng:100.583,ko:'통러',en:'Thonglor',th:'ทองหล่อ'},
+   {id:'asok',lat:13.737,lng:100.560,ko:'아속',en:'Asok',th:'อโศก'},
+   {id:'phrompong',lat:13.730,lng:100.570,ko:'프롬퐁',en:'Phrom Phong',th:'พร้อมพงษ์'},
+   {id:'onnut',lat:13.706,lng:100.601,ko:'온누트',en:'On Nut',th:'อ่อนนุช'},
+   {id:'rama9',lat:13.758,lng:100.565,ko:'라마9',en:'Rama 9',th:'พระราม 9'},
+   {id:'ratchada',lat:13.768,lng:100.574,ko:'라차다',en:'Ratchada',th:'รัชดา'},
+   {id:'silom',lat:13.724,lng:100.534,ko:'실롬·사톤',en:'Silom·Sathon',th:'สีลม·สาทร'},
+   {id:'bangna',lat:13.668,lng:100.604,ko:'방나',en:'Bangna',th:'บางนา'}
+ ]},
+ cm:{nm:{ko:'치앙마이',en:'Chiang Mai',th:'เชียงใหม่'},hoods:[
+   {id:'nimman',lat:18.799,lng:98.967,ko:'님만해민',en:'Nimman',th:'นิมมาน'},
+   {id:'oldcity',lat:18.788,lng:98.986,ko:'올드시티',en:'Old City',th:'เมืองเก่า'},
+   {id:'santitham',lat:18.802,lng:98.978,ko:'산티탐',en:'Santitham',th:'สันติธรรม'},
+   {id:'hangdong',lat:18.689,lng:98.921,ko:'항동',en:'Hang Dong',th:'หางดง'},
+   {id:'maerim',lat:18.916,lng:98.890,ko:'매림',en:'Mae Rim',th:'แม่ริม'},
+   {id:'sankamphaeng',lat:18.745,lng:99.118,ko:'산캄팽',en:'San Kamphaeng',th:'สันกำแพง'}
+ ]},
+ pty:{nm:{ko:'파타야',en:'Pattaya',th:'พัทยา'},hoods:[
+   {id:'central',lat:12.928,lng:100.877,ko:'중앙파타야',en:'Central Pattaya',th:'พัทยากลาง'},
+   {id:'jomtien',lat:12.893,lng:100.872,ko:'조무티엔',en:'Jomtien',th:'จอมเทียน'},
+   {id:'naklua',lat:12.962,lng:100.889,ko:'나끄루아',en:'Naklua',th:'นาเกลือ'},
+   {id:'banglamung',lat:13.046,lng:100.927,ko:'방라뭉',en:'Bang Lamung',th:'บางละมุง'},
+   {id:'pratamnak',lat:12.910,lng:100.863,ko:'프라타늑',en:'Pratamnak',th:'พระตำหนัก'}
+ ]}
+};
+function hoodById(id){for(const r in REGIONS){const h=REGIONS[r].hoods.find(x=>x.id===id);if(h)return h;}return null;}
+function distanceKm(a,b){
+  if(!a||!b||a.lat==null||b.lat==null) return 9999;
+  const R=6371,toR=d=>d*Math.PI/180;
+  const dLat=toR(b.lat-a.lat),dLng=toR(b.lng-a.lng);
+  const s=Math.sin(dLat/2)**2+Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
+}
+function nearestHood(lat,lng){let best=null,bd=1e9;for(const r in REGIONS)for(const h of REGIONS[r].hoods){const d=distanceKm({lat,lng},h);if(d<bd){bd=d;best={region:r,h};}}return best;}
+function itemDist(it){const ih=it.hoodId?hoodById(it.hoodId):null;return (hood&&ih)?distanceKm(hood,ih):9999;}
+function inRange(it){
+  if(city==='all'||it.city==='all') return true;
+  if(it.city!==city) return false;
+  if(!hood) return true;
+  const ih=it.hoodId?hoodById(it.hoodId):null;
+  if(!ih) return true;
+  if(radiusKm===0) return ih.id===hood.id;
+  return distanceKm(hood,ih)<=radiusKm;
+}
+
+const listings = [
+ {kind:"sell",st:"sale",emo:"🛵",city:"bkk",hoodId:"asok",like:12,chats:3,live:true,
+  t:{ko:"혼다 PCX 2023 (3천km, 풀옵션)",en:"Honda PCX 2023 (3,000km)",th:"Honda PCX 2023 (3,000km)"},
+  pr:"฿58,000",loc:{ko:"방콕 아속",en:"Asok, BKK",th:"อโศก"},ago:{ko:"방금 전",en:"just now",th:"เมื่อกี้"}},
+ {kind:"sell",st:"resv",emo:"📱",city:"cm",hoodId:"nimman",like:24,chats:5,live:false,
+  t:{ko:"아이폰 15 프로 256 자급제",en:"iPhone 15 Pro 256GB",th:"iPhone 15 Pro 256GB"},
+  pr:"฿29,500",loc:{ko:"치앙마이 님만",en:"Nimman, CM",th:"นิมมาน"},ago:{ko:"8분 전",en:"8 min ago",th:"8 นาที"}},
+ {kind:"sell",st:"sale",emo:"🛋️",city:"bkk",hoodId:"thonglor",like:7,chats:1,live:false,
+  t:{ko:"이케아 3인 소파 (이사정리)",en:"IKEA 3-seat sofa",th:"โซฟา IKEA 3 ที่นั่ง"},
+  pr:"฿3,500",loc:{ko:"통러",en:"Thonglor",th:"ทองหล่อ"},ago:{ko:"22분 전",en:"22 min ago",th:"22 นาที"}},
+ {kind:"buy",st:"match",emo:"🏌️",city:"bkk",hoodId:"thonglor",like:0,chats:2,live:true,
+  t:{ko:"골프채 아이언 세트 구합니다 (중급자용)",en:"Looking for iron set (intermediate)",th:"หาชุดเหล็กกอล์ฟ (ระดับกลาง)"},
+  pr:{ko:"예산 ฿15,000",en:"Budget ฿15,000",th:"งบ ฿15,000"},loc:{ko:"방콕 통러",en:"Thonglor",th:"ทองหล่อ"},ago:{ko:"5분 전",en:"5 min ago",th:"5 นาที"}},
+ {kind:"buy",st:"match",emo:"🧸",city:"bkk",hoodId:"rama9",like:0,chats:0,live:false,
+  t:{ko:"유아 카시트 삽니다 (브라이텍스 선호)",en:"Want baby car seat (Britax)",th:"ต้องการคาร์ซีท (Britax)"},
+  pr:{ko:"예산 ฿1,500",en:"Budget ฿1,500",th:"งบ ฿1,500"},loc:{ko:"방콕 라마9",en:"Rama9",th:"พระราม 9"},ago:{ko:"30분 전",en:"30 min ago",th:"30 นาที"}},
+ {kind:"give",st:"sale",emo:"🧥",city:"bkk",hoodId:"onnut",like:5,chats:2,live:true,
+  t:{ko:"아이 옷 무료나눔 (3~5세, 한박스)",en:"Free: kids clothes (age 3-5)",th:"แจกฟรี: เสื้อผ้าเด็ก (3-5 ขวบ)"},
+  pr:{ko:"무료나눔",en:"Free",th:"แจกฟรี"},loc:{ko:"방콕 온누트",en:"On Nut",th:"อ่อนนุช"},ago:{ko:"방금 전",en:"just now",th:"เมื่อกี้"}},
+ {kind:"give",st:"done",emo:"📚",city:"cm",hoodId:"oldcity",like:9,chats:0,live:false,
+  t:{ko:"한국 책 나눔 (소설·자기계발 20권)",en:"Free: Korean books (20)",th:"แจกฟรี: หนังสือเกาหลี 20 เล่ม"},
+  pr:{ko:"무료나눔",en:"Free",th:"แจกฟรี"},loc:{ko:"치앙마이 올드시티",en:"Old City, CM",th:"เมืองเก่า"},ago:{ko:"3시간 전",en:"3h ago",th:"3 ชม."}}
+];
+const jobs = [
+ {kind:"hire",city:"bkk",emo:"🍜",chats:4,live:true,
+  t:{ko:"한식당 홀서버 (주5일, 비자지원)",en:"Korean restaurant server (visa support)",th:"พนักงานเสิร์ฟร้านเกาหลี"},
+  pr:"฿18,000~",loc:{ko:"방콕 수쿰빗",en:"Sukhumvit",th:"สุขุมวิท"},ago:{ko:"방금 전",en:"just now",th:"เมื่อกี้"}},
+ {kind:"hire",city:"bkk",emo:"🏢",chats:2,live:false,
+  t:{ko:"무역회사 한국어 사무직 (한·태)",en:"Korean-speaking office staff",th:"พนักงานออฟฟิศพูดเกาหลี"},
+  pr:"฿35,000~",loc:{ko:"방콕",en:"Bangkok",th:"กรุงเทพ"},ago:{ko:"20분 전",en:"20 min ago",th:"20 นาที"}},
+ {kind:"seek",city:"cm",emo:"🎨",chats:1,live:false,
+  t:{ko:"한국어 가능 그래픽 디자이너 구직 (재택 가능)",en:"Graphic designer seeking work (remote ok)",th:"กราฟิกดีไซเนอร์หางาน (รีโมทได้)"},
+  pr:{ko:"희망 ฿30,000",en:"Want ฿30,000",th:"หวัง ฿30,000"},loc:{ko:"치앙마이",en:"Chiang Mai",th:"เชียงใหม่"},ago:{ko:"40분 전",en:"40 min ago",th:"40 นาที"}}
+];
+const stores = [
+ {id:'s1',cat:0,ad:true,emo:'🍲',city:'bkk',hoodId:'thonglor',rating:4.8,reviews:342,min:'฿150',
+  nm:{ko:'서울식당',en:'Seoul Restaurant',th:'ร้านโซล'},
+  menu:[
+   {id:'a1',emo:'🍲',pr:220,nm:{ko:'김치찌개',en:'Kimchi stew',th:'กิมจิจิเก'}},
+   {id:'a2',emo:'🥘',pr:200,nm:{ko:'된장찌개',en:'Soybean stew',th:'ซุปเต้าเจี้ยว'}},
+   {id:'a3',emo:'🍖',pr:250,nm:{ko:'제육볶음',en:'Spicy pork',th:'หมูผัดเผ็ด'}},
+   {id:'a4',emo:'🍚',pr:180,nm:{ko:'비빔밥',en:'Bibimbap',th:'บิบิมบับ'}}
+  ]},
+ {id:'s2',cat:0,ad:false,emo:'🍢',city:'bkk',hoodId:'asok',rating:4.6,reviews:120,min:'฿100',
+  nm:{ko:'방콕 분식집',en:'Bangkok Snacks',th:'สแน็คเกาหลี'},
+  menu:[
+   {id:'b1',emo:'🌶️',pr:120,nm:{ko:'떡볶이',en:'Tteokbokki',th:'ต๊อกบกกี'}},
+   {id:'b2',emo:'🍙',pr:90,nm:{ko:'김밥',en:'Gimbap',th:'คิมบับ'}},
+   {id:'b3',emo:'🍜',pr:100,nm:{ko:'라면',en:'Ramen',th:'รามยอน'}}
+  ]},
+ {id:'s3',cat:1,ad:false,emo:'🥐',city:'cm',hoodId:'nimman',rating:4.9,reviews:210,min:'฿80',
+  nm:{ko:'K-베이커리',en:'K-Bakery',th:'เค-เบเกอรี่'},
+  menu:[
+   {id:'c1',emo:'🥐',pr:70,nm:{ko:'크로와상',en:'Croissant',th:'ครัวซองต์'}},
+   {id:'c2',emo:'🍞',pr:65,nm:{ko:'소금빵',en:'Salt bread',th:'ขนมปังเกลือ'}},
+   {id:'c3',emo:'☕',pr:65,nm:{ko:'아메리카노',en:'Americano',th:'อเมริกาโน่'}}
+  ]},
+ {id:'s4',cat:2,ad:true,emo:'🛒',city:'bkk',hoodId:'phrompong',rating:4.7,reviews:512,min:'฿300',product:true,
+  nm:{ko:'한국마트 방콕',en:'Korea Mart BKK',th:'เกาหลีมาร์ท'},
+  menu:[
+   {id:'d1',emo:'🍜',pr:250,nm:{ko:'신라면 5입',en:'Shin Ramyun x5',th:'ชินรามยอน x5'}},
+   {id:'d2',emo:'🥬',pr:320,nm:{ko:'종가집 김치 1kg',en:'Kimchi 1kg',th:'กิมจิ 1kg'}},
+   {id:'d3',emo:'🍚',pr:390,nm:{ko:'햇반 12입',en:'Instant rice x12',th:'ข้าวสำเร็จรูป x12'}},
+   {id:'d4',emo:'🌶️',pr:280,nm:{ko:'고추장 1kg',en:'Gochujang 1kg',th:'โกชูจัง 1kg'}}
+  ]},
+ {id:'s5',cat:3,ad:false,emo:'💇',city:'bkk',hoodId:'thonglor',rating:4.8,reviews:96,service:true,
+  nm:{ko:'한인 헤어샵',en:'K Hair Salon',th:'ร้านทำผมเกาหลี'},
+  desc:{ko:'한국식 커트·펌·염색. 예약제로 운영하며 한국인 디자이너가 상주합니다. 예약·문의는 1:1 채팅으로 받습니다.',en:'Korean-style cut/perm/color. By appointment, Korean stylist on site. Book via 1:1 chat.',th:'ตัด/ดัด/ทำสีสไตล์เกาหลี ต้องจองล่วงหน้า มีช่างเกาหลี จองผ่านแชท 1:1'}},
+ {id:'s6',cat:4,ad:false,emo:'🧹',city:'pty',hoodId:'jomtien',rating:4.5,reviews:48,service:true,
+  nm:{ko:'사바이 청소·이사',en:'Sabai Clean & Move',th:'สบาย ทำความสะอาด·ย้ายบ้าน'},
+  desc:{ko:'이사·입주청소·정기청소. 한국어 소통 가능, 견적 무료. 1:1 채팅으로 일정·견적 문의주세요.',en:'Moving & cleaning, Korean-speaking, free quote. Ask schedule/quote via 1:1 chat.',th:'ย้ายบ้าน/ทำความสะอาด คุยเกาหลีได้ ประเมินฟรี สอบถามผ่านแชท 1:1'}},
+ {id:'s7',cat:5,ad:true,emo:'✈️',city:'bkk',hoodId:'asok',rating:4.7,reviews:163,service:true,
+  nm:{ko:'한인 여행사',en:'K Travel Agency',th:'บริษัททัวร์เกาหลี'},
+  desc:{ko:'항공권·골프투어·비자대행·픽업 서비스. 한국어 상담. 일정·견적은 1:1 채팅으로 문의주세요.',en:'Flights, golf tours, visa runs & pickup. Korean consultation. Ask via 1:1 chat.',th:'ตั๋วเครื่องบิน ทัวร์กอล์ฟ ทำวีซ่า รับส่ง ปรึกษาภาษาเกาหลี สอบถามผ่านแชท 1:1'}}
+];
+const PAY={
+ s1:{pp:'081-234-5678',holder:'SEOUL FOOD CO.,LTD'},
+ s2:{pp:'089-555-2030',holder:'BANGKOK BUNSIK'},
+ s3:{pp:'062-870-1199',holder:'K BAKERY CHIANGMAI'},
+ s4:{pp:'02-118-7700',holder:'KOREA MART (BKK)'},
+ s5:{pp:'084-221-3344',holder:'K HAIR SALON'},
+ s6:{pp:'080-909-1212',holder:'SABAI SERVICE'},
+ s7:{pp:'02-258-4040',holder:'K TRAVEL AGENCY'}
+};
+const chats = [
+ {av:"🧑",unread:1,city:"bkk",
+  who:{ko:"김민수",en:"Minsu",th:"มินซู"}, item:{ko:"혼다 PCX 2023",en:"Honda PCX 2023",th:"Honda PCX 2023"}, price:"฿58,000",
+  tm:{ko:"2분 전",en:"2 min",th:"2 นาที"}, last:{ko:"혹시 네고 가능할까요?",en:"Any room on the price?",th:"ต่อราคาได้ไหมครับ"},
+  msgs:[
+   {me:false,tx:{ko:"안녕하세요! PCX 아직 판매하시나요?",en:"Hi! Is the PCX still available?",th:"สวัสดีครับ PCX ยังขายอยู่ไหม"}},
+   {me:true,tx:{ko:"네 판매중입니다 :)",en:"Yes, still for sale :)",th:"ครับ ยังขายอยู่ :)"}},
+   {me:false,tx:{ko:"혹시 네고 가능할까요?",en:"Any room on the price?",th:"ต่อราคาได้ไหมครับ"}}
+  ]},
+ {av:"🧔",unread:0,city:"cm",
+  who:{ko:"Somchai",en:"Somchai",th:"สมชาย"}, item:{ko:"아이폰 15 프로",en:"iPhone 15 Pro",th:"iPhone 15 Pro"}, price:"฿29,500",
+  tm:{ko:"1시간 전",en:"1h",th:"1 ชม."}, last:{ko:"오늘 직접 볼 수 있을까요?",en:"Can I see it today?",th:"ขอดูวันนี้ได้ไหม"},
+  msgs:[
+   {me:false,tx:{ko:"오늘 직접 볼 수 있을까요?",en:"Can I see it today?",th:"ขอดูวันนี้ได้ไหม"}},
+   {me:true,tx:{ko:"네! 저녁 7시 통러 어떠세요?",en:"Sure! 7pm at Thonglor?",th:"ได้ครับ 1 ทุ่มที่ทองหล่อไหม"}}
+  ]},
+ {av:"👩",unread:2,city:"bkk",
+  who:{ko:"이지은",en:"Jieun",th:"จีอึน"}, item:{ko:"골프채 (구해요)",en:"Iron set (wanted)",th:"ไม้กอล์ฟ (หา)"}, price:{ko:"예산 ฿15,000",en:"Budget ฿15,000",th:"งบ ฿15,000"},
+  tm:{ko:"어제",en:"yesterday",th:"เมื่อวาน"}, last:{ko:"제가 미즈노 아이언 세트 있어요!",en:"I have a Mizuno iron set!",th:"ฉันมีชุดเหล็ก Mizuno!"},
+  msgs:[
+   {me:false,tx:{ko:"구해요 글 보고 연락드려요. 미즈노 아이언 세트 있어요!",en:"Saw your wanted post — I have a Mizuno iron set!",th:"เห็นโพสต์หา ฉันมีชุดเหล็ก Mizuno!"}},
+   {me:false,tx:{ko:"상태 좋고 ฿13,000에 드릴게요 :)",en:"Good condition, ฿13,000 :)",th:"สภาพดี ฿13,000 ครับ :)"}}
+  ]}
+];
+const info=[
+ {official:true,cat:0,city:"all",help:212,save:140,view:1820,
+  t:{ko:"[공지] 5월 한인회 정기모임 + 무료 법률·세무 상담",en:"[Notice] May Korean Assoc. meetup + free consult",th:"[ประกาศ] นัดพบสมาคมเกาหลี พ.ค."},
+  e:{ko:"5/18(일) 오후 2시 수쿰빗 한인타운. 비자·세무 무료상담 부스 운영, 사전신청 받습니다.",en:"Sun May 18, 2pm, Sukhumvit Koreatown. Free visa & tax consult booths — pre-register.",th:"อา. 18 พ.ค. 14:00 ย่านเกาหลีสุขุมวิท มีบูธปรึกษาฟรี"},
+  loc:{ko:"방콕",en:"Bangkok",th:"กรุงเทพ"},ago:{ko:"1일 전",en:"1d ago",th:"1 วัน"}},
+ {official:false,cat:1,city:"bkk",help:142,save:88,view:980,
+  t:{ko:"리타이어먼트 비자 갱신 후기 (2026 최신)",en:"Retirement visa renewal report (2026)",th:"รีวิวต่อวีซ่าเกษียณ (2026)"},
+  e:{ko:"창왓 이민국 갱신 후기. 잔고 80만밧 조건이 또 바뀌었어요. 필요서류 체크리스트 공유합니다.",en:"Renewed at immigration — the 800k THB rule changed again. Sharing the checklist.",th:"ต่อที่ ตม. เงื่อนไข 800,000 บาทเปลี่ยนอีก แชร์เช็กลิสต์"},
+  loc:{ko:"방콕",en:"Bangkok",th:"กรุงเทพ"},ago:{ko:"3시간 전",en:"3h ago",th:"3 ชม."}},
+ {official:false,cat:3,city:"cm",help:89,save:61,view:540,
+  t:{ko:"님만해민 새로 생긴 한식당 가봤어요",en:"Tried the new Korean place in Nimman",th:"ลองร้านเกาหลีใหม่ย่านนิมมาน"},
+  e:{ko:"김치찌개가 진짜 한국맛. 220밧대로 가격도 무난하고 사장님 친절하세요. 위치 공유합니다.",en:"Kimchi stew tastes authentic, ~220 THB, friendly owner. Sharing the location.",th:"กิมจิจิเกรสชาติแท้ ~220 บาท เจ้าของใจดี แชร์พิกัด"},
+  loc:{ko:"치앙마이",en:"Chiang Mai",th:"เชียงใหม่"},ago:{ko:"5시간 전",en:"5h ago",th:"5 ชม."}},
+ {official:false,cat:5,city:"bkk",help:67,save:54,view:720,
+  t:{ko:"오늘 환율 좋은 곳 — 슈퍼리치 vs 은행",en:"Best rate today — SuperRich vs bank",th:"เรตวันนี้ที่ไหนดี — SuperRich vs ธนาคาร"},
+  e:{ko:"슈퍼리치 오렌지 오늘 38.9밧. 100만원 이상이면 차이 꽤 큽니다. 지점별 정리해봤어요.",en:"SuperRich Orange at 38.9 today — for 1M+ KRW the gap is real. Branch comparison inside.",th:"SuperRich วันนี้ 38.9 ถ้าเกิน 1 ล้านวอนต่างเยอะ เทียบรายสาขา"},
+  loc:{ko:"방콕",en:"Bangkok",th:"กรุงเทพ"},ago:{ko:"어제",en:"yesterday",th:"เมื่อวาน"}}
+];
+const clubs = [
+ {flag:true,grad:"linear-gradient(120deg,#0b7a3b,#16a34a)",emo:"⛳",city:"all",nm:"Golf Mate",members:1240,
+  d:{ko:"태국 한인 골퍼 매칭. 같이 칠 사람 1:1 번개 매칭 · 중고채 거래. 골프존 방나점 파트너.",en:"Match Korean golfers in Thailand — 1:1 round matching & used-club trades. Partner: Golfzone Bangna.",th:"จับคู่นักกอล์ฟเกาหลีในไทย ออกรอบ 1:1 ซื้อขายไม้กอล์ฟ"}},
+ {flag:false,grad:"linear-gradient(120deg,#2f6df0,#6f9bff)",emo:"🏃",city:"bkk",nm:{ko:"방콕 러닝메이트",en:"Bangkok Run Mate",th:"วิ่งกรุงเทพ"},members:312,
+  d:{ko:"러닝 파트너 1:1 매칭. 페이스·지역 맞춰드려요.",en:"1:1 running-partner matching by pace & area.",th:"จับคู่เพื่อนวิ่งตามเพซและพื้นที่"}},
+ {flag:false,grad:"linear-gradient(120deg,#b45309,#f5a524)",emo:"🗣️",city:"cm",nm:{ko:"치앙마이 언어교환",en:"Chiang Mai Lang Exchange",th:"แลกเปลี่ยนภาษาเชียงใหม่"},members:178,
+  d:{ko:"한·태·영 언어교환 파트너 1:1 매칭.",en:"1:1 KR·TH·EN language-exchange matching.",th:"จับคู่แลกภาษา เกาหลี·ไทย·อังกฤษ"}}
+];
+/* Golf Mate 연동 (독립 앱 — 느슨한 결합) */
+const GM_URL="https://golfdong-v2.vercel.app";
+const GM={
+ ko:{partner:"ThaiMate 공식 골프 파트너",sub:"태국 한인 골퍼 1:1 매칭 · 골프투어",linked:"ThaiMate 계정 그대로 — 동네·매너온도·핸디캡 연동",
+  acts:["티타임 부킹","번개 라운딩","중고채 장터","라운드·시상","동호회","핸디캡"],
+  today:"오늘의 번개 라운딩",join:"참여",seats:"자리",partners:"파트너 (후원사)",sponsor:"후원",
+  openFull:"Golf Mate 풀버전 열기",ssTitle:"스마트스코어 연동 (예정)",ssDesc:"스코어카드·핸디캡 자동 동기화. 플랫폼 안정화 후 연동 — 지금은 핸디캡 입력만.",handi:"핸디캡"},
+ en:{partner:"Official golf partner of ThaiMate",sub:"1:1 matching for Korean golfers · tours",linked:"Your ThaiMate account — area·manner·handicap linked",
+  acts:["Tee booking","Casual round","Used clubs","Awards","Clubs","Handicap"],
+  today:"Today's casual rounds",join:"Join",seats:"left",partners:"Partners (sponsors)",sponsor:"Sponsor",
+  openFull:"Open full Golf Mate",ssTitle:"SmartScore integration (planned)",ssDesc:"Auto-sync scorecard & handicap. After the platform stabilizes.",handi:"Handicap"},
+ th:{partner:"พาร์ทเนอร์กอล์ฟอย่างเป็นทางการ",sub:"จับคู่กอล์ฟเกาหลี 1:1 · ทัวร์",linked:"ใช้บัญชี ThaiMate — ย่าน·เมตตา·แฮนดิแคป เชื่อมกัน",
+  acts:["จองที","ออกรอบ","ขายไม้มือสอง","รางวัล","ชมรม","แฮนดิแคป"],
+  today:"ออกรอบวันนี้",join:"เข้าร่วม",seats:"ที่ว่าง",partners:"พาร์ทเนอร์ (สปอนเซอร์)",sponsor:"สปอนเซอร์",
+  openFull:"เปิด Golf Mate เต็ม",ssTitle:"เชื่อม SmartScore (เร็วๆ นี้)",ssDesc:"ซิงค์สกอร์การ์ด·แฮนดิแคปอัตโนมัติ หลังแพลตฟอร์มเสถียร",handi:"แฮนดิแคป"}
+};
+const GM_ROUNDS=[
+ {when:{ko:"내일 06:30",en:"Tomorrow 06:30",th:"พรุ่งนี้ 06:30"},course:"방나 GC",cur:3,max:4,from:{ko:"통러 출발",en:"from Thonglor",th:"จากทองหล่อ"}},
+ {when:{ko:"토 05:50",en:"Sat 05:50",th:"เสาร์ 05:50"},course:"타나시티 CC",cur:2,max:4,from:{ko:"아속 출발",en:"from Asok",th:"จากอโศก"}},
+ {when:{ko:"일 13:00",en:"Sun 13:00",th:"อาทิตย์ 13:00"},course:"레전드시 GC",cur:1,max:2,from:{ko:"치앙마이",en:"Chiang Mai",th:"เชียงใหม่"}}
+];
+const GM_PARTNERS=[
+ {emo:"🏌️",nm:"골프존 방나점",cat:{ko:"연습장·시드",en:"Range",th:"สนามซ้อม"}},
+ {emo:"⛳",nm:"타나시티 CC",cat:{ko:"골프장",en:"Course",th:"สนามกอล์ฟ"}},
+ {emo:"✈️",nm:"K-여행사",cat:{ko:"골프패키지",en:"Tour pkg",th:"แพ็กเกจ"}}
+];
+const NOTI=[
+ {ic:"⚡",bg:"#fff1e8",unread:true,go:"market",tm:{ko:"5분 전",en:"5m",th:"5 นาที"},
+  t:{ko:"내 동네에 딱 맞는 '구해요'가 떴어요",en:"A 'wanted' near you just matched",th:"มีโพสต์ 'ต้องการ' ใกล้คุณ"},
+  b:{ko:"골프채 아이언 세트 · 통러 · 예산 ฿15,000",en:"Iron set · Thonglor · ฿15,000",th:"ชุดเหล็ก · ทองหล่อ · ฿15,000"}},
+ {ic:"💬",bg:"#eaf2ff",unread:true,go:"chat",tm:{ko:"어제",en:"1d",th:"เมื่อวาน"},
+  t:{ko:"이지은님이 메시지를 보냈어요",en:"Jieun sent you a message",th:"จีอึนส่งข้อความ"},
+  b:{ko:"미즈노 아이언 세트 있어요! ฿13,000",en:"I have a Mizuno iron set! ฿13,000",th:"มีชุดเหล็ก Mizuno! ฿13,000"}},
+ {ic:"🛒",bg:"#e7f7ee",unread:false,go:"shop",tm:{ko:"1시간 전",en:"1h",th:"1 ชม."},
+  t:{ko:"서울식당 주문이 접수되었어요",en:"Your Seoul Restaurant order is in",th:"ร้านโซลรับออเดอร์แล้ว"},
+  b:{ko:"김치찌개 외 · ฿690 · PromptPay 직거래",en:"Kimchi stew & more · ฿690",th:"กิมจิจิเก ฯลฯ · ฿690"}},
+ {ic:"📢",bg:"#fdf3e0",unread:false,go:"community",tm:{ko:"1일 전",en:"1d",th:"1 วัน"},
+  t:{ko:"[공지] 5월 한인회 정기모임",en:"[Notice] May Korean Assoc. meetup",th:"[ประกาศ] นัดพบสมาคมเกาหลี"},
+  b:{ko:"5/18(일) 오후 2시 · 수쿰빗 한인타운",en:"Sun May 18, 2pm · Sukhumvit",th:"อา. 18 พ.ค. 14:00 · สุขุมวิท"}}
+];
+function searchAll(q){
+  q=(q||"").trim().toLowerCase(); if(!q)return [];
+  const r=[], hit=s=>tx(s).toLowerCase().includes(q);
+  listings.forEach(x=>{if(hit(x.t))r.push({tag:x.kind==='give'?L().seg_give:(x.kind==='buy'?L().seg_buy:L().seg_sell),emo:x.emo,t:tx(x.t),sub:tx(x.loc),go:'market'});});
+  stores.forEach(x=>{if(hit(x.nm))r.push({tag:L().nav_shop,emo:x.emo,t:tx(x.nm),sub:L().shop_cats[x.cat],go:'shop'});});
+  jobs.forEach(x=>{if(hit(x.t))r.push({tag:x.kind==='hire'?L().seg_hire:L().seg_seek,emo:x.emo,t:tx(x.t),sub:tx(x.loc),go:'jobs'});});
+  info.forEach(x=>{if(hit(x.t))r.push({tag:L().comm_info,emo:'📰',t:tx(x.t),sub:tx(x.loc),go:'community'});});
+  return r;
+}
+
+listings.forEach((x,i)=>x.id=x.id||('L'+i));
+info.forEach((x,i)=>x.id=x.id||('I'+i));
+
+/* ===================== state ===================== */
+let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gateMode="home", emailVerified=false, acctId="", verifyOpen=false, verifySent=false, fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null;
+const L=()=>T[lang];
+const gm=()=>GM[lang];
+const tx=o=> o==null?"":(typeof o==="string"?o:(o[lang]||o.ko));
+const totalUnread=chats.reduce((s,c)=>s+c.unread,0);
+
+const gateEl=document.getElementById('gate');
+const topEl=document.getElementById('top');
+const page=document.getElementById('page');
+const navEl=document.getElementById('nav');
+const fab=document.getElementById('fab');
+const pickerEl=document.getElementById('picker');
+const payEl=document.getElementById('pay');
+const gmGateEl=document.getElementById('gmgate');
+const verifyEl=document.getElementById('verify');
+const writeEl2=document.getElementById('write');
+const reportEl=document.getElementById('report');
+const reviewEl=document.getElementById('review');
+const fsEl=document.getElementById('fsview');
+function renderReport(){
+  if(!reportOpen){reportEl.classList.add('hidden');reportEl.innerHTML='';return;}
+  reportEl.classList.remove('hidden');
+  reportEl.innerHTML=`<div class="pscrim" data-repclose></div><div class="psheet">
+    <div class="phead" style="position:relative"><b>🚨 ${L().rep_title}</b><button class="pclose" data-repclose style="position:absolute;right:0">✕</button></div>
+    <div style="display:flex;flex-direction:column;gap:8px">${L().rep_reasons.map(r=>`<button class="repreason" data-repreason>${r}</button>`).join('')}</div>
+    <button class="gbtn line" data-block style="width:100%;margin-top:14px;color:var(--red);border-color:#f6c9c4">⛔ ${L().rep_block}</button>
+  </div>`;
+}
+function renderReview(){
+  if(!reviewOpen){reviewEl.classList.add('hidden');reviewEl.innerHTML='';return;}
+  reviewEl.classList.remove('hidden');
+  reviewEl.innerHTML=`<div class="pscrim" data-rvclose></div><div class="psheet">
+    <div class="phead" style="position:relative"><b>⭐ ${L().rv_title}</b><button class="pclose" data-rvclose style="position:absolute;right:0">✕</button></div>
+    <div style="font-weight:800;font-size:14px;margin-bottom:13px">${L().rv_q}</div>
+    <div class="wtypes" style="gap:8px">${L().rv_good.map(g=>`<button class="wtype" data-rvtoggle>👍 ${g}</button>`).join('')}</div>
+    <button class="gbtn primary" data-rvsubmit style="width:100%;margin-top:16px">${L().rv_submit}</button>
+  </div>`;
+}
+function renderFsView(){
+  if(!fsView){fsEl.style.display='none';fsEl.innerHTML='';return;}
+  fsEl.style.display='flex';
+  if(fsView==='noti'){
+    fsEl.innerHTML=`
+     <div class="fshead"><button class="back" data-fsback>‹</button><b>🔔 ${L().noti_title}</b></div>
+     <div class="fsbody">${NOTI.length?NOTI.map(n=>`<div class="notirow ${n.unread?'un':''}" data-notigo="${n.go}"><div class="nic" style="background:${n.bg}">${n.ic}</div><div class="nbd"><div class="nt">${tx(n.t)}</div><div class="nb">${tx(n.b)}</div></div><div class="ntm">${tx(n.tm)}</div></div>`).join(''):`<div class="empty">${L().noti_empty}</div>`}</div>`;
+  }else{
+    const res=searchAll(searchQ);
+    fsEl.innerHTML=`
+     <div class="fshead"><button class="back" data-fsback>‹</button><input class="searchin" id="searchInput" placeholder="${L().search_ph}" value="${(searchQ||'').replace(/"/g,'&quot;')}" autocomplete="off"></div>
+     <div class="fsbody">${!searchQ.trim()?`<div class="empty">🔍 ${L().search_hint}</div>`:(res.length?`<div style="font-size:12px;color:var(--sub);font-weight:700;margin:2px 2px 11px">${res.length}${L().search_cnt}</div>`+res.map(r=>`<div class="srow" data-srchgo="${r.go}"><div class="semoji">${r.emo}</div><div class="sbd"><div class="stt">${r.t}</div><div class="sss">${r.sub}</div></div><span class="stag">${r.tag}</span></div>`).join(''):`<div class="empty">${L().search_empty}</div>`)}</div>`;
+    const si=document.getElementById('searchInput'); if(si){si.focus();const v=si.value;si.setSelectionRange(v.length,v.length);}
+  }
+}
+function renderWrite(){
+  if(!writeOpen){writeEl2.classList.add('hidden');writeEl2.innerHTML='';return;}
+  writeEl2.classList.remove('hidden');
+  const types=[L().seg_sell,L().seg_buy,L().seg_give,L().seg_hire,L().seg_seek,L().comm_info];
+  const isStore=writeType===6, noPrice=(writeType===5||isStore);
+  writeEl2.innerHTML=`<div class="pscrim" data-wclose></div><div class="psheet">
+    <div class="phead" style="position:relative"><b>✏️ ${L().w_title}</b><button class="pclose" data-wclose style="position:absolute;right:0">✕</button></div>
+    <div class="wtypes">${types.map((t,i)=>`<button class="wtype ${writeType===i?'on':''}" data-wtype="${i}">${t}</button>`).join('')}<button class="wtype ${isStore?'on':''}" data-wtype="6">🏪 ${L().w_store}</button></div>
+    <div class="gfield"><label>${L().w_subject}</label><input id="wSubject" placeholder="${L().w_subject_ph}"></div>
+    ${noPrice?'':`<div class="gfield"><label>${L().w_price}</label><input id="wPrice" placeholder="${L().w_price_ph}"></div>`}
+    <div class="gfield"><label>${L().w_desc}</label><textarea class="wta" id="wDesc" placeholder="${L().w_desc_ph}"></textarea></div>
+    <div class="wrow"><button class="wphoto">📷 ${L().w_photo}</button><div class="wloc">📍 ${locShort()}</div></div>
+    <button class="gbtn primary" data-wsubmit style="width:100%;margin-top:8px">${L().w_submit}</button>
+  </div>`;
+}
+function canAct(){ if(authed&&emailVerified)return true; verifyOpen=true; verifySent=false; render(); return false; }
+function renderVerify(){
+  if(!verifyOpen){verifyEl.classList.add('hidden');verifyEl.innerHTML='';return;}
+  verifyEl.classList.remove('hidden');
+  let inner;
+  if(!authed){
+    inner=`<div style="font-size:36px;text-align:center;margin:6px 0 10px">🔒</div>
+      <div style="text-align:center;font-weight:800;font-size:15px">${L().v_need_login}</div>
+      <div style="text-align:center;font-size:12px;color:var(--sub);margin:8px 0 18px">${L().gm_need_sub}</div>
+      <button class="gbtn primary" data-vauth="login" style="width:100%;margin-bottom:9px">${L().g_login}</button>
+      <button class="gbtn line" data-vauth="signup" style="width:100%">${L().g_signup}</button>`;
+  }else if(!verifySent){
+    inner=`<div style="font-size:36px;text-align:center;margin:6px 0 8px">✉️</div>
+      <div style="text-align:center;font-weight:800;font-size:15px;margin-bottom:4px">${L().v_need_verify}</div>
+      <div class="gfield" style="margin-top:14px"><label>${L().v_email}</label><input id="vEmail" type="email" placeholder="you@email.com"></div>
+      <button class="gbtn primary" id="vsend" style="width:100%;margin-top:12px">${L().v_send}</button>`;
+  }else{
+    inner=`<div style="font-size:36px;text-align:center;margin:6px 0 8px">📨</div>
+      <div style="text-align:center;font-size:13px;color:#4b5563;line-height:1.6;margin:0 0 16px">${L().v_sent}</div>
+      <button class="gbtn primary" id="vdone" style="width:100%">${L().v_demo}</button>`;
+  }
+  verifyEl.innerHTML=`<div class="pscrim" id="vclose"></div><div class="psheet"><div class="phead" style="position:relative"><b>✉️ ${L().v_title}</b><button class="pclose" id="vclose2" style="position:absolute;right:0">✕</button></div>${inner}</div>`;
+}
+function renderGmGate(){
+  if(!gmGateOpen){gmGateEl.classList.add('hidden');gmGateEl.innerHTML='';return;}
+  gmGateEl.classList.remove('hidden');
+  const who=(acctId||tx(L().me_name))+(hood?(' · 📍 '+tx(hood)):(city!=='all'?' · 📍 '+tx(REGIONS[city].nm):''));
+  let body;
+  if(!authed){
+    body=`<div style="font-size:36px;margin:8px 0 10px">⛳</div>
+       <div style="font-weight:800;font-size:15px">${L().gm_need}</div>
+       <div style="font-size:12px;color:var(--sub);margin:8px 0 18px;line-height:1.5">${L().gm_need_sub}</div>
+       <button class="gbtn primary" data-gmauth="login" style="width:100%;margin-bottom:9px">${L().g_login}</button>
+       <button class="gbtn line" data-gmauth="signup" style="width:100%">${L().g_signup}</button>`;
+  }else if(!emailVerified){
+    body=`<div style="font-size:36px;margin:8px 0 10px">✉️</div>
+       <div style="font-weight:800;font-size:15px">${L().v_need_verify}</div>
+       <div style="font-size:12px;color:var(--sub);margin:8px 0 16px;line-height:1.5">${L().gm_auto_sub}</div>
+       <button class="gbtn primary" data-vfromgm style="width:100%">${L().v_btn}</button>`;
+  }else{
+    body=`<div style="background:#eaf7ef;border:1px solid #bfe9cf;border-radius:14px;padding:16px;margin-bottom:13px">
+         <div style="font-size:30px">⛳</div>
+         <div style="font-weight:800;color:#0d8a47;margin-top:7px;font-size:13.5px">✓ ${L().gm_auto}</div>
+         <div style="font-size:13px;color:var(--ink);margin-top:6px;font-weight:800">${who}</div>
+       </div>
+       <div class="gfield" style="text-align:left;margin-bottom:13px"><label>⛳ ${L().gm_handi_q}</label><input id="gmHandi" type="number" placeholder="${L().gm_handi_ph}"></div>
+       <button class="gbtn primary" data-gmenter style="width:100%">${L().gm_enter_btn} →</button>`;
+  }
+  gmGateEl.innerHTML=`
+   <div class="pscrim" id="gmclose"></div>
+   <div class="psheet" style="text-align:center">
+     <div class="phead" style="justify-content:center;position:relative"><b>⛳ ${L().gm_enter_title}</b><button class="pclose" id="gmclose2" style="position:absolute;right:0;top:-2px">✕</button></div>
+     ${body}
+   </div>`;
+}
+
+function byCity(a){return city==='all'?a:a.filter(x=>x.city===city||x.city==='all');}
+function locShort(){return (city==='all'||!hood)?L().loc_all:tx(hood);}
+function locFull(){return (city==='all'||!hood)?L().loc_all:tx(REGIONS[city].nm)+' · '+tx(hood);}
+function langToggle(){return `<div class="lang" id="lang">
+   <button data-l="ko" class="${lang==='ko'?'on':''}">한</button>
+   <button data-l="en" class="${lang==='en'?'on':''}">EN</button>
+   <button data-l="th" class="${lang==='th'?'on':''}">ไทย</button></div>`;}
+function toast(msg){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.querySelector('.device').appendChild(t);}
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),1900);
+}
+
+/* ===================== gate ===================== */
+function renderGate(){
+  if(gateMode==='login'||gateMode==='signup'){
+    const isLogin=gateMode==='login';
+    gateEl.innerHTML=`
+     <div class="glang">${langToggle()}</div>
+     <div style="height:46px"></div>
+     <button class="gmback" data-gmode="home" style="font-size:24px;padding:0 0 6px">‹</button>
+     <div class="gtitle">${isLogin?L().g_login:L().g_signup}</div>
+     <div class="gform">
+       <div class="gfield"><label>${L().a_id}</label><input id="auId" placeholder="${L().a_id}" autocomplete="off"></div>
+       <div class="gfield"><label>${L().a_pw}</label><input id="auPw" type="password" placeholder="••••••••"></div>
+       ${isLogin?'':`<div class="gfield"><label>${L().a_pw2}</label><input id="auPw2" type="password" placeholder="••••••••"></div>`}
+       ${isLogin?'':`<div class="gnote">ℹ️ ${L().a_signup_note}</div>`}
+       <button class="gbtn primary" data-ausubmit="${gateMode}" style="margin-top:6px;width:100%">${isLogin?L().a_login_btn:L().a_signup_btn}</button>
+       <div class="gswitch" data-gmode="${isLogin?'signup':'login'}">${isLogin?L().a_to_signup.replace(/(신규가입|Sign up|สมัคร)/, '<b>$1</b>'):L().a_to_login.replace(/(로그인|Log in|เข้าสู่ระบบ)/, '<b>$1</b>')}</div>
+     </div>`;
+    return;
+  }
+  const set=!(city==='all'||!hood);
+  gateEl.innerHTML=`
+   <div class="glang">${langToggle()}</div>
+   <div class="ghero">
+     <div class="glogo">M</div>
+     <div class="gname">Thai<span>Mate</span></div>
+     <div class="gtag">${L().g_tag.replace(/\n/g,'<br>')}</div>
+   </div>
+   <div class="gmid">
+     <div class="loccard" id="loccard">
+       <div class="lh">📍 ${L().g_loc_title}</div>
+       <div class="lv">
+         <span class="pin">🏘️</span>
+         <div style="flex:1">
+           <div class="lname ${set?'':'empty'}">${set?locFull():L().g_loc_empty}</div>
+           <div class="lsub">${set?`<span class="vbadge${verified?'':' no'}">${verified?'✓ '+L().v_done:'· '+L().v_none}</span>`:L().g_loc_sub}</div>
+         </div>
+         <span class="lchev">›</span>
+       </div>
+     </div>
+     <div class="locnote">⚡ ${L().g_loc_note}</div>
+   </div>
+   <div class="gbtns">
+     <button class="gbtn primary" data-gate="login">${L().g_login}</button>
+     <button class="gbtn line" data-gate="signup">${L().g_signup}</button>
+     <button class="gbtn ghost" data-gate="browse">${L().g_browse}</button>
+     <a href="admin.html" style="text-align:center;font-size:11.5px;color:#c2c7d0;text-decoration:none;font-weight:700;margin-top:2px">🛠 관리자 콘솔 (운영자 전용)</a>
+   </div>`;
+}
+/* ===================== location picker ===================== */
+function renderPicker(){
+  if(!locPickerOpen){pickerEl.classList.add('hidden');pickerEl.innerHTML='';return;}
+  pickerEl.classList.remove('hidden');
+  const regs=[['bkk',REGIONS.bkk],['cm',REGIONS.cm],['pty',REGIONS.pty]];
+  pickerEl.innerHTML=`
+   <div class="pscrim" id="pscrim"></div>
+   <div class="psheet">
+     <div class="phead"><b>${L().p_title}</b><button class="pclose" id="pclose">✕</button></div>
+     <button class="gps" id="gps">📍 ${L().p_gps}</button>
+     <div class="plabel">${L().p_region}</div>
+     <div class="pregions">${regs.map(([k,r])=>`<button data-pr="${k}" class="${pickRegion===k?'on':''}">${tx(r.nm)}</button>`).join('')}</div>
+     <div class="plabel">${L().p_hood}</div>
+     <div class="phoods">${REGIONS[pickRegion].hoods.map(h=>`
+       <button class="hood ${(hood&&hood.id===h.id)?'on':''}" data-hood="${h.id}"><span class="hp">📍</span>${tx(h)}</button>`).join('')}</div>
+     <div class="plabel" style="margin-top:18px">${L().r_range}</div>
+     <div class="pradio">${[0,3,5,10,999].map(v=>`<button data-rad="${v}" class="${radiusKm===v?'on':''}">${v===0?L().r_only:v===999?L().r_all:'+'+v+'km'}</button>`).join('')}</div>
+     <div class="pall"><button data-pall="1">${L().p_all}</button></div>
+   </div>`;
+}
+/* ===================== payment (직거래 QR) ===================== */
+function renderPay(){
+  if(!payOpen){payEl.classList.add('hidden');payEl.innerHTML='';return;}
+  payEl.classList.remove('hidden');
+  const s=stores.find(x=>x.id===payStore); const p=PAY[payStore]||{pp:'-',holder:tx(s.nm)};
+  const amt=payAmount>0?('฿'+payAmount.toLocaleString()):'';
+  const qrData=encodeURIComponent('promptpay://'+p.pp.replace(/[^0-9]/g,'')+(payAmount>0?('?amount='+payAmount):''));
+  payEl.innerHTML=`
+   <div class="pscrim" id="payscrim"></div>
+   <div class="psheet">
+     <div class="phead"><b>${L().pay_title}</b><button class="pclose" id="payclose">✕</button></div>
+     <div class="paywarn"><b>⚠️ ${L().pay_warn_t}</b><p>${L().pay_warn_p}</p></div>
+     <div class="paystore">${s.emo} ${tx(s.nm)}${amt?`<span class="payamt">${amt}</span>`:''}</div>
+     <div class="qrbox">
+       <div class="qrppt">🇹🇭 ${L().pay_pp}</div><br>
+       <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${qrData}" alt="PromptPay QR" />
+       <div class="qrcap">📷 ${L().pay_scan}</div>
+     </div>
+     <div class="payrows">
+       <div class="payrow"><span>${L().pay_pp}</span><b>${p.pp}</b></div>
+       <div class="payrow"><span>${L().pay_holder}</span><b>${p.holder}</b></div>
+       ${amt?`<div class="payrow"><span>${L().pay_amount}</span><b style="color:var(--pri)">${amt}</b></div>`:''}
+     </div>
+     <button class="bigbtn" id="paydone">✅ ${L().pay_done}</button>
+   </div>`;
+}
+/* ===================== top ===================== */
+function renderTop(){
+  if((tab==='chat'&&chatOpen!==null)||(tab==='shop'&&storeOpen)||(tab==='market'&&listingOpen)){topEl.innerHTML='';return;}
+  topEl.innerHTML=`
+   <div class="top-row">
+     <button class="locpill" id="locpill"><span class="lpin">📍</span>${locShort()}${verified?'<span style="color:var(--green);font-size:13px">✓</span>':''}<span class="lcv">▾</span></button>
+     <div class="spacer"></div>
+     <button class="icon-btn" data-search>🔍</button>
+     <button class="icon-btn" data-noti>🔔${(()=>{const u=NOTI.filter(n=>n.unread).length;return u?`<span class="nb">${u}</span>`:'';})()}</button>
+     ${langToggle()}
+   </div>
+   ${(authed&&!emailVerified)?`<div class="vbanner2"><span>✉️</span><span class="vt">${L().v_banner}</span><button class="vb" data-verify>${L().v_btn}</button></div>`:''}`;
+}
+
+/* ===================== market (C2C) ===================== */
+function listingCard(it){
+  const give=it.kind==='give';
+  const stTxt=give?(it.st==='done'?L().status_give_done:L().status_give):{sale:L().status_sale,resv:L().status_resv,done:L().status_done,match:L().status_match}[it.st];
+  const stCls=give?(it.st==='done'?'done':'sale'):{sale:'sale',resv:'resv',done:'done',match:'match'}[it.st];
+  const thumbCls=it.kind==='buy'?'want':(give?'give':'');
+  return `<div class="card" data-listing="${it.id}">
+    <div class="thumb ${thumbCls}"><span class="badge ${stCls}">${stTxt}</span>${it.emo}</div>
+    <div class="cbody">
+      <div class="ctitle">${tx(it.t)}</div>
+      <div class="cmeta">📍 ${tx(it.loc)} · ${tx(it.ago)}${(hood&&it.hoodId===hood.id)?` · <b class="myhood">${L().my_hood}</b>`:''}</div>
+      <div class="price" style="${give?'color:var(--green)':''}">${tx(it.pr)}</div>
+      <div class="actions">
+        ${it.kind!=='buy'?`<button class="abtn like ${it.liked?'on':''}" data-like="${it.id}">${it.liked?'❤️':'♡'} ${L().btn_like} ${(it.like||0)+(it.liked?1:0)}</button>`:''}
+        <button class="abtn chat">💬 ${L().btn_chat}</button>
+        ${it.chats?`<span class="live-mini">💬 ${it.chats}</span>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+function rangeChipHtml(){
+  if(city==='all'||!hood) return '';
+  const r=radiusKm===0?L().r_only:radiusKm===999?L().r_all:('+'+radiusKm+'km '+L().within);
+  return `<div class="rangechip">📍 <b>${tx(hood)}</b> · ${r} ▾</div>`;
+}
+function matchBannerHtml(){
+  const m=byCity(listings).filter(x=>x.kind==='buy'&&inRange(x))[0];
+  if(!m) return '';
+  return `<div class="matchban"><span class="mbi">⚡</span><div class="mbt"><b>${L().match_alert}</b><p>"${tx(m.t)}" · 📍 ${tx(m.loc)}</p></div><button class="mbb" data-matchchat>💬 ${L().btn_chat}</button></div>`;
+}
+function viewListingDetail(){
+  const it=listings.find(x=>x.id===listingOpen);
+  if(!it){listingOpen=null;viewMarket();return;}
+  const give=it.kind==='give', buy=it.kind==='buy';
+  const stTxt=give?(it.st==='done'?L().status_give_done:L().status_give):{sale:L().status_sale,resv:L().status_resv,done:L().status_done,match:L().status_match}[it.st];
+  const stCls=give?(it.st==='done'?'done':'sale'):{sale:'sale',resv:'resv',done:'done',match:'match'}[it.st];
+  const phCls=buy?'want':(give?'give':''), mine=(hood&&it.hoodId===hood.id);
+  page.innerHTML=`
+   <div class="detail-head">
+     <button class="back" data-ldback>‹</button>
+     <div style="flex:1"><div class="hn">${give?L().seg_give:(buy?L().seg_buy:L().seg_sell)}</div></div>
+     <button class="icon-btn" data-report style="font-size:21px">⋮</button>
+   </div>
+   <div class="ldphoto ${phCls}"><span class="badge ${stCls}">${stTxt}</span>${it.emo}</div>
+   <div class="ldseller"><div class="avatar">😀</div><div><b>${acctId||tx(L().me_name)}</b><div class="lds">🌡️ 36.5°C · 📍 ${tx(it.loc)}${mine?` · <b class="myhood">${L().my_hood}</b>`:''}</div></div></div>
+   <h2 class="ldtitle">${tx(it.t)}</h2>
+   <div class="ldmeta">${tx(it.ago)} · 👁 ${(it.like||0)*7+13}</div>
+   <div class="ldprice" style="${give?'color:var(--green)':''}">${tx(it.pr)}</div>
+   <p class="lddesc">${tx(it.desc)||(buy?'이 물건 갖고 계신 분 채팅 주세요 🙏':give?'필요하신 분 채팅 주세요. 나눔합니다 💚':'직거래 환영합니다. 채팅 주세요 :)')}</p>
+   <div class="ldbar">
+     <button class="ldlike ${it.liked?'on':''}" data-like="${it.id}">${it.liked?'❤️':'🤍'}</button>
+     <button class="ldchat" data-lchat="${it.id}">💬 ${L().btn_chat}</button>
+   </div>`;
+}
+function viewMarket(){
+  const data=byCity(listings).filter(x=>x.kind===mseg&&inRange(x)).sort((a,b)=>itemDist(a)-itemDist(b));
+  const liveN=byCity(listings).filter(x=>x.live).length+9;
+  page.innerHTML=`
+   <div class="vbanner"><span class="em">🔒</span><div><b>${L().banner_t}</b><p>${L().banner_p}</p></div></div>
+   <div class="seg">
+     <button data-mseg="sell" class="${mseg==='sell'?'on':''}">🛍️ ${L().seg_sell}</button>
+     <button data-mseg="buy" class="${mseg==='buy'?'on':''}">🙋 ${L().seg_buy}</button>
+     <button data-mseg="give" class="${mseg==='give'?'on':''}">💚 ${L().seg_give}</button>
+   </div>
+   ${rangeChipHtml()}
+   ${mseg==='sell'?matchBannerHtml():''}
+   ${mseg==='sell'?`<div class="livebar"><span class="dot"></span>${liveN}${L().live}</div>`:''}
+   <div class="list">${data.map(listingCard).join('')||`<div class="empty">—</div>`}</div>`;
+}
+
+/* ===================== jobs ===================== */
+function viewJobs(){
+  const data=byCity(jobs).filter(x=>x.kind===jseg);
+  page.innerHTML=`
+   <div class="vbanner"><span class="em">🔒</span><div><b>${L().banner_t}</b><p>${L().banner_p}</p></div></div>
+   <div class="seg">
+     <button data-jseg="hire" class="${jseg==='hire'?'on':''}">💼 ${L().seg_hire}</button>
+     <button data-jseg="seek" class="${jseg==='seek'?'on':''}">🙋 ${L().seg_seek}</button>
+   </div>
+   <div class="list">${data.map(j=>`
+     <div class="card">
+       <div class="thumb want"><span class="badge match">${j.kind==='hire'?L().seg_hire:L().seg_seek}</span>${j.emo}</div>
+       <div class="cbody">
+         <div class="ctitle">${tx(j.t)}</div>
+         <div class="cmeta">📍 ${tx(j.loc)} · ${tx(j.ago)}</div>
+         <div class="price" style="color:var(--green)">${tx(j.pr)}</div>
+         <div class="actions"><button class="abtn chat">💬 ${L().btn_apply}</button>${j.chats?`<span class="live-mini">💬 ${j.chats}</span>`:''}</div>
+       </div>
+     </div>`).join('')||`<div class="empty">—</div>`}</div>`;
+}
+
+/* ===================== shop (광고/주문) ===================== */
+function storeCard(s){
+  const dpill=(hood&&s.hoodId)?((s.hoodId===hood.id)?`<span class="pill" style="color:var(--green);background:#e7f7ee">📍 ${L().my_hood}</span>`:`<span class="pill" style="color:var(--pri);background:var(--pri-soft)">📍 ${itemDist(s).toFixed(1)}km</span>`):'';
+  return `<div class="scard" data-store="${s.id}">
+    <div class="sthumb">${s.ad?`<span class="adb">${L().ad_badge}</span>`:''}${s.emo}</div>
+    <div class="sbody">
+      <div class="snm">${tx(s.nm)}</div>
+      <div class="smeta">⭐ ${s.rating} <span class="sgray">(${s.reviews})</span> · ${L().shop_cats[s.cat]}</div>
+      <div class="spills">
+        ${dpill}${s.service?`<span class="pill">📅 ${L().btn_inquire}</span>`:`<span class="pill">🛵 ${L().delivery}</span><span class="pill">🥡 ${L().pickup}</span>${s.min?`<span class="pill">${L().min_order} ${s.min}</span>`:''}`}
+      </div>
+    </div>
+    <div class="sgo">${s.service?'›':`<span class="orderbtn">${L().btn_menu}</span>`}</div>
+  </div>`;
+}
+function viewShop(){
+  const chips=[L().city_all].concat(L().shop_cats);
+  let data=byCity(stores);
+  if(shopCat>0) data=data.filter(x=>x.cat===shopCat-1);
+  data=data.sort((a,b)=>itemDist(a)-itemDist(b));
+  page.innerHTML=`
+   <div class="vbanner" style="background:linear-gradient(100deg,#eafaf0,#f4fdf8);border-color:#bfe9cf">
+     <span class="em">🏪</span><div><b>${L().shop_banner_t}</b><p style="color:#0d8a47">${L().shop_banner_p}</p></div></div>
+   <div class="cities" style="padding:0 0 12px;margin:0">${chips.map((c,i)=>`<button class="city ${shopCat===i?'on':''}" data-shopcat="${i}">${c}</button>`).join('')}</div>
+   ${rangeChipHtml()}
+   <div>${data.map(storeCard).join('')||`<div class="empty">—</div>`}</div>`;
+}
+function viewStore(){
+  const s=stores.find(x=>x.id===storeOpen);
+  const head=`<div class="detail-head">
+    <button class="back" id="sback">‹</button>
+    <div class="avatar" style="width:42px;height:42px;flex:0 0 42px;border-radius:12px;font-size:22px;background:#fff1e8">${s.emo}</div>
+    <div><div class="hn">${tx(s.nm)} <span class="dbadge">🤝 ${L().direct_badge}</span></div><div class="hs">⭐ ${s.rating} (${s.reviews}) · ${L().shop_cats[s.cat]}</div></div></div>`;
+  if(s.service){
+    page.innerHTML=head+`
+      <div class="storebanner">${s.emo}</div>
+      <div style="padding:16px 14px">
+        <div class="ipost" style="margin:0"><p class="iexc" style="-webkit-line-clamp:initial;font-size:13.5px">${tx(s.desc)}</p></div>
+        <div class="secure" style="border-radius:11px;margin-top:12px">🔒 ${L().chat_secure}</div>
+        <button class="bigbtn" id="sinq">💬 ${L().btn_inquire}</button>
+        <button class="gbtn line" id="spay" style="width:100%;margin-top:10px">📷 ${L().pay_info}</button>
+      </div>`;
+    return;
+  }
+  const count=Object.values(cart).reduce((a,b)=>a+b,0);
+  const total=s.menu.reduce((t,m)=>t+(cart[m.id]||0)*m.pr,0);
+  const rows=s.menu.map(m=>{
+    const q=cart[m.id]||0;
+    return `<div class="mrow2">
+      <div class="memo">${m.emo}</div>
+      <div class="mmid"><div class="mnm">${tx(m.nm)}</div><div class="mpr">฿${m.pr.toLocaleString()}</div></div>
+      <div class="stepper">
+        ${q>0?`<button class="stbtn" data-sub="${m.id}">−</button><span class="qn">${q}</span>`:''}
+        <button class="stbtn add" data-add="${m.id}">＋</button>
+      </div>
+    </div>`;
+  }).join('');
+  page.innerHTML=head+`
+    <div class="storebanner">${s.emo}</div>
+    <div style="padding:2px 14px 12px">
+      <div class="msec">${s.product?L().products_label:L().menu_label}</div>${rows}
+    </div>
+    ${count>0?`<div class="cartbar"><span class="cc">${count}</span><span>${L().cart}</span><span class="ct">${L().total} ฿${total.toLocaleString()}</span><button class="orderfab" id="doorder">${L().btn_order}</button></div>`:''}`;
+}
+
+/* ===================== chat ===================== */
+function viewChatList(){
+  page.innerHTML=`
+   <h2 class="sech">💬 ${L().sec_chats}</h2>
+   <div class="list">${chats.map((c,i)=>`
+     <div class="chatrow" data-chat="${i}">
+       <div class="avatar">${c.av}</div>
+       <div class="ci"><div class="cn">${tx(c.who)} <span class="chip">${tx(c.item)}</span></div><div class="lastmsg">${tx(c.last)}</div></div>
+       <div class="cr"><span class="tm">${tx(c.tm)}</span>${c.unread?`<span class="unread">${c.unread}</span>`:''}</div>
+     </div>`).join('')}</div>`;
+}
+function viewChatDetail(){
+  const c=chats[chatOpen];
+  const dst=c.dst||'selling';
+  const ctl=dst==='done'
+    ? `<span class="dbadge2 done">✓ ${L().d_done}</span><button class="dbtn rev" data-review>⭐ ${L().d_review}</button>`
+    : dst==='reserved'
+    ? `<span class="dbadge2 resv">${L().d_reserved}</span><button class="dbtn" data-dadvance>${L().d_to_done}</button>`
+    : `<button class="dbtn" data-dadvance>${L().d_to_reserved}</button>`;
+  page.innerHTML=`
+   <div class="detail-head">
+     <button class="back" id="back">‹</button>
+     <div class="avatar" style="width:38px;height:38px;flex:0 0 38px;font-size:18px">${c.av}</div>
+     <div style="flex:1"><div class="hn">${tx(c.who)}</div><div class="hs">📍 ${L()['city_'+c.city]}</div></div>
+     <button class="icon-btn" data-report style="font-size:21px">⋮</button>
+   </div>
+   <div class="secure">🔒 ${L().chat_secure}</div>
+   <div class="deal">
+     <div class="avatar" style="width:40px;height:40px;flex:0 0 40px;border-radius:10px;font-size:20px">🏷️</div>
+     <div style="flex:1;min-width:0"><div class="dn">${tx(c.item)}</div><div class="dp">${tx(c.price)}</div></div>
+     <div class="dealctl">${ctl}</div>
+   </div>
+   <div class="msgs">${c.msgs.map(m=>`<div class="bub ${m.me?'me':'them'}">${tx(m.tx)}</div>`).join('')}</div>
+   ${dst==='done'?`<div class="secure" style="background:#f1f2f4;color:var(--sub)">🔒 ${L().d_locked}</div>`:`<div class="inbar"><input placeholder="${L().input_ph}" id="cin"/><button class="send" id="csend">↑</button></div>`}`;
+  page.scrollTo(0,9999);
+}
+
+/* ===================== community (소식 + 모임) ===================== */
+function infoCard(p){
+  return `<div class="ipost">
+    <div class="imeta">${p.official?`<span class="otag">📢 ${L().official}</span>`:`<span class="itag">${L().info_cats[p.cat]}</span>`}<span class="idot">📍 ${tx(p.loc)} · ${tx(p.ago)}</span></div>
+    <h3 class="ititle">${tx(p.t)}</h3>
+    <p class="iexc">${tx(p.e)}</p>
+    <div class="ireact">
+      <button class="rb ${p.rHelp?'on':''}" data-react="${p.id}:helpful"><span>👍</span> ${L().r_help} <b>${p.help+(p.rHelp?1:0)}</b></button>
+      <button class="rb ${p.rSave?'on':''}" data-react="${p.id}:save"><span>🔖</span> ${L().r_save} <b>${p.save+(p.rSave?1:0)}</b></button>
+      <button class="rb ask"><span>💬</span> ${L().r_ask}</button>
+      <span class="iviews">👁 ${p.view.toLocaleString()}</span>
+    </div></div>`;
+}
+function infoInner(){
+  const cats=L().info_cats;
+  let data=byCity(info);
+  if(icat>0) data=data.filter(x=>x.cat===icat);
+  return `
+   <div class="vbanner" style="background:linear-gradient(100deg,#eaf2ff,#f6f9ff);border-color:#cfe0ff">
+     <span class="em">📰</span><div><b>${L().info_banner_t}</b><p style="color:#2f6df0">${L().info_banner_p}</p></div></div>
+   <div class="cities" style="padding:0 0 12px;margin:0">${cats.map((c,i)=>`<button class="city ${icat===i?'on':''}" data-icat="${i}">${c}</button>`).join('')}</div>
+   <div class="list">${data.map(infoCard).join('')||`<div class="empty">—</div>`}</div>`;
+}
+function clubsInner(){
+  const enter=lang==='ko'?'입장하기':lang==='en'?'Enter':'เข้า';
+  return byCity(clubs).map(c=>`
+     <div class="club" ${c.flag?'data-golf="1"':''} style="${c.flag?'cursor:pointer':''}">
+       <div class="banner" style="background:${c.grad}">${c.emo} ${tx(c.nm)}</div>
+       <div class="cbody2">
+         <div class="desc">${tx(c.d)}</div>
+         <div class="cfoot">
+           ${c.flag?`<span class="flag">★ ${L().flagship}</span>`:`<span>👥 ${c.members.toLocaleString()}${L().members}</span>`}
+           <button class="join" ${c.flag?'data-golf="1"':''}>${c.flag?enter:L().join}</button>
+         </div>
+       </div>
+     </div>`).join('');
+}
+function viewGolfHub(){
+  const g=gm();
+  const acts=[['⛳','book',0],['⚡','round',1],['🛍️','used',2],['🏆','award',3],['👥','club',4],['📊','handi',5]];
+  return `
+   <button class="gmback" data-golfback>‹ ${L().nav_community}</button>
+   <div class="gmhero">
+     <div class="gt">⛳ Golf Mate</div>
+     <div class="gp">★ ${g.partner}</div>
+     <div class="gs">${g.sub}</div>
+   </div>
+   <div class="gmlink">🔗 ${g.linked}</div>
+   <div class="gmacts">${acts.map(([e,k,i])=>`<div class="gmact" data-gmact="${k}"><div class="e">${e}</div><div class="l">${g.acts[i]}</div>${k==='handi'?`<div class="nb">${g.handi} 12</div>`:''}</div>`).join('')}</div>
+   <h2 class="sech">⚡ ${g.today}</h2>
+   <div>${GM_ROUNDS.map((r,i)=>`<div class="gmround">
+     <div><div class="rw">${tx(r.when)} · ${r.course}</div><div class="rc">📍 ${tx(r.from)} · ${r.cur}/${r.max}</div></div>
+     <div class="rs"><div class="seat">${r.max-r.cur} ${g.seats}</div><button class="jb" data-gmround="${i}">${g.join}</button></div>
+   </div>`).join('')}</div>
+   <h2 class="sech" style="margin-top:16px">🤝 ${g.partners}</h2>
+   <div class="gmpart">${GM_PARTNERS.map(p=>`<div class="gmpc"><span class="sb">${g.sponsor}</span><div class="pe">${p.emo}</div><div class="pn">${p.nm}</div><div class="pcat">${tx(p.cat)}</div></div>`).join('')}</div>
+   <div class="gmss"><span class="e">📊</span><div><b>${g.ssTitle}<span class="soon">SOON</span></b><p>${g.ssDesc}</p></div></div>
+   <a class="gmfull" href="${GM_URL}" target="_blank" rel="noopener">${g.openFull} ↗</a>`;
+}
+function viewCommunity(){
+  if(commSeg==='clubs'&&golfOpen){page.innerHTML=viewGolfHub();return;}
+  page.innerHTML=`
+   <div class="seg">
+     <button data-comm="info" class="${commSeg==='info'?'on':''}">📰 ${L().comm_info}</button>
+     <button data-comm="clubs" class="${commSeg==='clubs'?'on':''}">⛳ ${L().comm_clubs}</button>
+   </div>
+   ${commSeg==='info'?infoInner():clubsInner()}`;
+}
+
+/* ===================== me ===================== */
+function viewMe(){
+  page.innerHTML=`
+   <div class="profile">
+     <div class="pav">😀</div>
+     <div class="pname">${tx(L().me_name)}</div>
+     <div class="trust">🌡️ ${L().me_trust}</div>
+     <div style="margin-top:8px">${(city!=='all'&&hood)?`<span class="vbadge${verified?'':' no'}">📍 ${tx(hood)} · ${verified?'✓ '+L().v_done:L().v_none}</span>`:`<span class="vbadge no">📍 ${L().loc_all}</span>`}
+       ${authed?`<span class="acctbadge" style="${emailVerified?'color:var(--green);background:#eaf7ef':'color:var(--amber);background:#fdf3e0'}">${acctId?'🆔 '+acctId+' · ':''}${emailVerified?'✓ '+L().acct_verified:'✉️ '+L().acct_unverified}</span>`:`<span class="acctbadge" style="color:var(--sub);background:#eef0f3">👀 ${L().guest}</span>`}</div>
+     <div class="mannerbar"><i></i></div>
+     <div style="font-size:12px;color:var(--sub)">${L().me_sub}</div>
+   </div>
+   <div class="menu">
+     ${L().me_menu.map((m,i)=>`<div class="mrow"><span class="em">${["🧾","🏪","❤️","🌡️","🌐","📩"][i]}</span><span>${m}</span>
+       ${i===4?`<span class="multilang-note">한·EN·ไทย</span>`:''}<span class="ar">›</span></div>`).join('')}
+   </div>
+   <p style="text-align:center;font-size:11.5px;color:var(--sub);margin-top:16px;line-height:1.5">${L().lang_label}</p>`;
+}
+
+/* ===================== nav / fab / render ===================== */
+function renderNav(){
+  const items=[["shop","🏪","nav_shop"],["market","🛍️","nav_market"],["jobs","💼","nav_jobs"],["chat","💬","nav_chat"],["community","🏘️","nav_community"],["me","👤","nav_me"]];
+  navEl.innerHTML=items.map(([k,ic,key])=>`
+    <button data-tab="${k}" class="${tab===k?'on':''}">
+      <span class="ic">${ic}</span><span>${L()[key]}</span>
+      ${k==='chat'&&totalUnread?`<span class="ndot">${totalUnread}</span>`:''}
+    </button>`).join('');
+}
+function renderFab(){
+  const hide=(tab==='chat')||(tab==='me')||(tab==='shop'&&storeOpen)||(tab==='community'&&commSeg==='clubs')||(tab==='market'&&listingOpen);
+  if(hide){fab.style.display='none';return;}
+  fab.style.display='flex';
+  let lbl=L().fab_market;
+  if(tab==='shop')lbl=L().fab_shop; else if(tab==='jobs')lbl=L().fab_jobs; else if(tab==='community')lbl=L().fab_info;
+  fab.innerHTML=`✏️ ${lbl}`;
+}
+function render(){
+  if(screen==='gate'){
+    gateEl.style.display='flex'; topEl.style.display='none'; page.style.display='none'; fab.style.display='none'; navEl.style.display='none';
+    renderGate(); renderPicker(); renderPay(); renderGmGate(); renderVerify(); return;
+  }
+  gateEl.style.display='none'; topEl.style.display=''; page.style.display=''; navEl.style.display='';
+  renderTop(); renderNav(); renderFab();
+  if(tab==='shop') storeOpen?viewStore():viewShop();
+  else if(tab==='market') listingOpen?viewListingDetail():viewMarket();
+  else if(tab==='jobs') viewJobs();
+  else if(tab==='chat') chatOpen!==null?viewChatDetail():viewChatList();
+  else if(tab==='community') viewCommunity();
+  else if(tab==='me') viewMe();
+  renderPicker(); renderPay(); renderGmGate(); renderVerify(); renderWrite(); renderReport(); renderReview(); renderFsView();
+}
+
+/* ===================== events ===================== */
+document.addEventListener('click',e=>{
+  const lg=e.target.closest('[data-l]'); if(lg){lang=lg.dataset.l;render();return;}
+  /* gate */
+  const gt=e.target.closest('[data-gate]'); if(gt){const m=gt.dataset.gate;
+    if(m==='browse'){authed=false;emailVerified=false;screen='app';}else{gateMode=m;}
+    render();return;}
+  const gmo=e.target.closest('[data-gmode]'); if(gmo){gateMode=gmo.dataset.gmode;render();return;}
+  const aus=e.target.closest('[data-ausubmit]'); if(aus){
+    const idel=document.getElementById('auId'); acctId=(idel&&idel.value.trim())||"";
+    authed=true; emailVerified=(aus.dataset.ausubmit==='login'); gateMode='home'; screen='app'; render(); return;}
+  /* email verification */
+  if(e.target.closest('[data-verify]')){verifyOpen=true;verifySent=false;render();return;}
+  const vau=e.target.closest('[data-vauth]'); if(vau){verifyOpen=false;verifySent=false;screen='gate';gateMode=vau.dataset.vauth;render();return;}
+  if(e.target.closest('#vsend')){verifySent=true;render();return;}
+  if(e.target.closest('#vdone')){emailVerified=true;verifyOpen=false;verifySent=false;render();toast(L().v_done);return;}
+  if(e.target.closest('#vclose')||e.target.closest('#vclose2')){verifyOpen=false;verifySent=false;render();return;}
+  if(e.target.closest('[data-vfromgm]')){gmGateOpen=false;verifyOpen=true;verifySent=false;render();return;}
+  if(e.target.closest('[data-gmenter]')){const h=(document.getElementById('gmHandi')||{}).value||'';window.open(GM_URL+'/?sso=thaimate&handi='+encodeURIComponent(h),'_blank');return;}
+  /* 알림센터 · 검색 */
+  if(e.target.closest('[data-noti]')){NOTI.forEach(n=>n.unread=false);fsView='noti';render();return;}
+  if(e.target.closest('[data-search]')){fsView='search';searchQ='';render();return;}
+  if(e.target.closest('[data-fsback]')){fsView=null;render();return;}
+  const ng=e.target.closest('[data-notigo]'); if(ng){fsView=null;tab=ng.dataset.notigo;chatOpen=null;storeOpen=null;golfOpen=false;render();page.scrollTo(0,0);return;}
+  const sg=e.target.closest('[data-srchgo]'); if(sg){fsView=null;tab=sg.dataset.srchgo;chatOpen=null;storeOpen=null;golfOpen=false;render();page.scrollTo(0,0);return;}
+  /* 글쓰기 */
+  const wt=e.target.closest('[data-wtype]'); if(wt){writeType=+wt.dataset.wtype;renderWrite();return;}
+  if(e.target.closest('[data-wclose]')){writeOpen=false;render();return;}
+  if(e.target.closest('[data-wsubmit]')){
+    const subj=((document.getElementById('wSubject')||{}).value||'').trim();
+    const price=((document.getElementById('wPrice')||{}).value||'').trim();
+    const desc=((document.getElementById('wDesc')||{}).value||'').trim();
+    const rc=(city!=='all'?city:'bkk'), hid=hood?hood.id:null, locStr=hood?tx(hood):(L()['city_'+rc]||''), ago={ko:'방금 전',en:'just now',th:'เมื่อกี้'};
+    if(writeType<=2){const kind=['sell','buy','give'][writeType];
+      listings.unshift({id:'L'+Date.now(),kind,st:kind==='buy'?'match':'sale',emo:'🆕',city:rc,hoodId:hid,like:0,chats:0,live:true,
+        t:subj||L().w_subject, pr:kind==='give'?{ko:'무료나눔',en:'Free',th:'แจกฟรี'}:(price||{ko:'가격문의',en:'Ask',th:'สอบถาม'}), loc:locStr, desc:desc, ago});
+      tab='market'; mseg=kind; listingOpen=null;
+    }else if(writeType===6){
+      stores.unshift({id:'s'+Date.now(),cat:5,ad:false,emo:'🏪',city:rc,hoodId:hid,rating:5.0,reviews:0,service:true,
+        nm:subj||L().w_store, desc:desc||{ko:'새로 등록된 가게입니다. 채팅으로 문의주세요.',en:'Newly listed store.',th:'ร้านใหม่'}});
+      tab='shop'; shopCat=0;
+    }else if(writeType===3||writeType===4){const kind=writeType===3?'hire':'seek';
+      jobs.unshift({kind,city:rc,emo:'🆕',chats:0,live:true,t:subj||L().w_subject,pr:price||'-',loc:locStr,ago});
+      tab='jobs'; jseg=kind;
+    }else if(writeType===5){
+      info.unshift({id:'I'+Date.now(),official:false,cat:0,city:rc,help:0,save:0,view:0,t:subj||L().w_subject,e:desc||'',loc:locStr,ago});
+      tab='community'; commSeg='info'; golfOpen=false;
+    }
+    writeOpen=false; render(); page.scrollTo(0,0); toast(L().w_posted); return;
+  }
+  /* 채팅 거래확정 · 안전거래 */
+  if(e.target.closest('[data-dadvance]')){const c=chats[chatOpen];c.dst=(c.dst==='reserved')?'done':'reserved';render();return;}
+  if(e.target.closest('[data-report]')){reportOpen=true;render();return;}
+  if(e.target.closest('[data-repclose]')){reportOpen=false;render();return;}
+  if(e.target.closest('[data-repreason]')){reportOpen=false;render();toast(L().rep_done);return;}
+  if(e.target.closest('[data-block]')){reportOpen=false;chatOpen=null;tab='chat';render();toast(L().block_done);return;}
+  if(e.target.closest('[data-review]')){reviewOpen=true;render();return;}
+  if(e.target.closest('[data-rvclose]')){reviewOpen=false;render();return;}
+  const rvt=e.target.closest('[data-rvtoggle]'); if(rvt){rvt.classList.toggle('on');return;}
+  if(e.target.closest('[data-rvsubmit]')){reviewOpen=false;render();toast(L().rv_done);return;}
+  /* location picker */
+  if(e.target.closest('#loccard')||e.target.closest('#locpill')){locPickerOpen=true;pickRegion=(city!=='all'?city:'bkk');render();return;}
+  if(e.target.closest('#pscrim')||e.target.closest('#pclose')){locPickerOpen=false;render();return;}
+  const pr=e.target.closest('[data-pr]'); if(pr){pickRegion=pr.dataset.pr;render();return;}
+  const hd=e.target.closest('[data-hood]'); if(hd){city=pickRegion;hood=hoodById(hd.dataset.hood);verified=false;locPickerOpen=false;render();return;}
+  const rad=e.target.closest('[data-rad]'); if(rad){radiusKm=+rad.dataset.rad;render();return;}
+  if(e.target.closest('#gps')){
+    if(!navigator.geolocation){toast(L().gps_denied);return;}
+    toast(L().gps_locating);
+    navigator.geolocation.getCurrentPosition(
+      pos=>{const n=nearestHood(pos.coords.latitude,pos.coords.longitude);city=n.region;hood=n.h;verified=true;locPickerOpen=false;render();toast('📍 '+tx(hood)+L().v_suffix);},
+      ()=>{toast(L().gps_denied);},
+      {enableHighAccuracy:true,timeout:8000,maximumAge:0});
+    return;
+  }
+  if(e.target.closest('[data-pall]')){city='all';hood=null;verified=false;locPickerOpen=false;render();return;}
+  if(e.target.closest('.rangechip')){locPickerOpen=true;pickRegion=(city!=='all'?city:'bkk');render();return;}
+  const nv=e.target.closest('[data-tab]'); if(nv){tab=nv.dataset.tab;chatOpen=null;storeOpen=null;cart={};golfOpen=false;listingOpen=null;render();page.scrollTo(0,0);return;}
+  /* Golf Mate 연동 — 입장하기 → 공유계정 핸드오프 시트 */
+  if(e.target.closest('[data-golf]')){gmGateOpen=true;render();return;}
+  if(e.target.closest('#gmclose')||e.target.closest('#gmclose2')){gmGateOpen=false;render();return;}
+  const gau=e.target.closest('[data-gmauth]'); if(gau){authed=true;render();return;}
+  if(e.target.closest('[data-golfback]')){golfOpen=false;render();page.scrollTo(0,0);return;}
+  const ga=e.target.closest('[data-gmact]'); if(ga){const k=ga.dataset.gmact;
+    if(k==='used'){golfOpen=false;tab='market';mseg='sell';render();page.scrollTo(0,0);toast(lang==='ko'?'골프 장비는 ThaiMate 장터와 연동돼요':'Golf gear links to ThaiMate market');}
+    else if(k==='handi'){toast(gm().ssTitle);}
+    else{toast(gm().openFull+' →');}
+    return;}
+  const gr=e.target.closest('[data-gmround]'); if(gr){if(!canAct())return;toast(lang==='ko'?'라운딩 참여 신청 — 1:1 채팅으로 연결':'Round join request — opens 1:1 chat');return;}
+  const ms=e.target.closest('[data-mseg]'); if(ms){mseg=ms.dataset.mseg;viewMarket();return;}
+  const js=e.target.closest('[data-jseg]'); if(js){jseg=js.dataset.jseg;viewJobs();return;}
+  const cm=e.target.closest('[data-comm]'); if(cm){commSeg=cm.dataset.comm;golfOpen=false;renderFab();viewCommunity();return;}
+  const ic=e.target.closest('[data-icat]'); if(ic){icat=+ic.dataset.icat;viewCommunity();return;}
+  const sc=e.target.closest('[data-shopcat]'); if(sc){shopCat=+sc.dataset.shopcat;viewShop();return;}
+  const st=e.target.closest('[data-store]'); if(st){storeOpen=st.dataset.store;cart={};render();page.scrollTo(0,0);return;}
+  const add=e.target.closest('[data-add]'); if(add){cart[add.dataset.add]=(cart[add.dataset.add]||0)+1;viewStore();return;}
+  const sub=e.target.closest('[data-sub]'); if(sub){const k=sub.dataset.sub;cart[k]=(cart[k]||0)-1;if(cart[k]<=0)delete cart[k];viewStore();return;}
+  if(e.target.closest('#doorder')){if(!canAct())return;const s=stores.find(x=>x.id===storeOpen);payStore=storeOpen;payAmount=s.menu.reduce((t,m)=>t+(cart[m.id]||0)*m.pr,0);payOpen=true;render();return;}
+  if(e.target.closest('#spay')){payStore=storeOpen;payAmount=0;payOpen=true;render();return;}
+  if(e.target.closest('#payscrim')||e.target.closest('#payclose')){payOpen=false;render();return;}
+  if(e.target.closest('#paydone')){payOpen=false;cart={};storeOpen=null;tab='chat';chatOpen=null;render();toast(L().order_done);return;}
+  if(e.target.closest('#sback')){storeOpen=null;cart={};render();return;}
+  if(e.target.closest('#sinq')){storeOpen=null;tab='chat';chatOpen=null;render();return;}
+  const ask=e.target.closest('.rb.ask'); if(ask){if(!canAct())return;toast(L().reply_demo);return;}
+  const rx=e.target.closest('[data-react]'); if(rx){const [pid,ty]=rx.dataset.react.split(':');const p=info.find(x=>x.id===pid);if(p){if(ty==='helpful')p.rHelp=!p.rHelp;else p.rSave=!p.rSave;}viewCommunity();return;}
+  const rb=e.target.closest('.rb'); if(rb){rb.classList.toggle('on');return;}
+  const lk=e.target.closest('[data-like]'); if(lk){const it=listings.find(x=>x.id===lk.dataset.like);if(it)it.liked=!it.liked;render();return;}
+  if(e.target.closest('[data-ldback]')){listingOpen=null;render();page.scrollTo(0,0);return;}
+  const lch=e.target.closest('[data-lchat]'); if(lch){if(!canAct())return;listingOpen=null;tab='chat';chatOpen=0;chats[0].unread=0;render();return;}
+  const lo=e.target.closest('[data-listing]'); if(lo){listingOpen=lo.dataset.listing;render();page.scrollTo(0,0);return;}
+  const cr=e.target.closest('[data-chat]'); if(cr){chatOpen=+cr.dataset.chat;chats[chatOpen].unread=0;render();return;}
+  if(e.target.closest('#back')){chatOpen=null;render();return;}
+  if(e.target.closest('[data-matchchat]')){if(!canAct())return;tab='chat';chatOpen=2;chats[2].unread=0;render();return;}
+  if(e.target.closest('.abtn.chat')){if(!canAct())return;tab='chat';chatOpen=0;chats[0].unread=0;render();return;}
+  if(e.target.closest('#csend')){const i=document.getElementById('cin'); if(i&&i.value.trim()){chats[chatOpen].msgs.push({me:true,tx:i.value.trim()});render();page.scrollTo(0,9999);} return;}
+});
+fab.addEventListener('click',()=>{if(!canAct())return;writeType=(tab==='shop'?6:(tab==='jobs'?3:(tab==='community'?5:0)));writeOpen=true;render();});
+document.addEventListener('input',e=>{if(e.target.id==='searchInput'){searchQ=e.target.value;renderFsView();}});
+document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){chats[chatOpen].msgs.push({me:true,tx:v});render();page.scrollTo(0,9999);}}});
+
+render();
+</script>
+</body>
+</html>

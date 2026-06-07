@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ThaiMate Admin — 관리자 콘솔</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --ink:#1a1d22; --sub:#7b828c; --line:#e8eaee;
+    --pri:#ff7a33; --pri-soft:#fff1e8; --blue:#2f6df0; --green:#15a05a; --amber:#e3920b; --red:#e4453a;
+    --side:#1b1d22; --side-sub:#9aa0ab;
+    --shadow:0 1px 2px rgba(20,24,30,.05),0 6px 18px rgba(20,24,30,.05);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Apple SD Gothic Neo","Noto Sans KR","Segoe UI",system-ui,sans-serif}
+  .wrap{display:flex;min-height:100vh}
+  /* sidebar */
+  .side{width:218px;flex:0 0 218px;background:var(--side);color:#fff;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+  .brand{display:flex;align-items:center;gap:9px;padding:18px 18px 14px;font-weight:800;font-size:16px}
+  .brand .lg{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--pri),#ffa869);display:grid;place-items:center;font-weight:900;font-size:16px}
+  .brand small{display:block;font-size:10.5px;color:var(--side-sub);font-weight:600;margin-top:1px}
+  .nav{padding:8px 10px;display:flex;flex-direction:column;gap:2px;flex:1}
+  .nav button{display:flex;align-items:center;gap:11px;border:none;background:transparent;color:var(--side-sub);font-size:13.5px;font-weight:700;padding:11px 12px;border-radius:10px;cursor:pointer;text-align:left}
+  .nav button .ic{font-size:16px;width:18px;text-align:center}
+  .nav button:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav button.on{background:var(--pri);color:#fff}
+  .nav .badge-n{margin-left:auto;background:var(--red);color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 5px}
+  .side .foot{padding:14px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:11.5px;color:var(--side-sub)}
+  .side .foot a{color:#ffb98a;text-decoration:none;font-weight:700}
+  /* main */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{display:flex;align-items:center;gap:14px;padding:16px 24px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  .topbar h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.3px}
+  .topbar .date{font-size:12.5px;color:var(--sub);font-weight:600}
+  .topbar .sp{flex:1}
+  .topbar .live{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--green)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:p 1.6s infinite}
+  @keyframes p{0%{box-shadow:0 0 0 0 rgba(21,160,90,.5)}70%{box-shadow:0 0 0 7px rgba(21,160,90,0)}100%{box-shadow:0 0 0 0 rgba(21,160,90,0)}}
+  .av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--pri),#ffa869);color:#fff;display:grid;place-items:center;font-weight:800;font-size:15px}
+  .content{padding:22px 24px 40px}
+  /* kpi */
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:13px;margin-bottom:20px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 15px 16px;box-shadow:var(--shadow)}
+  .kpi .k-h{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--sub);font-weight:700}
+  .kpi .k-v{font-size:23px;font-weight:900;letter-spacing:-.5px;margin-top:9px}
+  .kpi .k-d{font-size:11.5px;font-weight:700;margin-top:5px}
+  .up{color:var(--green)} .down{color:var(--red)} .flat{color:var(--sub)}
+  /* panels */
+  .grid2{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;margin-bottom:16px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+  .panel .p-h{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .panel .p-h b{font-size:14px;font-weight:800}
+  .panel .p-h .more{margin-left:auto;font-size:12px;color:var(--pri);font-weight:700;cursor:pointer;border:none;background:none}
+  .p-body{padding:14px 16px}
+  /* bar chart */
+  .bars{display:flex;align-items:flex-end;gap:10px;height:150px;padding:6px 2px 0}
+  .bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;height:100%;justify-content:flex-end}
+  .bar .col{width:60%;max-width:34px;background:linear-gradient(180deg,#ffb588,var(--pri));border-radius:7px 7px 3px 3px}
+  .bar .col.hi{background:linear-gradient(180deg,#ff9a5e,#e95f12)}
+  .bar .lb{font-size:10.5px;color:var(--sub);font-weight:700}
+  .bar .vl{font-size:10.5px;color:var(--ink);font-weight:800}
+  /* region bars */
+  .rrow{display:flex;align-items:center;gap:10px;margin:11px 0}
+  .rrow .rn{width:60px;font-size:12.5px;font-weight:700}
+  .rrow .rt{flex:1;height:9px;border-radius:999px;background:#eef0f3;overflow:hidden}
+  .rrow .rt i{display:block;height:100%;border-radius:999px}
+  .rrow .rv{width:42px;text-align:right;font-size:12px;font-weight:800;color:var(--sub)}
+  /* feed */
+  .feed{display:flex;flex-direction:column}
+  .fitem{display:flex;gap:11px;align-items:flex-start;padding:11px 0;border-bottom:1px solid #f1f2f4}
+  .fitem:last-child{border-bottom:none}
+  .fic{width:30px;height:30px;flex:0 0 30px;border-radius:9px;display:grid;place-items:center;font-size:14px}
+  .fitem .ft{font-size:13px;line-height:1.4}
+  .fitem .fm{font-size:11px;color:var(--sub);margin-top:2px}
+  /* table */
+  .tbl{width:100%;border-collapse:collapse;font-size:13px}
+  .tbl th{text-align:left;font-size:11.5px;color:var(--sub);font-weight:700;padding:11px 14px;border-bottom:1px solid var(--line);white-space:nowrap;background:#fafbfc}
+  .tbl td{padding:12px 14px;border-bottom:1px solid #f1f2f4;white-space:nowrap}
+  .tbl tr:last-child td{border-bottom:none}
+  .tbl tr:hover td{background:#fcfcfd}
+  .tbl .mono{font-weight:800;color:#4b5563}
+  .badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;display:inline-block}
+  .b-green{background:#e7f7ee;color:var(--green)} .b-amber{background:#fdf3e0;color:var(--amber)}
+  .b-red{background:#fde9e7;color:var(--red)} .b-blue{background:#eaf2ff;color:var(--blue)} .b-gray{background:#eef0f3;color:var(--sub)}
+  .vchk{color:var(--green);font-weight:800}
+  .act{border:1px solid var(--line);background:#fff;border-radius:8px;font-size:11.5px;font-weight:700;color:#4b5563;padding:6px 10px;cursor:pointer;margin-right:5px}
+  .act.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+  .act.danger{color:var(--red);border-color:#f6c9c4}
+  .filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .filters button{border:1px solid var(--line);background:#fff;border-radius:999px;font-size:12.5px;font-weight:700;color:var(--sub);padding:8px 14px;cursor:pointer}
+  .filters button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .sec-sub{font-size:12.5px;color:var(--sub);margin:-6px 0 16px}
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1a1d22;color:#fff;font-size:13px;font-weight:600;padding:12px 18px;border-radius:11px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+  .toast.show{opacity:1}
+  /* analytics & monetization */
+  .phase{border:1.5px solid var(--line);border-radius:12px;padding:14px;background:#fafbfc}
+  .phase.cur{border-color:var(--pri);background:var(--pri-soft);box-shadow:0 6px 18px rgba(255,122,51,.12)}
+  .phase h4{margin:0;font-size:13.5px;font-weight:800}
+  .phase p{margin:6px 0 9px;font-size:11.5px;color:var(--sub);line-height:1.55}
+  .modesw{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px}
+  .modesw button{flex:1;min-width:130px;border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:13px 14px;cursor:pointer;text-align:left}
+  .modesw button.on{border-color:var(--pri);background:var(--pri-soft)}
+  .modesw .mt{font-size:13.5px;font-weight:800}
+  .modesw .md{font-size:11px;color:var(--sub);margin-top:3px}
+  .modesw button.on .md{color:#b9620f}
+  .rate{display:flex;align-items:center;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .rate .rl{font-size:12.5px;font-weight:700;color:var(--sub);margin-right:2px}
+  .rate .rc{border:1px solid var(--line);background:#fff;border-radius:9px;font-size:12.5px;font-weight:800;color:var(--sub);padding:8px 13px;cursor:pointer}
+  .rate .rc.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .prog{margin:13px 0}
+  .prog .ph{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-bottom:6px}
+  .prog .ph span.sub{color:var(--sub);font-weight:600}
+  .prog .pb{height:10px;border-radius:999px;background:#eef0f3;overflow:hidden}
+  .prog .pb i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#ffce9a,var(--pri))}
+  .prog .pb i.done{background:linear-gradient(90deg,#7fe0a8,var(--green))}
+  .tbl tfoot td{font-weight:800;background:#f7f8fa;border-top:2px solid var(--line);border-bottom:none}
+  .cmp{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+  .cmp .cc{border:1px solid var(--line);border-radius:12px;padding:13px;text-align:center}
+  .cmp .cc.on{border-color:var(--pri);background:var(--pri-soft)}
+  .cmp .cl{font-size:12px;color:var(--sub);font-weight:700}
+  .cmp .cv{font-size:18px;font-weight:900;margin-top:6px;letter-spacing:-.4px}
+  /* modal (invoice) */
+  .modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:24px}
+  .modal.show{display:flex}
+  .mscrim{position:absolute;inset:0;background:rgba(18,20,24,.5)}
+  .msheet{position:relative;background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .mclose{position:absolute;right:14px;top:14px;border:none;background:#f0f1f4;width:32px;height:32px;border-radius:9px;font-size:16px;cursor:pointer;z-index:2}
+  /* cohort heatmap */
+  .cohort{border-collapse:separate;border-spacing:4px;font-size:12.5px;min-width:540px}
+  .cohort th{font-size:11px;color:var(--sub);font-weight:700;padding:6px 4px}
+  .cohort td{text-align:center;padding:11px 6px;border-radius:8px;font-weight:800;min-width:54px}
+  .cohort td.lbl{text-align:left;background:#fafbfc;color:var(--ink);font-weight:700;white-space:nowrap}
+  /* funnel */
+  .funnel .fn{display:flex;align-items:center;gap:12px;margin:9px 0}
+  .funnel .fn .fl{width:118px;font-size:12.5px;font-weight:700}
+  .funnel .fn .fbar{height:30px;border-radius:8px;background:linear-gradient(90deg,#e95f12,#ffb588);display:flex;align-items:center;padding:0 11px;color:#fff;font-weight:800;font-size:12px;min-width:60px}
+  .funnel .fn .fv{width:64px;text-align:right;font-size:12px;color:var(--green);font-weight:800}
+  @media(max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}.grid2{grid-template-columns:1fr}.cmp{grid-template-columns:repeat(2,1fr)}.side{width:64px;flex-basis:64px}.brand span.tx,.nav button span.lbl,.side .foot{display:none}.nav button{justify-content:center}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <aside class="side">
+    <div class="brand"><span class="lg">M</span><span class="tx">ThaiMate<small>Admin Console</small></span></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="foot">운영자: <b style="color:#fff">서방님</b><br><a href="index.html">← 사용자 앱으로</a></div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div><h1 id="secTitle">대시보드</h1><div class="date" id="secDate"></div></div>
+      <div class="sp"></div>
+      <span class="live"><span class="dot"></span>실시간 412명 접속</span>
+      <button class="act" onclick="toast('새로고침했습니다')">↻ 새로고침</button>
+      <div class="av">서</div>
+    </div>
+    <div class="content" id="content"></div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="mscrim" onclick="hideModal()"></div><div class="msheet"><button class="mclose" onclick="hideModal()">✕</button><div class="mbody"></div></div></div>
+
+<script>
+/* ============ data ============ */
+const NAV=[
+ ['dash','📊','대시보드',0],['rev','📈','분석·수익화',0],['settle','🧾','정산·인보이스',0],['cohort','🔁','코호트·리텐션',0],
+ ['orders','🛒','주문 관리',0],['bookings','📅','예약 관리',0],['deals','🤝','직거래 모니터링',1],
+ ['biz','🏪','업체·광고',1],['ads','📢','광고 상품',0],['members','👥','회원 관리',0],['tickets','📩','문의·신고',6]
+];
+/* 업체별 월간 거래 데이터 — 향후 수수료/광고료 산정의 기반 (체계적 분석의 원천) */
+const MERCH=[
+ {n:'한인 여행사',cat:'기타업종',rg:'방콕',gmv:940000,ord:64,ad:1800},
+ {n:'한국마트 방콕',cat:'마트·식자재',rg:'방콕',gmv:620000,ord:388,ad:2000},
+ {n:'서울식당',cat:'식당',rg:'방콕',gmv:285000,ord:412,ad:1500},
+ {n:'한인 헤어샵',cat:'뷰티·헬스',rg:'방콕',gmv:145000,ord:96,ad:0},
+ {n:'K-베이커리',cat:'카페·베이커리',rg:'치앙마이',gmv:98000,ord:540,ad:0},
+ {n:'사바이 청소·이사',cat:'생활서비스',rg:'파타야',gmv:88000,ord:48,ad:0},
+ {n:'방콕 분식집',cat:'식당',rg:'방콕',gmv:72000,ord:410,ad:0}
+];
+const AD_PERF=[
+ ['한국마트 방콕','42,800','1,920','4.5%','฿2,000','주문 388','ROAS 31x'],
+ ['한인 여행사','31,200','1,040','3.3%','฿1,800','문의 64','ROAS 52x'],
+ ['서울식당','28,500','1,610','5.6%','฿1,500','주문 412','ROAS 19x']
+];
+/* 무료→유료 전환 판단 지표 (현재 / 목표) */
+const GROWTH=[
+ {n:'등록 업체수',cur:32,tgt:100,unit:'개',ph:'2단계 트리거'},
+ {n:'MAU(월 활성)',cur:2740,tgt:5000,unit:'명',ph:'2단계 트리거'},
+ {n:'월 GMV(거래액)',cur:2248000,tgt:5000000,unit:'฿',ph:'3단계 트리거'}
+];
+/* 정산: 3% 수수료 + 광고비, VAT 7% (2026-05 정산분) */
+const SET_RATE=3;
+const SETTLE=MERCH.map((m,i)=>{const comm=Math.round(m.gmv*SET_RATE/100);const sub=comm+m.ad;const vat=Math.round(sub*0.07);const st=['수납완료','수납완료','발행','수납완료','미발행','발행','미발행'][i];return {no:'INV-2605-'+(101+i),month:'2026-05',m,comm,ad:m.ad,sub,vat,total:sub+vat,st};});
+/* 광고 상품 */
+const AD_PRODUCTS=[
+ {n:'홈 메인 배너',loc:'홈 상단 롤링 배너',price:5000,unit:'주',sold:2,cap:3},
+ {n:'카테고리 상단노출',loc:'분류 검색결과 최상단',price:2000,unit:'주',sold:5,cap:8},
+ {n:'검색 상위노출',loc:'키워드 검색결과 상단',price:1200,unit:'주',sold:7,cap:'∞'},
+ {n:'구해요 매칭광고',loc:'관련 구해요글 하단',price:800,unit:'주',sold:4,cap:'∞'},
+ {n:'동네 타겟 푸시',loc:'특정 동네 사용자 푸시',price:1500,unit:'회',sold:3,cap:'-'}
+];
+const AD_CAMP=[
+ ['한국마트 방콕','카테고리 상단노출','05/01~05/31','฿2,000','집행중'],
+ ['한인 여행사','홈 메인 배너','05/08~05/14','฿5,000','집행중'],
+ ['서울식당','검색 상위노출','05/01~05/21','฿1,200','집행중'],
+ ['한인 헤어샵','동네 타겟 푸시','05/10 (1회)','฿1,500','완료']
+];
+/* 코호트·리텐션 */
+const COHORT=[
+ {m:'2026-01',size:380,ret:[100,52,44,39,35]},
+ {m:'2026-02',size:520,ret:[100,55,47,41,null]},
+ {m:'2026-03',size:610,ret:[100,58,49,null,null]},
+ {m:'2026-04',size:740,ret:[100,61,null,null,null]},
+ {m:'2026-05',size:490,ret:[100,null,null,null,null]}
+];
+const HOOD_RET=[['통러',48],['님만해민',45],['아속',42],['프롬퐁',40],['온누트',33],['조무티엔',29]];
+const FUNNEL=[['방문(순방문)',18200,''],['가입',2740,'15.1%'],['동네 인증',1980,'72.3%'],['첫 거래',1240,'62.6%'],['재거래(2회+)',1010,'81.5%']];
+const KPI=[
+ {h:'오늘 거래액(GMV)',v:'฿84,200',d:'▲ 12% vs 어제',c:'up',i:'💰'},
+ {h:'주문',v:'37건',d:'결제완료 31 · 대기 4',c:'flat',i:'🧾'},
+ {h:'예약',v:'14건',d:'확정 9 · 대기 5',c:'flat',i:'📅'},
+ {h:'신규가입',v:'23명',d:'▲ 동네인증 18',c:'up',i:'🌱'},
+ {h:'활성 사용자',v:'412',d:'▲ 8% 오늘',c:'up',i:'🟢'},
+ {h:'미처리',v:'6건',d:'문의 4 · 신고 2',c:'down',i:'⚠️'}
+];
+const WEEK=[{d:'월',v:42},{d:'화',v:55},{d:'수',v:48},{d:'목',v:63},{d:'금',v:70},{d:'토',v:58},{d:'오늘',v:84,hi:1}];
+const REGION=[{n:'방콕',v:62,c:'#2f6df0'},{n:'치앙마이',v:24,c:'#15a05a'},{n:'파타야',v:14,c:'#e3920b'}];
+const FEED=[
+ {t:'12:31',ty:'order',ic:'🧾',bg:'#eaf2ff',tx:'<b>서울식당</b> 신규 주문 ฿690',m:'고객 김민수 · 통러 · 직거래(PromptPay)'},
+ {t:'12:28',ty:'match',ic:'⚡',bg:'#fff1e8',tx:"통러 '골프채 구해요' ↔ <b>이지은</b> 매칭 성사",m:'예산 ฿15,000 · 1:1 채팅 시작'},
+ {t:'12:20',ty:'ad',ic:'📢',bg:'#fdf3e0',tx:'<b>한인 여행사</b> 광고비 결제 ฿1,800',m:'기타업종 · 아속 · 상단노출 7일'},
+ {t:'12:18',ty:'order',ic:'🧾',bg:'#eaf2ff',tx:'<b>한국마트 방콕</b> 주문 ฿1,260',m:'고객 이서연 · 프롬퐁 · 배달'},
+ {t:'12:05',ty:'report',ic:'🚨',bg:'#fde9e7',tx:'중고 노트북 거래 <b>신고 접수</b>',m:'대상 unknown_88 · 사기 의심 · 검토 필요'},
+ {t:'11:58',ty:'booking',ic:'📅',bg:'#e7f7ee',tx:'<b>한인 헤어샵</b> 예약 확정 15:00',m:'고객 정다은 · 통러'},
+ {t:'11:45',ty:'signup',ic:'🌱',bg:'#e7f7ee',tx:'신규가입 <b>정민아</b>',m:'라차다 · GPS 동네인증 완료'}
+];
+const ORDERS=[
+ ['#10472','서울식당','식당','김민수','통러','฿690','완료','조리중','12:31'],
+ ['#10471','한국마트 방콕','마트','이서연','프롬퐁','฿1,260','완료','배달중','12:18'],
+ ['#10470','K-베이커리','카페','Nattha','님만','฿200','대기','결제대기','12:05'],
+ ['#10469','방콕 분식집','식당','박지훈','아속','฿310','완료','완료','11:52'],
+ ['#10468','서울식당','식당','Somchai','통러','฿450','완료','완료','11:40'],
+ ['#10467','한국마트 방콕','마트','최유나','라마9','฿980','취소','취소','11:22']
+];
+const BOOKINGS=[
+ ['B-238','한인 헤어샵','뷰티·헬스','정다은','오늘 15:00','확정'],
+ ['B-237','한인 여행사','기타업종','오세훈','05/14 골프투어','대기'],
+ ['B-236','사바이 청소·이사','생활서비스','한지민','05/12 이사','확정'],
+ ['B-235','한인 헤어샵','뷰티·헬스','Wanida','오늘 17:30','대기']
+];
+const DEALS=[
+ ['D-9921','장터','아이폰 15 프로','김교민','이준호','님만','거래중',false],
+ ['D-9920','나눔','아이 옷 무료나눔','박서윤','정민아','온누트','완료',false],
+ ['D-9919','장터','골프채 아이언(매칭)','이지은','김교민','통러','매칭',false],
+ ['D-9918','구인','한식당 홀서버','서울식당','지원자 3명','수쿰빗','진행',false],
+ ['D-9917','장터','중고 노트북','unknown_88','최민','방나','신고',true]
+];
+const BIZ=[
+ ['서울식당','식당','통러','노출중','฿1,500','4.8','정상'],
+ ['한국마트 방콕','마트·식자재','프롬퐁','노출중','฿2,000','4.7','정상'],
+ ['한인 여행사','기타업종','아속','노출중','฿1,800','4.7','정상'],
+ ['K-베이커리','카페·베이커리','님만','-','-','4.9','정상'],
+ ['방콕 분식집','식당','아속','-','-','4.6','정상'],
+ ['한인 헤어샵','뷰티·헬스','통러','-','-','4.8','정상'],
+ ['사바이 청소·이사','생활서비스','조무티엔','승인대기','-','4.5','심사중']
+];
+const MEMBERS=[
+ ['김교민','통러',true,'36.5°C','27','0','정상'],
+ ['이지은','통러',true,'37.2°C','14','0','정상'],
+ ['Somchai','님만',false,'36.5°C','5','0','정상'],
+ ['박서윤','온누트',true,'38.1°C','33','0','정상'],
+ ['unknown_88','방나',false,'33.0°C','2','3','정지검토'],
+ ['정민아','라차다',true,'36.8°C','9','0','정상']
+];
+const TICKETS=[
+ ['T-501','문의','김교민','동네 인증이 안 돼요 (GPS 오류)','미처리','10분 전'],
+ ['T-500','신고','최민','중고 노트북 거래 사기 의심 (unknown_88)','처리중','32분 전'],
+ ['R-233','신고','정다은','광고 도배 게시글 신고','미처리','1시간 전'],
+ ['T-499','문의','오세훈','골프투어 예약 변경 가능한가요?','답변완료','2시간 전'],
+ ['T-498','문의','Wanida','결제 QR이 안 떠요','답변완료','3시간 전']
+];
+
+/* ============ helpers ============ */
+const $=id=>document.getElementById(id);
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(window._t);window._t=setTimeout(()=>t.classList.remove('show'),1800);}
+function badge(s){
+  const map={'완료':'green','확정':'green','노출중':'green','정상':'green','답변완료':'green','수납완료':'green','판매중':'green',
+    '대기':'amber','결제대기':'amber','심사중':'amber','승인대기':'amber','미처리':'amber','발행':'amber','마감임박':'amber',
+    '취소':'red','신고':'red','정지검토':'red','매진':'red',
+    '조리중':'blue','배달중':'blue','거래중':'blue','진행':'blue','매칭':'blue','처리중':'blue','집행중':'blue','문의':'gray','미발행':'gray','나눔':'green','장터':'blue','구인':'amber'};
+  return `<span class="badge b-${map[s]||'gray'}">${s}</span>`;
+}
+function table(head,rows){
+  return `<div class="panel"><div class="scroll"><table class="tbl"><thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+/* ============ sections ============ */
+function secDash(){
+  const mx=Math.max(...WEEK.map(w=>w.v));
+  return `
+   <div class="kpis">${KPI.map(k=>`
+     <div class="kpi"><div class="k-h">${k.i} ${k.h}</div><div class="k-v">${k.v}</div><div class="k-d ${k.c}">${k.d}</div></div>`).join('')}</div>
+   <div class="grid2">
+     <div class="panel">
+       <div class="p-h"><b>주간 거래액 추이</b><span style="font-size:11.5px;color:var(--sub)">단위: 천฿</span></div>
+       <div class="p-body"><div class="bars">${WEEK.map(w=>`
+         <div class="bar"><span class="vl">${w.v}</span><div class="col ${w.hi?'hi':''}" style="height:${Math.round(w.v/mx*100)}%"></div><span class="lb">${w.d}</span></div>`).join('')}</div></div>
+     </div>
+     <div class="panel">
+       <div class="p-h"><b>지역별 활동 분포</b></div>
+       <div class="p-body">${REGION.map(r=>`
+         <div class="rrow"><span class="rn">${r.n}</span><span class="rt"><i style="width:${r.v}%;background:${r.c}"></i></span><span class="rv">${r.v}%</span></div>`).join('')}
+         <div style="font-size:11.5px;color:var(--sub);margin-top:10px;line-height:1.5">동네 단위 매칭이 활발한 순: 통러 · 아속 · 님만 · 프롬퐁</div></div>
+     </div>
+   </div>
+   <div class="panel">
+     <div class="p-h"><b>⚡ 실시간 활동</b><button class="more" onclick="toast('전체 로그는 프로토타입에선 생략')">전체 보기</button></div>
+     <div class="p-body"><div class="feed">${FEED.map(f=>`
+       <div class="fitem"><div class="fic" style="background:${f.bg}">${f.ic}</div><div><div class="ft">${f.tx}</div><div class="fm">${f.t} · ${f.m}</div></div></div>`).join('')}</div></div>
+   </div>`;
+}
+function secOrders(){
+  return `<p class="sec-sub">앱 내 주문(식당·마트)은 <b>직거래(PromptPay)</b>로 처리됩니다. 결제는 업체-고객 간 직접, 운영자는 상태만 모니터링합니다.</p>
+   ${table(['주문번호','업체','분류','고객','동네','금액','결제','상태','시간','관리'],
+     ORDERS.map(o=>`<tr><td class="mono">${o[0]}</td><td><b>${o[1]}</b></td><td>${o[2]}</td><td>${o[3]}</td><td>📍${o[4]}</td><td class="mono">${o[5]}</td><td>${badge(o[6])}</td><td>${badge(o[7])}</td><td style="color:var(--sub)">${o[8]}</td>
+       <td><button class="act" onclick="toast('${o[0]} 상세')">상세</button><button class="act danger" onclick="toast('${o[0]} 취소 처리')">취소</button></td></tr>`).join(''))}`;
+}
+function secBookings(){
+  return `<p class="sec-sub">뷰티·서비스·여행사 등 <b>예약</b> 현황입니다. 예약 확정/취소는 업체가 1:1 채팅으로 진행하며, 운영자는 노쇼·분쟁만 개입합니다.</p>
+   ${table(['예약번호','업체','분류','고객','일시·내용','상태','관리'],
+     BOOKINGS.map(b=>`<tr><td class="mono">${b[0]}</td><td><b>${b[1]}</b></td><td>${b[2]}</td><td>${b[3]}</td><td>${b[4]}</td><td>${badge(b[5])}</td>
+       <td><button class="act pri" onclick="toast('${b[0]} 확정')">확정</button><button class="act danger" onclick="toast('${b[0]} 취소')">취소</button></td></tr>`).join(''))}`;
+}
+function secDeals(){
+  return `<p class="sec-sub">장터·나눔·구인 등 <b>개인 간 직거래</b> 모니터링. 모든 대화는 1:1 비공개이며, 운영자는 메타데이터(신고·상태)만 봅니다.</p>
+   <div class="filters"><button class="on">전체</button><button onclick="toast('필터: 장터')">장터</button><button onclick="toast('필터: 나눔')">나눔</button><button onclick="toast('필터: 구인')">구인</button><button onclick="toast('필터: 신고')">🚨 신고</button></div>
+   ${table(['거래ID','유형','대상','판매/등록','구매/지원','동네','상태','관리'],
+     DEALS.map(d=>`<tr style="${d[7]?'background:#fff7f6':''}"><td class="mono">${d[0]}</td><td>${badge(d[1])}</td><td><b>${d[2]}</b></td><td>${d[3]}</td><td>${d[4]}</td><td>📍${d[5]}</td><td>${badge(d[6])}</td>
+       <td>${d[7]?`<button class="act danger" onclick="toast('${d[0]} 거래중지·조치')">조치</button>`:`<button class="act" onclick="toast('${d[0]} 상세')">상세</button>`}</td></tr>`).join(''))}`;
+}
+function secBiz(){
+  return `<p class="sec-sub">교민 업체 등록·광고 관리. <b>광고비(상단노출)</b>가 주 수익원입니다. 신규 업체는 승인 후 노출됩니다.</p>
+   ${table(['업체명','분류','동네','광고상태','광고비/월','평점','상태','관리'],
+     BIZ.map(b=>`<tr><td><b>${b[0]}</b></td><td>${b[1]}</td><td>📍${b[2]}</td><td>${b[3]==='-'?'<span style="color:var(--sub)">미광고</span>':badge(b[3])}</td><td class="mono">${b[4]}</td><td>⭐${b[5]}</td><td>${badge(b[6])}</td>
+       <td>${b[6]==='심사중'?`<button class="act pri" onclick="toast('${b[0]} 승인')">승인</button>`:`<button class="act" onclick="toast('${b[0]} 관리')">관리</button>`}<button class="act danger" onclick="toast('${b[0]} 노출중지')">중지</button></td></tr>`).join(''))}`;
+}
+function secMembers(){
+  return `<p class="sec-sub">회원 관리. <b>매너온도·동네인증·신고이력</b>으로 신뢰도를 관리합니다.</p>
+   ${table(['닉네임','동네','동네인증','매너온도','거래','신고','상태','관리'],
+     MEMBERS.map(m=>`<tr style="${m[6]==='정지검토'?'background:#fff7f6':''}"><td><b>${m[0]}</b></td><td>📍${m[1]}</td><td>${m[2]?'<span class="vchk">✓ 인증</span>':'<span style="color:var(--sub)">미인증</span>'}</td><td>🌡️ ${m[3]}</td><td>${m[4]}회</td><td>${+m[5]>0?`<span style="color:var(--red);font-weight:800">${m[5]}</span>`:'0'}</td><td>${badge(m[6])}</td>
+       <td>${m[6]==='정지검토'?`<button class="act danger" onclick="toast('${m[0]} 정지')">정지</button>`:`<button class="act" onclick="toast('${m[0]} 상세')">상세</button>`}</td></tr>`).join(''))}`;
+}
+function secTickets(){
+  return `<p class="sec-sub">앱의 <b>‘관리자에게 문의’</b> 및 신고 접수함. 미처리 항목을 우선 처리하세요.</p>
+   <div class="filters"><button class="on">전체</button><button onclick="toast('필터: 미처리')">미처리</button><button onclick="toast('필터: 문의')">문의</button><button onclick="toast('필터: 신고')">신고</button></div>
+   ${table(['번호','유형','보낸이','내용','상태','시간','관리'],
+     TICKETS.map(t=>`<tr style="${t[4]==='미처리'?'background:#fffdf6':''}"><td class="mono">${t[0]}</td><td>${badge(t[1])}</td><td>${t[2]}</td><td>${t[3]}</td><td>${badge(t[4])}</td><td style="color:var(--sub)">${t[5]}</td>
+       <td><button class="act pri" onclick="toast('${t[0]} 답변하기')">답변</button><button class="act" onclick="toast('${t[0]} 처리완료')">완료</button></td></tr>`).join(''))}`;
+}
+
+/* ===== 분석·수익화 ===== */
+let monMode='free', commRate=3;
+function setMon(m){monMode=m;render();}
+function setRate(r){commRate=r;render();}
+function fmt(n){return '฿'+Math.round(n).toLocaleString();}
+function feeOf(m){
+  if(monMode==='free') return 0;
+  if(monMode==='ad') return m.ad;
+  if(monMode==='comm') return m.gmv*commRate/100;
+  return m.ad + m.gmv*commRate/100;
+}
+function secAnalytics(){
+  const totalGMV=MERCH.reduce((s,m)=>s+m.gmv,0);
+  const totalOrd=MERCH.reduce((s,m)=>s+m.ord,0);
+  const rev=MERCH.reduce((s,m)=>s+feeOf(m),0);
+  const take=totalGMV?(rev/totalGMV*100):0;
+  const revAd=MERCH.reduce((s,m)=>s+m.ad,0);
+  const revComm=MERCH.reduce((s,m)=>s+m.gmv*commRate/100,0);
+  const revHyb=revAd+revComm;
+  const showRate=(monMode==='comm'||monMode==='hybrid');
+  const cat={},reg={}; MERCH.forEach(m=>{cat[m.cat]=(cat[m.cat]||0)+m.gmv;reg[m.rg]=(reg[m.rg]||0)+m.gmv;});
+  const catArr=Object.entries(cat).sort((a,b)=>b[1]-a[1]), regArr=Object.entries(reg).sort((a,b)=>b[1]-a[1]);
+  const catMax=Math.max(...catArr.map(c=>c[1])), regMax=Math.max(...regArr.map(r=>r[1]));
+  const modeName={free:'무료',ad:'광고료',comm:'매출 수수료',hybrid:'하이브리드'}[monMode];
+  return `
+   <p class="sec-sub">지금은 <b>전면 무료</b> 단계예요. 핵심은 <b>업체별 거래액(GMV)을 지금부터 체계적으로 쌓는 것</b> — 그래야 나중에 수수료율만 넣으면 수익이 바로 산출됩니다. 아래에서 모델·요율을 바꿔 수익을 시뮬레이션해 보세요.</p>
+
+   <div class="panel" style="margin-bottom:18px">
+     <div class="p-h"><b>📈 수익화 로드맵</b><span style="font-size:11.5px;color:var(--sub)">현재 1단계 · 무료 운영</span></div>
+     <div class="p-body" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+       <div class="phase cur"><h4>1단계 · 무료</h4><p>등록·운영 전면 무료. 업체·사용자 확보에 집중.</p><span class="badge b-green">진행중</span></div>
+       <div class="phase"><h4>2단계 · 광고료</h4><p>상단노출·배너 정액 광고. 트리거: 업체 100+ / MAU 5,000+.</p><span class="badge b-gray">대기</span></div>
+       <div class="phase"><h4>3단계 · 매출 수수료</h4><p>거래액 비례 2~3% 수수료. 트리거: 월 GMV ฿5M+ · 결제데이터 안정화.</p><span class="badge b-gray">대기</span></div>
+     </div>
+   </div>
+
+   <div class="panel" style="margin-bottom:18px"><div class="p-h"><b>💡 수익화 시뮬레이터</b><span style="font-size:11.5px;color:var(--sub)">모델·요율을 바꾸면 전체가 실시간 재계산</span></div>
+   <div class="p-body">
+     <div class="modesw">
+       <button class="${monMode==='free'?'on':''}" onclick="setMon('free')"><div class="mt">무료</div><div class="md">수익 ฿0 · 성장 우선</div></button>
+       <button class="${monMode==='ad'?'on':''}" onclick="setMon('ad')"><div class="mt">광고료(정액)</div><div class="md">상단노출 월정액</div></button>
+       <button class="${monMode==='comm'?'on':''}" onclick="setMon('comm')"><div class="mt">매출 수수료(%)</div><div class="md">거래액 비례</div></button>
+       <button class="${monMode==='hybrid'?'on':''}" onclick="setMon('hybrid')"><div class="mt">하이브리드</div><div class="md">광고료 + 수수료</div></button>
+     </div>
+     ${showRate?`<div class="rate"><span class="rl">수수료율</span>${[1,2,3,5,7].map(r=>`<button class="rc ${commRate===r?'on':''}" onclick="setRate(${r})">${r}%</button>`).join('')}</div>`:''}
+     <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:4px">
+       <div class="kpi"><div class="k-h">💳 월 총 거래액(GMV)</div><div class="k-v">${fmt(totalGMV)}</div><div class="k-d flat">주문·예약 ${totalOrd.toLocaleString()}건</div></div>
+       <div class="kpi"><div class="k-h">🏦 플랫폼 월 수익</div><div class="k-v" style="color:var(--pri)">${fmt(rev)}</div><div class="k-d ${rev>0?'up':'flat'}">현재 모델: ${modeName}</div></div>
+       <div class="kpi"><div class="k-h">📐 Take Rate</div><div class="k-v">${take.toFixed(2)}%</div><div class="k-d flat">수익 ÷ 거래액</div></div>
+       <div class="kpi"><div class="k-h">🗓️ 예상 연 수익(ARR)</div><div class="k-v">${fmt(rev*12)}</div><div class="k-d flat">월 수익 × 12</div></div>
+     </div>
+     <div style="font-size:12px;font-weight:700;color:var(--sub);margin:16px 2px 9px">모델별 월 수익 비교 ${showRate?`(수수료 ${commRate}% 기준)`:''}</div>
+     <div class="cmp">
+       <div class="cc ${monMode==='free'?'on':''}"><div class="cl">무료</div><div class="cv">฿0</div></div>
+       <div class="cc ${monMode==='ad'?'on':''}"><div class="cl">광고료(정액)</div><div class="cv">${fmt(revAd)}</div></div>
+       <div class="cc ${monMode==='comm'?'on':''}"><div class="cl">수수료 ${commRate}%</div><div class="cv">${fmt(revComm)}</div></div>
+       <div class="cc ${monMode==='hybrid'?'on':''}"><div class="cl">하이브리드</div><div class="cv">${fmt(revHyb)}</div></div>
+     </div>
+   </div></div>
+
+   <div class="panel" style="margin-bottom:18px"><div class="p-h"><b>🏪 업체별 거래·수수료 분석</b><span style="font-size:11.5px;color:var(--sub)">GMV 순 · 현재 모델(${modeName}) 기준 산정</span></div>
+   <div class="scroll"><table class="tbl"><thead><tr><th>업체</th><th>분류</th><th>지역</th><th>월 GMV</th><th>거래수</th><th>객단가(AOV)</th><th>광고비</th><th>산정 수수료</th><th>월 부담합계</th></tr></thead>
+   <tbody>${MERCH.map(m=>{const comm=monMode==='comm'||monMode==='hybrid'?m.gmv*commRate/100:0;const adv=monMode==='ad'||monMode==='hybrid'?m.ad:0;const tot=feeOf(m);return `<tr>
+     <td><b>${m.n}</b></td><td>${m.cat}</td><td>📍${m.rg}</td><td class="mono">${fmt(m.gmv)}</td><td>${m.ord.toLocaleString()}</td><td class="mono">${fmt(m.gmv/m.ord)}</td>
+     <td>${adv>0?fmt(adv):'<span style="color:var(--sub)">—</span>'}</td><td>${comm>0?fmt(comm):'<span style="color:var(--sub)">—</span>'}</td>
+     <td><b style="color:${tot>0?'var(--pri)':'var(--sub)'}">${tot>0?fmt(tot):'무료'}</b></td></tr>`;}).join('')}</tbody>
+   <tfoot><tr><td>합계 ${MERCH.length}개 업체</td><td></td><td></td><td class="mono">${fmt(totalGMV)}</td><td>${totalOrd.toLocaleString()}</td><td></td><td>${fmt(revAd*(monMode==='ad'||monMode==='hybrid'?1:0))}</td><td>${fmt(monMode==='comm'||monMode==='hybrid'?revComm:0)}</td><td style="color:var(--pri)">${fmt(rev)}</td></tr></tfoot>
+   </table></div></div>
+
+   <div class="grid2">
+     <div class="panel"><div class="p-h"><b>분류별 거래액(GMV)</b></div><div class="p-body">${catArr.map(([k,v])=>`
+       <div class="rrow"><span class="rn" style="width:84px">${k}</span><span class="rt"><i style="width:${Math.round(v/catMax*100)}%;background:var(--pri)"></i></span><span class="rv" style="width:70px">${fmt(v)}</span></div>`).join('')}</div></div>
+     <div class="panel"><div class="p-h"><b>지역별 거래액(GMV)</b></div><div class="p-body">${regArr.map(([k,v])=>`
+       <div class="rrow"><span class="rn">${k}</span><span class="rt"><i style="width:${Math.round(v/regMax*100)}%;background:var(--blue)"></i></span><span class="rv" style="width:70px">${fmt(v)}</span></div>`).join('')}
+       <div style="font-size:11.5px;color:var(--sub);margin-top:10px;line-height:1.5">방콕 집중도 높음 → 치앙마이·파타야 업체 확보가 다음 과제</div></div></div>
+   </div>
+
+   <div class="panel" style="margin-bottom:16px"><div class="p-h"><b>🎯 무료 → 유료 전환 판단 지표</b><span style="font-size:11.5px;color:var(--sub)">트리거 도달 시 단계 전환</span></div>
+   <div class="p-body">${GROWTH.map(g=>{const pct=Math.min(100,Math.round(g.cur/g.tgt*100));const cv=g.unit==='฿'?fmt(g.cur):g.cur.toLocaleString()+g.unit;const tv=g.unit==='฿'?fmt(g.tgt):g.tgt.toLocaleString()+g.unit;return `
+     <div class="prog"><div class="ph"><span>${g.n} <span class="badge ${pct>=100?'b-green':'b-amber'}" style="margin-left:4px">${g.ph}</span></span><span class="sub">${cv} / 목표 ${tv} (${pct}%)</span></div><div class="pb"><i class="${pct>=100?'done':''}" style="width:${pct}%"></i></div></div>`;}).join('')}
+     <div style="font-size:11.5px;color:var(--sub);margin-top:6px;line-height:1.6">현재 MAU 2,740명 — 기존 교민 정보방 통합 규모와 일치. <b>업체 100개·MAU 5천 도달 시 2단계(광고료)</b>, 월 GMV ฿5M 도달 시 3단계(수수료) 전환을 권장합니다.</div></div></div>
+
+   <div class="panel"><div class="p-h"><b>📢 광고 성과 분석</b><span style="font-size:11.5px;color:var(--sub)">현 광고주 기준</span></div>
+   <div class="scroll"><table class="tbl"><thead><tr><th>광고주</th><th>노출</th><th>클릭</th><th>CTR</th><th>광고비/월</th><th>전환</th><th>ROAS</th></tr></thead>
+   <tbody>${AD_PERF.map(a=>`<tr><td><b>${a[0]}</b></td><td class="mono">${a[1]}</td><td class="mono">${a[2]}</td><td>${a[3]}</td><td class="mono">${a[4]}</td><td>${a[5]}</td><td><span class="badge b-green">${a[6]}</span></td></tr>`).join('')}</tbody>
+   </table></div></div>`;
+}
+
+/* ===== ① 정산·인보이스 ===== */
+function showModal(html){const m=$('modal');m.querySelector('.mbody').innerHTML=html;m.classList.add('show');}
+function hideModal(){$('modal').classList.remove('show');}
+function openInvoice(i){showModal(invoiceHtml(SETTLE[i]));}
+function invoiceHtml(s){
+  return `<div style="padding:30px 32px 26px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a1d22;padding-bottom:15px">
+      <div><div style="font-size:21px;font-weight:900">INVOICE · 정산서</div><div style="font-size:12px;color:#7b828c;margin-top:4px">${s.no} · 정산월 ${s.month} · ${badge(s.st)}</div></div>
+      <div style="text-align:right"><div style="font-weight:900;font-size:16px">Thai<span style="color:#ff7a33">Mate</span></div><div style="font-size:10.5px;color:#7b828c;margin-top:3px;line-height:1.5">ThaiMate Co.,Ltd<br>Tax ID 0-1055-xxxxx-xx<br>admin@thaimate.app</div></div>
+    </div>
+    <div style="display:flex;gap:24px;margin:18px 0 6px">
+      <div style="flex:1"><div style="font-size:11px;color:#7b828c;font-weight:700">공급받는 자 (가맹점)</div><div style="font-weight:800;margin-top:5px">${s.m.n}</div><div style="font-size:12px;color:#4b5563;margin-top:2px">${s.m.cat} · ${s.m.rg}</div></div>
+      <div style="flex:1"><div style="font-size:11px;color:#7b828c;font-weight:700">결제 기한</div><div style="font-weight:800;margin-top:5px">2026-06-10</div><div style="font-size:12px;color:#4b5563;margin-top:2px">PromptPay / 계좌이체</div></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:14px">
+      <thead><tr style="background:#fafbfc"><th style="text-align:left;padding:10px;border-bottom:1px solid #e8eaee;font-size:11px;color:#7b828c">항목</th><th style="text-align:right;padding:10px;border-bottom:1px solid #e8eaee;font-size:11px;color:#7b828c">금액</th></tr></thead>
+      <tbody>
+        <tr><td style="padding:11px 10px;border-bottom:1px solid #f1f2f4">매출 수수료 (GMV ${fmt(s.m.gmv)} × ${SET_RATE}%)</td><td style="text-align:right;padding:11px 10px;border-bottom:1px solid #f1f2f4">${fmt(s.comm)}</td></tr>
+        ${s.ad>0?`<tr><td style="padding:11px 10px;border-bottom:1px solid #f1f2f4">광고비 (상단노출)</td><td style="text-align:right;padding:11px 10px;border-bottom:1px solid #f1f2f4">${fmt(s.ad)}</td></tr>`:''}
+        <tr><td style="padding:11px 10px;color:#7b828c">공급가액</td><td style="text-align:right;padding:11px 10px">${fmt(s.sub)}</td></tr>
+        <tr><td style="padding:11px 10px;color:#7b828c">VAT 7%</td><td style="text-align:right;padding:11px 10px">${fmt(s.vat)}</td></tr>
+      </tbody>
+      <tfoot><tr><td style="padding:14px 10px;font-weight:900;border-top:2px solid #1a1d22">합계 청구액</td><td style="text-align:right;padding:14px 10px;font-weight:900;font-size:18px;color:#ff7a33;border-top:2px solid #1a1d22">${fmt(s.total)}</td></tr></tfoot>
+    </table>
+    <div style="margin-top:18px;background:#fff1e8;border-radius:11px;padding:13px;font-size:12px;color:#b9620f;line-height:1.6">💳 입금: PromptPay 02-258-9000 (ThaiMate Co.,Ltd) · 입금 시 자동 대사됩니다. 문의 admin@thaimate.app</div>
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="act" onclick="toast('PDF 다운로드 (프로토타입)')">⬇ PDF</button>
+      <button class="act pri" onclick="toast('가맹점에 발송했습니다')">📩 발송</button>
+    </div></div>`;
+}
+function secSettle(){
+  const issued=SETTLE.filter(s=>s.st!=='미발행');
+  const billed=issued.reduce((a,s)=>a+s.total,0);
+  const paid=SETTLE.filter(s=>s.st==='수납완료').reduce((a,s)=>a+s.total,0);
+  const due=SETTLE.filter(s=>s.st==='발행').reduce((a,s)=>a+s.total,0);
+  const pending=SETTLE.filter(s=>s.st==='미발행').length;
+  const T=k=>SETTLE.reduce((a,s)=>a+s[k],0), gmvT=MERCH.reduce((a,m)=>a+m.gmv,0);
+  return `<p class="sec-sub">유료 전환 시 업체별 <b>월 정산서/인보이스가 자동 생성</b>됩니다. (예시: ${SET_RATE}% 수수료 + 광고비 · VAT 7% 별도 · 2026-05 정산분)</p>
+   <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
+     <div class="kpi"><div class="k-h">🧾 이번달 청구총액</div><div class="k-v">${fmt(billed)}</div><div class="k-d flat">발행 ${issued.length}건</div></div>
+     <div class="kpi"><div class="k-h">✅ 수납완료</div><div class="k-v" style="color:var(--green)">${fmt(paid)}</div><div class="k-d up">입금 확인됨</div></div>
+     <div class="kpi"><div class="k-h">⏳ 미수금</div><div class="k-v" style="color:var(--amber)">${fmt(due)}</div><div class="k-d flat">발행·입금대기</div></div>
+     <div class="kpi"><div class="k-h">📝 발행 대기</div><div class="k-v">${pending}건</div><div class="k-d flat">미발행</div></div>
+   </div>
+   <div class="panel"><div class="p-h"><b>📋 2026-05 정산 내역</b><button class="more" onclick="toast('전체 인보이스 일괄 발행 (프로토타입)')">일괄 발행</button></div>
+   <div class="scroll"><table class="tbl"><thead><tr><th>인보이스</th><th>업체</th><th>GMV</th><th>수수료(${SET_RATE}%)</th><th>광고비</th><th>공급가</th><th>VAT 7%</th><th>청구액</th><th>상태</th><th>문서</th></tr></thead>
+   <tbody>${SETTLE.map((s,i)=>`<tr><td class="mono">${s.no}</td><td><b>${s.m.n}</b></td><td class="mono">${fmt(s.m.gmv)}</td><td>${fmt(s.comm)}</td><td>${s.ad>0?fmt(s.ad):'<span style="color:var(--sub)">—</span>'}</td><td class="mono">${fmt(s.sub)}</td><td>${fmt(s.vat)}</td><td><b style="color:var(--pri)">${fmt(s.total)}</b></td><td>${badge(s.st)}</td><td><button class="act" onclick="openInvoice(${i})">📄 보기</button></td></tr>`).join('')}</tbody>
+   <tfoot><tr><td>합계</td><td></td><td class="mono">${fmt(gmvT)}</td><td>${fmt(T('comm'))}</td><td>${fmt(T('ad'))}</td><td>${fmt(T('sub'))}</td><td>${fmt(T('vat'))}</td><td style="color:var(--pri)">${fmt(T('total'))}</td><td></td><td></td></tr></tfoot>
+   </table></div></div>`;
+}
+/* ===== ② 광고 상품 ===== */
+function secAds(){
+  const wkRev=AD_PRODUCTS.reduce((a,p)=>a+p.price*p.sold,0);
+  const sold=AD_PRODUCTS.reduce((a,p)=>a+p.sold,0);
+  const soldOut=AD_PRODUCTS.filter(p=>typeof p.cap==='number'&&p.sold>=p.cap).length;
+  return `<p class="sec-sub">광고 상품 카탈로그와 판매현황. <b>정액 광고료가 2단계 핵심 수익원</b>입니다.</p>
+   <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
+     <div class="kpi"><div class="k-h">📢 광고 상품</div><div class="k-v">${AD_PRODUCTS.length}종</div><div class="k-d flat">노출·푸시·매칭</div></div>
+     <div class="kpi"><div class="k-h">💰 주간 광고매출</div><div class="k-v" style="color:var(--pri)">${fmt(wkRev)}</div><div class="k-d up">판매 ${sold}건</div></div>
+     <div class="kpi"><div class="k-h">🟢 집행중 캠페인</div><div class="k-v">${AD_CAMP.filter(c=>c[4]==='집행중').length}건</div><div class="k-d flat">현재 노출중</div></div>
+     <div class="kpi"><div class="k-h">🔴 매진 상품</div><div class="k-v">${soldOut}종</div><div class="k-d flat">재고 소진</div></div>
+   </div>
+   <div class="panel" style="margin-bottom:18px"><div class="p-h"><b>📦 광고 상품 단가표</b></div>
+   <div class="scroll"><table class="tbl"><thead><tr><th>상품</th><th>노출 위치</th><th>단가</th><th>판매/재고</th><th>주간 매출</th><th>상태</th><th>관리</th></tr></thead>
+   <tbody>${AD_PRODUCTS.map(p=>{const full=typeof p.cap==='number'&&p.sold>=p.cap;const st=full?'매진':(typeof p.cap==='number'&&p.sold>=p.cap-1?'마감임박':'판매중');return `<tr><td><b>${p.n}</b></td><td>${p.loc}</td><td class="mono">${fmt(p.price)}/${p.unit}</td><td>${p.sold}${typeof p.cap==='number'?` / ${p.cap}`:(p.cap==='∞'?' <span style="color:var(--sub)">/ 무제한</span>':'')}</td><td class="mono">${fmt(p.price*p.sold)}</td><td>${badge(st)}</td><td><button class="act" onclick="toast('${p.n} 단가·재고 수정')">수정</button></td></tr>`;}).join('')}</tbody></table></div></div>
+   <div class="panel"><div class="p-h"><b>🟢 집행중 캠페인</b></div>
+   <div class="scroll"><table class="tbl"><thead><tr><th>광고주</th><th>상품</th><th>기간</th><th>금액</th><th>상태</th><th>관리</th></tr></thead>
+   <tbody>${AD_CAMP.map(c=>`<tr><td><b>${c[0]}</b></td><td>${c[1]}</td><td>${c[2]}</td><td class="mono">${c[3]}</td><td>${badge(c[4])}</td><td><button class="act" onclick="toast('${c[0]} 캠페인 상세')">상세</button></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+/* ===== ③ 코호트·리텐션 ===== */
+function heat(v){if(v==null)return 'background:#f4f5f7;color:#c9ccd2';const t=v/100;return `background:rgba(255,122,51,${(0.14+t*0.82).toFixed(2)});color:${t>0.5?'#fff':'#7a3a12'}`;}
+function secCohort(){
+  const maxF=FUNNEL[0][1];
+  return `<p class="sec-sub">가입 코호트별 잔존율·동네 리텐션·전환 퍼널. <b>어느 동네·분류가 돈이 되는지</b> 체계적으로 봅니다.</p>
+   <div class="panel" style="margin-bottom:18px"><div class="p-h"><b>🔁 가입월별 리텐션 코호트</b><span style="font-size:11.5px;color:var(--sub)">색이 진할수록 잔존율 높음 (M=가입 후 개월)</span></div>
+   <div class="p-body scroll"><table class="cohort"><thead><tr><th class="lbl">가입월</th><th>신규</th><th>M0</th><th>M1</th><th>M2</th><th>M3</th><th>M4</th></tr></thead>
+   <tbody>${COHORT.map(c=>`<tr><td class="lbl">${c.m}</td><td class="lbl" style="text-align:center;background:#fff">${c.size.toLocaleString()}</td>${c.ret.map(v=>`<td style="${heat(v)}">${v==null?'·':v+'%'}</td>`).join('')}</tr>`).join('')}</tbody></table>
+   <div style="font-size:11.5px;color:var(--sub);margin-top:12px;line-height:1.6">4월 코호트 M1 <b>61%</b> — GPS 동네인증 도입 후 초기 리텐션 개선. 인증 사용자 재방문률이 미인증의 약 1.7배.</div></div></div>
+   <div class="grid2">
+     <div class="panel"><div class="p-h"><b>📍 동네별 30일 리텐션</b></div><div class="p-body">${HOOD_RET.map(([n,v])=>`<div class="rrow"><span class="rn" style="width:78px">${n}</span><span class="rt"><i style="width:${v*2}%;background:${v>=42?'var(--green)':'var(--pri)'}"></i></span><span class="rv">${v}%</span></div>`).join('')}<div style="font-size:11.5px;color:var(--sub);margin-top:11px;line-height:1.5">통러·님만 = 교민 밀집 동네 → 리텐션 최고. <b>동네 밀도가 리텐션을 만든다.</b></div></div></div>
+     <div class="panel"><div class="p-h"><b>🧭 가입→재거래 전환 퍼널</b></div><div class="p-body funnel">${FUNNEL.map(f=>`<div class="fn"><div class="fl">${f[0]}</div><div class="fbar" style="width:${Math.max(16,Math.round(f[1]/maxF*100))}%">${f[1].toLocaleString()}</div><div class="fv">${f[2]?'▼ '+f[2]:''}</div></div>`).join('')}<div style="font-size:11.5px;color:var(--sub);margin-top:9px;line-height:1.5">가입(15%)이 최대 누수 구간. 동네인증 통과자의 첫거래·재거래 전환은 매우 높음(63%/82%).</div></div></div>
+   </div>
+   <div class="panel" style="margin-top:16px"><div class="p-h"><b>💡 분류별 수익성 인사이트</b></div><div class="p-body" style="font-size:13px;line-height:1.8;color:#4b5563">
+     · <b>마트·식당</b> = 생활밀착 고빈도 → 재거래 견인 (LTV 핵심)<br>
+     · <b>여행사</b> = 저빈도·고객단가(GMV ฿940k/64건) → 수수료 절대액 최대<br>
+     · <b>뷰티·서비스</b> = 예약형, 단가 중간 → 광고 반응 우수(CTR↑)<br>
+     · 권고: <b>수수료는 마트·식당(고빈도)</b>, <b>광고는 여행사·뷰티(고단가)</b>에 차등 적용</div></div>`;
+}
+
+const SECT={dash:['대시보드','오늘의 운영 현황을 한눈에',secDash],rev:['분석·수익화','거래액 분석과 수수료 시뮬레이션',secAnalytics],settle:['정산·인보이스','월별 수수료/광고비 정산서 발행',secSettle],cohort:['코호트·리텐션','가입 코호트·동네 리텐션·전환 분석',secCohort],orders:['주문 관리','식당·마트 주문 모니터링',secOrders],
+ bookings:['예약 관리','서비스·여행 예약 현황',secBookings],deals:['직거래 모니터링','장터·나눔·구인 개인 거래',secDeals],
+ biz:['업체·광고','교민 업체 등록 및 광고 관리',secBiz],ads:['광고 상품','광고 상품·단가·캠페인 관리',secAds],members:['회원 관리','신뢰도·인증·신고 관리',secMembers],tickets:['문의·신고','관리자 문의함 및 신고 접수',secTickets]};
+let cur='dash';
+function renderNav(){
+  $('nav').innerHTML=NAV.map(([k,ic,lb,n])=>`<button data-s="${k}" class="${cur===k?'on':''}"><span class="ic">${ic}</span><span class="lbl">${lb}</span>${n?`<span class="badge-n">${n}</span>`:''}</button>`).join('');
+}
+function render(){
+  renderNav();
+  const s=SECT[cur];
+  $('secTitle').textContent=s[0];
+  $('secDate').textContent=s[1]+'  ·  2026-06-06 (금)';
+  $('content').innerHTML=s[2]();
+}
+$('nav').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(b){cur=b.dataset.s;render();window.scrollTo(0,0);}});
+render();
+</script>
+</body>
+</html>
