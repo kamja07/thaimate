@@ -372,6 +372,23 @@ async function loadListings(){
     if(!error && Array.isArray(data)){ listings.length=0; data.forEach(r=>listings.push(dbToListing(r))); if(screen==='app') render(); }
   }catch(e){}
 }
+const SEMO={restaurant:'🍲',cafe:'🥐',mart:'🛒',beauty:'💇',service:'🧹',etc:'🏪'};
+const SCAT={restaurant:0,cafe:1,mart:2,beauty:3,service:4,etc:5};
+function dbToStore(row){
+  const h=hoodByDbId(row.hood_id);
+  const menu=(row.menu_items||[]).slice().sort((a,b)=>a.price-b.price).map(m=>({id:m.id,emo:m.emoji||'🍽️',pr:m.price,nm:m.name||''}));
+  if(row.promptpay) PAY[row.id]={pp:row.promptpay,holder:row.holder||row.name};
+  return { id:row.id, cat:(SCAT[row.category]!=null?SCAT[row.category]:5), ad:!!row.ad_tier, emo:SEMO[row.category]||'🏪',
+    city:h?h.region:'all', hoodId:h?h.id:null, rating:row.rating||5.0, reviews:row.reviews_count||0,
+    service:!!row.is_service, nm:row.name||'', product:(row.category==='mart'),
+    min: menu.length?('฿'+menu[0].pr):null, menu: menu.length?menu:undefined,
+    desc: row.is_service?{ko:'1:1 채팅으로 예약·문의 주세요. 한국어 가능합니다.',en:'Book/ask via 1:1 chat.',th:'จอง/สอบถามผ่านแชท 1:1'}:'' };
+}
+async function loadStores(){
+  try{ const {data,error}=await sb.from('stores').select('*, menu_items(*)').order('ad_priority',{ascending:false});
+    if(!error && Array.isArray(data)){ stores.length=0; data.forEach(r=>stores.push(dbToStore(r))); if(screen==='app') render(); }
+  }catch(e){}
+}
 async function applySession(session){
   if(!session||!session.user){authed=false;uid=null;return;}
   const u=session.user; authed=true; uid=u.id;
@@ -1386,8 +1403,7 @@ document.addEventListener('click',e=>{
       sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:(kind==='give'?'무료':(price||null)), body:desc||null, hood_id:hoodDbId(hid), status:'selling'}).then(({error})=>{ if(error){toast(error.message);} else {loadListings();} });
       tab='market'; mseg=kind; listingOpen=null;
     }else if(writeType===6){
-      stores.unshift({id:'s'+Date.now(),cat:5,ad:false,emo:'🏪',city:rc,hoodId:hid,rating:5.0,reviews:0,service:true,
-        nm:subj||L().w_store, desc:desc||{ko:'새로 등록된 가게입니다. 채팅으로 문의주세요.',en:'Newly listed store.',th:'ร้านใหม่'}});
+      sb.from('stores').insert({owner_id:uid, name:subj||L().w_store, category:'etc', hood_id:hoodDbId(hid), is_service:true}).then(({error})=>{ if(error){toast(error.message);} else {loadStores();} });
       tab='shop'; shopCat=0;
     }else if(writeType===3||writeType===4){const kind=writeType===3?'hire':'seek';
       jobs.unshift({kind,city:rc,emo:'🆕',chats:0,live:true,t:subj||L().w_subject,pr:price||'-',loc:locStr,ago});
@@ -1468,7 +1484,7 @@ fab.addEventListener('click',()=>{if(!canAct())return;writeType=(tab==='shop'?6:
 document.addEventListener('input',e=>{if(e.target.id==='searchInput'){searchQ=e.target.value;renderFsView();}});
 document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){chats[chatOpen].msgs.push({me:true,tx:v});render();page.scrollTo(0,9999);}}});
 
-(async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} render(); loadListings(); })();
+(async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} render(); loadListings(); loadStores(); })();
 </script>
 </body>
 </html>
