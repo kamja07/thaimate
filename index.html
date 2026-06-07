@@ -397,17 +397,50 @@ function dbToPost(row){
 }
 async function loadPosts(){
   try{ const {data,error}=await sb.from('posts').select('*').order('created_at',{ascending:false}).limit(100);
-    if(!error && Array.isArray(data)){ info.length=0; data.forEach(r=>info.push(dbToPost(r))); if(screen==='app') render(); }
+    if(!error && Array.isArray(data)){ info.length=0; data.forEach(r=>info.push(dbToPost(r))); if(screen==='app') render(); loadMyReactions(); }
   }catch(e){}
 }
 function dbToJob(row){
   const h=hoodByDbId(row.hood_id);
-  return { kind:row.kind, city:h?h.region:'all', emo:(row.kind==='hire'?'💼':'🙋'), chats:0, live:false,
+  return { id:row.id, author_id:row.author_id, kind:row.kind, city:h?h.region:'all', emo:(row.kind==='hire'?'💼':'🙋'), chats:0, live:false,
     t:row.title||'', pr:(row.price_text||'-'), loc:h?tx(h):'', ago:relTime(row.created_at) };
 }
 async function loadJobs(){
   try{ const {data,error}=await sb.from('listings').select('*').in('kind',['hire','seek']).order('created_at',{ascending:false}).limit(100);
     if(!error && Array.isArray(data)){ jobs.length=0; data.forEach(r=>jobs.push(dbToJob(r))); if(screen==='app') render(); }
+  }catch(e){}
+}
+/* ===================== 영속화: 반응 · 거래상태 · 주문 ===================== */
+const isUuid=v=>typeof v==='string'&&v.length>=32;
+async function loadMyReactions(){
+  if(!uid) return;
+  try{ const {data}=await sb.from('post_reactions').select('post_id,type').eq('user_id',uid);
+    (data||[]).forEach(r=>{ const p=info.find(x=>x.id===r.post_id); if(p){ if(r.type==='helpful')p.rHelp=true; else if(r.type==='save')p.rSave=true; } });
+    if(screen==='app'&&tab==='community') render();
+  }catch(e){}
+}
+async function persistReaction(post,type,on){
+  if(!uid||!post||!isUuid(post.id)) return;
+  const t=(type==='helpful')?'helpful':'save', col=(t==='helpful')?'helpful_count':'save_count';
+  try{
+    if(on) await sb.from('post_reactions').upsert({post_id:post.id,user_id:uid,type:t},{onConflict:'post_id,user_id,type'});
+    else   await sb.from('post_reactions').delete().eq('post_id',post.id).eq('user_id',uid).eq('type',t);
+    await sb.from('posts').update({[col]: Math.max(0,(t==='helpful'?post.help:post.save))}).eq('id',post.id);
+  }catch(e){}
+}
+async function persistListingStatus(listingId,status){
+  if(!uid||!isUuid(listingId)) return;
+  try{ await sb.from('listings').update({status}).eq('id',listingId);
+    const it=listings.find(x=>x.id===listingId); if(it){ it.st=(status==='reserved')?'resv':(status==='done')?'done':(it.kind==='buy'?'match':'sale'); }
+  }catch(e){}
+}
+async function placeOrder(store,total,cartObj){
+  if(!uid||!store||!isUuid(store.id)) return;   // 데모 상점은 저장 안 함
+  try{
+    const o=await sb.from('orders').insert({store_id:store.id,customer_id:uid,total,status:'placed'}).select().single();
+    if(o.error||!o.data) return;
+    const items=Object.keys(cartObj).filter(k=>isUuid(k)).map(k=>({order_id:o.data.id,menu_item_id:k,qty:cartObj[k]}));
+    if(items.length) await sb.from('order_items').insert(items);
   }catch(e){}
 }
 /* ===================== 1:1 채팅 (DB + Realtime) ===================== */
@@ -1277,7 +1310,7 @@ function listingCard(it){
       <div class="price" style="${give?'color:var(--green)':''}">${tx(it.pr)}</div>
       <div class="actions">
         ${it.kind!=='buy'?`<button class="abtn like ${it.liked?'on':''}" data-like="${it.id}">${it.liked?'❤️':'♡'} ${L().btn_like} ${(it.like||0)+(it.liked?1:0)}</button>`:''}
-        <button class="abtn chat">💬 ${L().btn_chat}</button>
+        <button class="abtn chat" data-cardchat="${it.id}">💬 ${L().btn_chat}</button>
         ${it.chats?`<span class="live-mini">💬 ${it.chats}</span>`:''}
       </div>
     </div>
@@ -1291,7 +1324,7 @@ function rangeChipHtml(){
 function matchBannerHtml(){
   const m=byCity(listings).filter(x=>x.kind==='buy'&&inRange(x))[0];
   if(!m) return '';
-  return `<div class="matchban"><span class="mbi">⚡</span><div class="mbt"><b>${L().match_alert}</b><p>"${tx(m.t)}" · 📍 ${tx(m.loc)}</p></div><button class="mbb" data-matchchat>💬 ${L().btn_chat}</button></div>`;
+  return `<div class="matchban"><span class="mbi">⚡</span><div class="mbt"><b>${L().match_alert}</b><p>"${tx(m.t)}" · 📍 ${tx(m.loc)}</p></div><button class="mbb" data-matchchat="${m.id}">💬 ${L().btn_chat}</button></div>`;
 }
 function viewListingDetail(){
   const it=listings.find(x=>x.id===listingOpen);
@@ -1349,7 +1382,7 @@ function viewJobs(){
          <div class="ctitle">${tx(j.t)}</div>
          <div class="cmeta">📍 ${tx(j.loc)} · ${tx(j.ago)}</div>
          <div class="price" style="color:var(--green)">${tx(j.pr)}</div>
-         <div class="actions"><button class="abtn chat">💬 ${L().btn_apply}</button>${j.chats?`<span class="live-mini">💬 ${j.chats}</span>`:''}</div>
+         <div class="actions"><button class="abtn chat" data-jobchat="${j.id||''}">💬 ${L().btn_apply}</button>${j.chats?`<span class="live-mini">💬 ${j.chats}</span>`:''}</div>
        </div>
      </div>`).join('')||`<div class="empty">—</div>`}</div>`;
 }
@@ -1463,8 +1496,8 @@ function infoCard(p){
     <h3 class="ititle">${tx(p.t)}</h3>
     <p class="iexc">${tx(p.e)}</p>
     <div class="ireact">
-      <button class="rb ${p.rHelp?'on':''}" data-react="${p.id}:helpful"><span>👍</span> ${L().r_help} <b>${p.help+(p.rHelp?1:0)}</b></button>
-      <button class="rb ${p.rSave?'on':''}" data-react="${p.id}:save"><span>🔖</span> ${L().r_save} <b>${p.save+(p.rSave?1:0)}</b></button>
+      <button class="rb ${p.rHelp?'on':''}" data-react="${p.id}:helpful"><span>👍</span> ${L().r_help} <b>${p.help}</b></button>
+      <button class="rb ${p.rSave?'on':''}" data-react="${p.id}:save"><span>🔖</span> ${L().r_save} <b>${p.save}</b></button>
       <button class="rb ask"><span>💬</span> ${L().r_ask}</button>
       <span class="iviews">👁 ${p.view.toLocaleString()}</span>
     </div></div>`;
@@ -1628,7 +1661,7 @@ document.addEventListener('click',e=>{
     writeOpen=false; render(); page.scrollTo(0,0); toast(L().w_posted); return;
   }
   /* 채팅 거래확정 · 안전거래 */
-  if(e.target.closest('[data-dadvance]')){const c=chats[chatOpen];c.dst=(c.dst==='reserved')?'done':'reserved';render();return;}
+  if(e.target.closest('[data-dadvance]')){const c=chats[chatOpen];if(!c)return;const nd=(c.dst==='reserved')?'done':'reserved';c.dst=nd;render();if(c.listingId)persistListingStatus(c.listingId,nd);return;}
   if(e.target.closest('[data-report]')){reportOpen=true;render();return;}
   if(e.target.closest('[data-repclose]')){reportOpen=false;render();return;}
   if(e.target.closest('[data-repreason]')){reportOpen=false;render();toast(L().rep_done);return;}
@@ -1677,11 +1710,15 @@ document.addEventListener('click',e=>{
   if(e.target.closest('#doorder')){if(!canAct())return;const s=stores.find(x=>x.id===storeOpen);payStore=storeOpen;payAmount=s.menu.reduce((t,m)=>t+(cart[m.id]||0)*m.pr,0);payOpen=true;render();return;}
   if(e.target.closest('#spay')){payStore=storeOpen;payAmount=0;payOpen=true;render();return;}
   if(e.target.closest('#payscrim')||e.target.closest('#payclose')){payOpen=false;render();return;}
-  if(e.target.closest('#paydone')){payOpen=false;cart={};storeOpen=null;tab='chat';chatOpen=null;render();toast(L().order_done);return;}
+  if(e.target.closest('#paydone')){const s=stores.find(x=>x.id===payStore);placeOrder(s,payAmount,Object.assign({},cart));payOpen=false;cart={};storeOpen=null;tab='chat';chatOpen=null;render();toast(L().order_done);return;}
   if(e.target.closest('#sback')){storeOpen=null;cart={};render();return;}
   if(e.target.closest('#sinq')){storeOpen=null;tab='chat';chatOpen=null;render();return;}
   const ask=e.target.closest('.rb.ask'); if(ask){if(!canAct())return;toast(L().reply_demo);return;}
-  const rx=e.target.closest('[data-react]'); if(rx){const [pid,ty]=rx.dataset.react.split(':');const p=info.find(x=>x.id===pid);if(p){if(ty==='helpful')p.rHelp=!p.rHelp;else p.rSave=!p.rSave;}viewCommunity();return;}
+  const rx=e.target.closest('[data-react]'); if(rx){const [pid,ty]=rx.dataset.react.split(':');const p=info.find(x=>x.id===pid);
+    if(p){ const on=(ty==='helpful')?!p.rHelp:!p.rSave;
+      if(ty==='helpful'){p.rHelp=on; p.help=Math.max(0,(p.help||0)+(on?1:-1));} else {p.rSave=on; p.save=Math.max(0,(p.save||0)+(on?1:-1));}
+      viewCommunity(); persistReaction(p,ty,on);
+    } return;}
   const rb=e.target.closest('.rb'); if(rb){rb.classList.toggle('on');return;}
   const lk=e.target.closest('[data-like]'); if(lk){const it=listings.find(x=>x.id===lk.dataset.like);if(it)it.liked=!it.liked;render();return;}
   if(e.target.closest('[data-ldback]')){listingOpen=null;render();page.scrollTo(0,0);return;}
@@ -1689,8 +1726,9 @@ document.addEventListener('click',e=>{
   const lo=e.target.closest('[data-listing]'); if(lo){listingOpen=lo.dataset.listing;render();page.scrollTo(0,0);return;}
   const cr=e.target.closest('[data-chat]'); if(cr){openChat(+cr.dataset.chat);return;}
   if(e.target.closest('#back')){chatOpen=null;render();return;}
-  if(e.target.closest('[data-matchchat]')){if(!canAct())return;tab='chat';chatOpen=null;render();return;}
-  if(e.target.closest('.abtn.chat')){if(!canAct())return;tab='chat';chatOpen=null;render();return;}
+  const mc=e.target.closest('[data-matchchat]'); if(mc){if(!canAct())return;openOrCreateChat(listings.find(x=>x.id===mc.dataset.matchchat));return;}
+  const cc=e.target.closest('[data-cardchat]'); if(cc){if(!canAct())return;openOrCreateChat(listings.find(x=>x.id===cc.dataset.cardchat));return;}
+  const jc=e.target.closest('[data-jobchat]'); if(jc){if(!canAct())return;openOrCreateChat(jobs.find(x=>x.id===jc.dataset.jobchat));return;}
   if(e.target.closest('#csend')){const i=document.getElementById('cin'); if(i&&i.value.trim()){sendMessage(i.value.trim());i.value='';} return;}
 });
 fab.addEventListener('click',()=>{if(!canAct())return;writeType=(tab==='shop'?6:(tab==='jobs'?3:(tab==='community'?5:0)));writeOpen=true;render();});

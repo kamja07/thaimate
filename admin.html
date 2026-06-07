@@ -160,7 +160,11 @@
 <div class="toast" id="toast"></div>
 <div class="modal" id="modal"><div class="mscrim" onclick="hideModal()"></div><div class="msheet"><button class="mclose" onclick="hideModal()">✕</button><div class="mbody"></div></div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const SB_URL='https://jhtsncdeoulanvytfwrl.supabase.co';
+const SB_KEY='sb_publishable_ChPPAnOQnOUWh-huy83ckg_pK4343IF';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
 /* ============ data ============ */
 const NAV=[
  ['dash','📊','대시보드',0],['rev','📈','분석·수익화',0],['settle','🧾','정산·인보이스',0],['cohort','🔁','코호트·리텐션',0],
@@ -215,7 +219,7 @@ const COHORT=[
 ];
 const HOOD_RET=[['통러',48],['님만해민',45],['아속',42],['프롬퐁',40],['온누트',33],['조무티엔',29]];
 const FUNNEL=[['방문(순방문)',18200,''],['가입',2740,'15.1%'],['동네 인증',1980,'72.3%'],['첫 거래',1240,'62.6%'],['재거래(2회+)',1010,'81.5%']];
-const KPI=[
+let KPI=[
  {h:'오늘 거래액(GMV)',v:'฿84,200',d:'▲ 12% vs 어제',c:'up',i:'💰'},
  {h:'주문',v:'37건',d:'결제완료 31 · 대기 4',c:'flat',i:'🧾'},
  {h:'예약',v:'14건',d:'확정 9 · 대기 5',c:'flat',i:'📅'},
@@ -248,14 +252,14 @@ const BOOKINGS=[
  ['B-236','사바이 청소·이사','생활서비스','한지민','05/12 이사','확정'],
  ['B-235','한인 헤어샵','뷰티·헬스','Wanida','오늘 17:30','대기']
 ];
-const DEALS=[
+let DEALS=[
  ['D-9921','장터','아이폰 15 프로','김교민','이준호','님만','거래중',false],
  ['D-9920','나눔','아이 옷 무료나눔','박서윤','정민아','온누트','완료',false],
  ['D-9919','장터','골프채 아이언(매칭)','이지은','김교민','통러','매칭',false],
  ['D-9918','구인','한식당 홀서버','서울식당','지원자 3명','수쿰빗','진행',false],
  ['D-9917','장터','중고 노트북','unknown_88','최민','방나','신고',true]
 ];
-const BIZ=[
+let BIZ=[
  ['서울식당','식당','통러','노출중','฿1,500','4.8','정상'],
  ['한국마트 방콕','마트·식자재','프롬퐁','노출중','฿2,000','4.7','정상'],
  ['한인 여행사','기타업종','아속','노출중','฿1,800','4.7','정상'],
@@ -264,7 +268,7 @@ const BIZ=[
  ['한인 헤어샵','뷰티·헬스','통러','-','-','4.8','정상'],
  ['사바이 청소·이사','생활서비스','조무티엔','승인대기','-','4.5','심사중']
 ];
-const MEMBERS=[
+let MEMBERS=[
  ['김교민','통러',true,'36.5°C','27','0','정상'],
  ['이지은','통러',true,'37.2°C','14','0','정상'],
  ['Somchai','님만',false,'36.5°C','5','0','정상'],
@@ -551,6 +555,39 @@ function render(){
 }
 $('nav').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(b){cur=b.dataset.s;render();window.scrollTo(0,0);}});
 render();
+
+/* ============ 실데이터 연결 (공개 테이블 — anon 키. 주문·예약·신고는 RLS 보호로 관리자 로그인 필요) ============ */
+const CATNM={restaurant:'식당',cafe:'카페·베이커리',mart:'마트·식자재',beauty:'뷰티·헬스',service:'생활서비스',etc:'기타업종'};
+const TYNM={sell:'장터',buy:'장터',give:'나눔',hire:'구인',seek:'구직'};
+const STNM={selling:'거래중',reserved:'예약중',done:'완료'};
+async function loadAdminData(){
+  try{
+    const [nb,pf,st,ls,ps]=await Promise.all([
+      sb.from('neighborhoods').select('id,name_ko'),
+      sb.from('profiles').select('username,nickname,hood_id,hood_verified,email_verified,manner_temp').limit(300),
+      sb.from('stores').select('name,category,hood_id,ad_tier,rating').order('ad_priority',{ascending:false}),
+      sb.from('listings').select('id,kind,title,status,hood_id,author_id,created_at').order('created_at',{ascending:false}).limit(300),
+      sb.from('posts').select('id').limit(1000)
+    ]);
+    const hn={}; (nb.data||[]).forEach(n=>hn[n.id]=n.name_ko);
+    if(Array.isArray(pf.data)) MEMBERS=pf.data.map(p=>[p.nickname||p.username||'-', hn[p.hood_id]||'-', !!(p.email_verified||p.hood_verified), (p.manner_temp||36.5)+'°C', '-', '0', '정상']);
+    if(Array.isArray(st.data)) BIZ=st.data.map(s=>[s.name||'-', CATNM[s.category]||s.category||'기타업종', hn[s.hood_id]||'-', s.ad_tier?'노출중':'-', s.ad_tier?'฿—':'-', (+(s.rating||5)).toFixed(1), '정상']);
+    let nameMap={}; const aIds=[...new Set((ls.data||[]).map(l=>l.author_id).filter(Boolean))];
+    if(aIds.length){ const {data:au}=await sb.from('profiles').select('id,username,nickname').in('id',aIds); (au||[]).forEach(a=>nameMap[a.id]=a.nickname||a.username); }
+    if(Array.isArray(ls.data)) DEALS=ls.data.map(l=>['L-'+String(l.id).slice(0,4), TYNM[l.kind]||'장터', l.title||'-', nameMap[l.author_id]||'-', '-', hn[l.hood_id]||'-', l.kind==='buy'?'매칭':(STNM[l.status]||'거래중'), false]);
+    const memC=(pf.data||[]).length, lsC=(ls.data||[]).length, bizC=(st.data||[]).length, psC=(ps.data||[]).length, verC=(pf.data||[]).filter(p=>p.email_verified).length, adC=(st.data||[]).filter(s=>s.ad_tier).length;
+    KPI=[
+      {h:'총 회원',v:memC+'명',d:'이메일 인증 '+verC+'명',c:'up',i:'👥'},
+      {h:'등록 매물·구인',v:lsC+'건',d:'장터·나눔·구인구직',c:'flat',i:'🛒'},
+      {h:'등록 업체',v:bizC+'곳',d:'광고 '+adC+'곳',c:'flat',i:'🏪'},
+      {h:'소식 게시물',v:psC+'건',d:'정보·공지',c:'flat',i:'📰'},
+      {h:'주문·예약',v:'🔒',d:'관리자 로그인 후 표시',c:'flat',i:'🧾'},
+      {h:'미처리 신고',v:'🔒',d:'관리자 로그인 후 표시',c:'flat',i:'⚠️'}
+    ];
+    render();
+  }catch(e){}
+}
+loadAdminData();
 </script>
 </body>
 </html>
