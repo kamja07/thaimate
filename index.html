@@ -1228,13 +1228,15 @@ function renderGate(){
    </div>
    <div class="gmid">
      <div class="loccard" id="loccard">
-       <div class="lh">📍 ${L().g_loc_title}</div>
-       <div class="lv">
-         <div style="flex:1">
-           <div class="lname ${set?'':'empty'}">${set?locFull():L().g_loc_empty}</div>
-           <div class="lsub">${set?`<span class="vbadge${verified?'':' no'}">${verified?'✓ '+L().v_done:'· '+L().v_none}</span>`:L().g_loc_sub}</div>
+       <div class="ltext">
+         <div class="lh">📍 ${L().g_loc_title}</div>
+         <div class="lv">
+           <div style="flex:1">
+             <div class="lname ${set?'':'empty'}">${set?locFull():L().g_loc_empty}</div>
+             <div class="lsub">${set?`<span class="vbadge${verified?'':' no'}">${verified?'✓ '+L().v_done:'· '+L().v_none}</span>`:L().g_loc_sub}</div>
+           </div>
+           <span class="lchev">›</span>
          </div>
-         <span class="lchev">›</span>
        </div>
      </div>
      <div class="locnote">⚡ ${L().g_loc_note}</div>
