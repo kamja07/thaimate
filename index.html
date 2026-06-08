@@ -406,10 +406,13 @@ const SEMO={restaurant:'🍲',cafe:'🥐',mart:'🛒',beauty:'💇',service:'�
 const SCAT={restaurant:0,cafe:1,mart:2,beauty:3,service:4,etc:5};
 function dbToStore(row){
   const h=hoodByDbId(row.hood_id);
-  const menu=(row.menu_items||[]).slice().sort((a,b)=>a.price-b.price).map(m=>({id:m.id,emo:m.emoji||'🍽️',pr:m.price,nm:m.name||''}));
+  const menu=(row.menu_items||[]).slice().sort((a,b)=>a.price-b.price).map(m=>({id:m.id,emo:m.emoji||'🍽️',pr:m.price,nm:m.name||'',photo:m.photo_url||null}));
   if(row.promptpay) PAY[row.id]={pp:row.promptpay,holder:row.holder||row.name};
   return { id:row.id, cat:(SCAT[row.category]!=null?SCAT[row.category]:5), ad:!!row.ad_tier, emo:SEMO[row.category]||'🏪',
     open:(row.is_open!==false), owner:row.owner_id||null, holiday:row.holiday||null,
+    phone:row.phone||'', hours:row.hours||'', intro:row.intro||'', promo:row.promo||'', mapUrl:row.map_url||'', payQr:row.pay_qr||'', promptpay:row.promptpay||'', holder:row.holder||'',
+    delivery:!!row.delivery, pickup:!!row.pickup, dinein:!!row.dinein, visit:!!row.visit,
+    hoursAll:!!row.hours_all, hoursDays:Array.isArray(row.hours_days)?row.hours_days:[], hoursOpen:row.hours_open||'', hoursClose:row.hours_close||'',
     city:h?h.region:'all', hoodId:h?h.id:null, rating:row.rating||5.0, reviews:row.reviews_count||0,
     service:!!row.is_service, nm:row.name||'', product:(row.category==='mart'),
     min: menu.length?('฿'+menu[0].pr):null, menu: menu.length?menu:undefined,
@@ -641,7 +644,7 @@ const T = {
   btn_like:"관심", btn_chat:"채팅하기", btn_apply:"문의하기", budget:"예산",
   ad_badge:"광고", btn_order:"주문하기", btn_menu:"메뉴보기", btn_inquire:"예약·문의", min_order:"최소주문", delivery:"배달", pickup:"포장",
   shop_open:"영업중", shop_closed:"영업종료", shop_set_open:"🟢 영업 시작", shop_set_closed:"⛔ 영업 종료", shop_closed_msg:"지금은 영업종료 상태예요",
-  holiday_set:"🚫 휴업 공지", holiday_clear:"휴업 해제", holiday_badge:"휴업", holiday_prompt:"휴업 안내를 입력하세요 (예: 오늘 휴무 / 1.1~1.3 휴업)", holiday_default:"오늘 휴무",
+  holiday_set:"🚫 휴업 공지", holiday_clear:"휴업 해제", holiday_badge:"휴업", holiday_prompt:"휴업 안내를 입력하세요 (예: 오늘 휴무 / 1.1~1.3 휴업)", holiday_default:"오늘 휴무", store_edit:"가게 정보 수정", my_stores:"내 가게 관리", store_new:"+ 새 가게 등록", no_stores:"등록한 가게가 없어요",
   cart:"장바구니", total:"합계", menu_label:"메뉴", products_label:"상품", order_done:"주문이 접수되었습니다 (프로토타입)",
   chat_secure:"1:1 비공개 대화 · 단톡방처럼 공개되지 않아요", input_ph:"메시지 보내기…",
   r_help:"도움돼요", r_save:"저장", r_ask:"1:1 질문", official:"공지",
@@ -695,7 +698,7 @@ const T = {
   btn_like:"Save", btn_chat:"Chat", btn_apply:"Apply", budget:"Budget",
   ad_badge:"AD", btn_order:"Order", btn_menu:"Menu", btn_inquire:"Book·Ask", min_order:"Min", delivery:"Delivery", pickup:"Pickup",
   shop_open:"Open", shop_closed:"Closed", shop_set_open:"🟢 Open now", shop_set_closed:"⛔ Close", shop_closed_msg:"This store is currently closed",
-  holiday_set:"🚫 Holiday notice", holiday_clear:"Cancel holiday", holiday_badge:"On holiday", holiday_prompt:"Enter holiday notice (e.g. Closed today)", holiday_default:"Closed today",
+  holiday_set:"🚫 Holiday notice", holiday_clear:"Cancel holiday", holiday_badge:"On holiday", holiday_prompt:"Enter holiday notice (e.g. Closed today)", holiday_default:"Closed today", store_edit:"Edit store info", my_stores:"My stores", store_new:"+ New store", no_stores:"No stores yet",
   cart:"Cart", total:"Total", menu_label:"Menu", products_label:"Products", order_done:"Order placed (prototype)",
   chat_secure:"Private 1:1 — never public like a group chat", input_ph:"Send a message…",
   r_help:"Helpful", r_save:"Save", r_ask:"Ask 1:1", official:"Notice",
@@ -749,7 +752,7 @@ const T = {
   btn_like:"บันทึก", btn_chat:"แชท", btn_apply:"สอบถาม", budget:"งบ",
   ad_badge:"โฆษณา", btn_order:"สั่งซื้อ", btn_menu:"ดูเมนู", btn_inquire:"จอง·สอบถาม", min_order:"ขั้นต่ำ", delivery:"เดลิเวอรี", pickup:"รับเอง",
   shop_open:"เปิด", shop_closed:"ปิด", shop_set_open:"🟢 เปิดร้าน", shop_set_closed:"⛔ ปิดร้าน", shop_closed_msg:"ร้านปิดอยู่ในขณะนี้",
-  holiday_set:"🚫 ประกาศหยุด", holiday_clear:"ยกเลิกหยุด", holiday_badge:"หยุดทำการ", holiday_prompt:"ใส่ประกาศวันหยุด (เช่น วันนี้หยุด)", holiday_default:"วันนี้หยุด",
+  holiday_set:"🚫 ประกาศหยุด", holiday_clear:"ยกเลิกหยุด", holiday_badge:"หยุดทำการ", holiday_prompt:"ใส่ประกาศวันหยุด (เช่น วันนี้หยุด)", holiday_default:"วันนี้หยุด", store_edit:"แก้ไขข้อมูลร้าน", my_stores:"ร้านของฉัน", store_new:"+ เพิ่มร้าน", no_stores:"ยังไม่มีร้าน",
   cart:"ตะกร้า", total:"รวม", menu_label:"เมนู", products_label:"สินค้า", order_done:"สั่งซื้อสำเร็จ (ต้นแบบ)",
   chat_secure:"แชทส่วนตัว 1:1 · ไม่เปิดเผยเหมือนกลุ่ม", input_ph:"พิมพ์ข้อความ…",
   r_help:"มีประโยชน์", r_save:"บันทึก", r_ask:"ถาม 1:1", official:"ประกาศ",
@@ -1107,7 +1110,7 @@ info.forEach((x,i)=>x.id=x.id||('I'+i));
 
 /* ===================== state ===================== */
 let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gmFrameOpen=false, gmFrameSrc="", gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null,
-    wStore={cat:0,delivery:false,pickup:false,menu:[]};
+    wStore={cat:0,delivery:false,pickup:false,menu:[]}, wStoreEditId=null, myStores=false;
 const L=()=>T[lang];
 const gm=()=>GM[lang];
 const tx=o=> o==null?"":(typeof o==="string"?o:(o[lang]||o.ko));
@@ -1178,7 +1181,20 @@ const WS={
 function ws(k){return (WS[lang]||WS.ko)[k]||(WS.ko[k]||k);}
 function escA(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 function escT(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
-function resetStore(){ wStore={cat:0,delivery:false,pickup:false,dinein:false,visit:false,menu:[],name:'',phone:'',intro:'',hoursAll:false,hoursDays:[],hoursOpen:'',hoursClose:'',mapUrl:'',promo:'',promptpay:'',holder:'',payQr:''}; }
+function resetStore(){ wStoreEditId=null; wStore={cat:0,delivery:false,pickup:false,dinein:false,visit:false,menu:[],name:'',phone:'',intro:'',hoursAll:false,hoursDays:[],hoursOpen:'',hoursClose:'',mapUrl:'',promo:'',promptpay:'',holder:'',payQr:''}; }
+function openStoreEdit(store){
+  if(!store) return;
+  wStore={
+    cat:(store.cat!=null?store.cat:5), name:store.nm||'', phone:store.phone||'', intro:store.intro||'',
+    hoursAll:!!store.hoursAll, hoursDays:(store.hoursDays||[]).slice(), hoursOpen:store.hoursOpen||'', hoursClose:store.hoursClose||'',
+    mapUrl:store.mapUrl||'', promo:store.promo||'',
+    delivery:!!store.delivery, pickup:!!store.pickup, dinein:!!store.dinein, visit:!!store.visit,
+    promptpay:store.promptpay||'', holder:store.holder||'', payQr:store.payQr||'',
+    menu:(store.menu||[]).map(m=>({name:m.nm||'', price:(m.pr!=null?String(m.pr):''), photo:m.photo||null}))
+  };
+  wStoreEditId=store.id;
+  storeOpen=null; writeType=6; writeOpen=true; render();
+}
 function snapStore(){
   const g=id=>(document.getElementById(id)||{}).value||'';
   wStore.name=g('wSubject'); wStore.phone=g('wPhone'); wStore.intro=g('wDesc'); wStore.mapUrl=g('wMap');
@@ -1531,6 +1547,16 @@ function storeCard(s){
   </div>`;
 }
 function viewShop(){
+  if(myStores){
+    const mine=stores.filter(x=>x.owner&&uid&&x.owner===uid);
+    page.innerHTML=`
+     <div style="display:flex;align-items:center;gap:8px;padding:4px 0 12px">
+       <button class="btn" style="background:#f0f1f4;border:none;border-radius:9px;padding:7px 11px;font-weight:800;cursor:pointer" data-myexit>‹</button>
+       <b style="font-size:16px">🏪 ${L().my_stores}</b></div>
+     <button class="gbtn primary" data-newstore style="width:100%;margin-bottom:12px">${L().store_new}</button>
+     <div>${mine.length?mine.map(storeCard).join(''):`<div class="empty" style="padding:34px 0;text-align:center;color:var(--sub)">${L().no_stores}</div>`}</div>`;
+    return;
+  }
   const chips=[L().city_all].concat(L().shop_cats);
   let data=byCity(stores);
   if(shopCat>0) data=data.filter(x=>x.cat===shopCat-1);
@@ -1541,6 +1567,22 @@ function viewShop(){
    <div class="cities" style="padding:0 0 12px;margin:0">${chips.map((c,i)=>`<button class="city ${shopCat===i?'on':''}" data-shopcat="${i}">${c}</button>`).join('')}</div>
    ${rangeChipHtml()}
    <div>${data.map(storeCard).join('')||`<div class="empty">—</div>`}</div>`;
+}
+function storeInfoSection(s){
+  const flags=[];
+  if(s.delivery) flags.push(s.service?'🚗 '+ws('visit_home'):'🛵 '+ws('delivery'));
+  if(s.pickup) flags.push('🥡 '+ws('pickup'));
+  if(s.dinein) flags.push('🍽️ '+ws('dinein'));
+  if(s.visit) flags.push('🏬 '+ws('visit_store'));
+  const badges=flags.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px">${flags.map(f=>`<span style="background:#fff1e8;color:#c2410c;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px">${f}</span>`).join('')}</div>`:'';
+  const promoBanner=s.promo?`<div style="background:#fff8e1;border:1px solid #FFB300;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:13px;font-weight:700;color:#7a5b00">🎉 ${s.promo}</div>`:'';
+  const lines=[];
+  if(s.intro) lines.push(`<div style="font-size:13.5px;color:#444;line-height:1.6;margin:6px 0">${s.intro}</div>`);
+  if(s.hours) lines.push(`<div style="font-size:13px;margin:3px 0;color:#333">🕒 ${s.hours}</div>`);
+  if(s.phone) lines.push(`<div style="font-size:13px;margin:3px 0;color:#333">📞 ${s.phone}</div>`);
+  const map=s.mapUrl?`<iframe src="https://www.google.com/maps?q=${encodeURIComponent(s.mapUrl)}&output=embed" style="width:100%;height:160px;border:0;border-radius:10px;margin:8px 0" loading="lazy"></iframe>`:'';
+  const qr=s.payQr?`<div style="margin:10px 0 2px"><div style="font-size:12px;color:var(--sub);margin-bottom:5px">💳 ${ws('pay')}</div><img src="${s.payQr}" style="width:150px;border-radius:10px;border:1px solid var(--line)"></div>`:'';
+  return `<div style="padding:8px 14px 2px">${promoBanner}${badges}${lines.join('')}${map}${qr}</div>`;
 }
 function viewStore(){
   const s=stores.find(x=>x.id===storeOpen);
@@ -1560,11 +1602,12 @@ function viewStore(){
     page.innerHTML=head+`
       <div class="storebanner">${s.emo}</div>
       ${statusRow}
-      <div style="padding:16px 14px">
-        <div class="ipost" style="margin:0"><p class="iexc" style="-webkit-line-clamp:initial;font-size:13.5px">${tx(s.desc)}</p></div>
-        <div class="secure" style="border-radius:11px;margin-top:12px">🔒 ${L().chat_secure}</div>
+      ${storeInfoSection(s)}
+      <div style="padding:6px 14px 16px">
+        ${isOwner?`<button class="gbtn line" data-storeedit style="width:100%;margin-bottom:10px">✏️ ${L().store_edit}</button>`:''}
+        <div class="secure" style="border-radius:11px">🔒 ${L().chat_secure}</div>
         <button class="bigbtn" id="sinq">💬 ${L().btn_inquire}</button>
-        <button class="gbtn line" id="spay" style="width:100%;margin-top:10px">📷 ${L().pay_info}</button>
+        ${s.payQr?'':`<button class="gbtn line" id="spay" style="width:100%;margin-top:10px">📷 ${L().pay_info}</button>`}
       </div>`;
     return;
   }
@@ -1573,7 +1616,7 @@ function viewStore(){
   const rows=s.menu.map(m=>{
     const q=cart[m.id]||0;
     return `<div class="mrow2">
-      <div class="memo">${m.emo}</div>
+      <div class="memo" style="overflow:hidden">${m.photo?`<img src="${m.photo}" style="width:100%;height:100%;object-fit:cover">`:m.emo}</div>
       <div class="mmid"><div class="mnm">${tx(m.nm)}</div><div class="mpr">฿${m.pr.toLocaleString()}</div></div>
       <div class="stepper">
         ${q>0?`<button class="stbtn" data-sub="${m.id}">−</button><span class="qn">${q}</span>`:''}
@@ -1584,6 +1627,8 @@ function viewStore(){
   page.innerHTML=head+`
     <div class="storebanner">${s.emo}</div>
     ${statusRow}
+    ${storeInfoSection(s)}
+    ${isOwner?`<div style="padding:0 14px 4px"><button class="gbtn line" data-storeedit style="width:100%">✏️ ${L().store_edit}</button></div>`:''}
     <div style="padding:2px 14px 12px">
       <div class="msec">${s.product?L().products_label:L().menu_label}</div>${rows}
     </div>
@@ -1783,7 +1828,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-dologin]')){screen='gate';gateMode='home';render();return;}
   const meRow=e.target.closest('[data-me]'); if(meRow){ const i=+meRow.dataset.me;
     if(i===0){ tab='chat'; chatOpen=null; render(); }                       // 판매·구매내역 → 거래 대화
-    else if(i===1){ if(!canAct())return; resetStore(); writeType=6; writeOpen=true; render(); }  // 내 가게 관리·등록
+    else if(i===1){ if(!canAct())return; myStores=true; storeOpen=null; tab='shop'; render(); page.scrollTo(0,0); }  // 내 가게 관리
     else if(i===4){ openInquiry(); }                                        // 관리자에게 문의
     else { toast(L().soon); }                                               // 관심목록·받은 매너후기
     return; }
@@ -1827,14 +1872,15 @@ document.addEventListener('click',e=>{
       if(wStore.hoursOpen&&wStore.hoursClose){const _days=(WS[lang]||WS.ko).days||WS.ko.days;const _dl=wStore.hoursAll?ws('everyday'):(wStore.hoursDays||[]).slice().sort((a,b)=>a-b).map(i=>_days[i]).join('·');if(_dl)_hrs=_dl+' '+wStore.hoursOpen+'~'+wStore.hoursClose;}
       const srow={owner_id:uid, name:(wStore.name||'').trim()||L().w_store, category:scat.code, hood_id:hoodDbId(hid),
         is_service:!!scat.svc, phone:(wStore.phone||'').trim()||null, intro:(wStore.intro||'').trim()||null,
-        hours:_hrs, map_url:(wStore.mapUrl||'').trim()||null, promo:(wStore.promo||'').trim()||null,
+        hours:_hrs, hours_all:!!wStore.hoursAll, hours_days:(wStore.hoursDays||[]), hours_open:(wStore.hoursOpen||null), hours_close:(wStore.hoursClose||null),
+        map_url:(wStore.mapUrl||'').trim()||null, promo:(wStore.promo||'').trim()||null,
         delivery:!!wStore.delivery, pickup:!!wStore.pickup, dinein:!!wStore.dinein, visit:!!wStore.visit,
         promptpay:(wStore.promptpay||'').trim()||null, holder:(wStore.holder||'').trim()||null, pay_qr:(wStore.payQr||null)};
       const menuItems=(wStore.menu||[]).filter(m=>(m.name||'').trim()).map(m=>({name:m.name.trim(), price:(parseInt(m.price)||null), photo:m.photo||null}));
-      sb.from('stores').insert(srow).select('id').single().then(({data,error})=>{
-        if(error){toast(error.message);return;}
-        if(menuItems.length){ sb.from('menu_items').insert(menuItems.map(m=>({store_id:data.id,name:m.name,price:m.price,photo_url:m.photo}))).then(()=>loadStores()); } else { loadStores(); }
-      });
+      const editId=wStoreEditId;
+      const writeMenu=(sid)=>{const doIns=()=>{ if(menuItems.length){ sb.from('menu_items').insert(menuItems.map(m=>({store_id:sid,name:m.name,price:m.price,photo_url:m.photo}))).then(()=>loadStores()); } else { loadStores(); } }; if(editId){ sb.from('menu_items').delete().eq('store_id',sid).then(()=>doIns()); } else { doIns(); }};
+      if(editId){ const urow=Object.assign({},srow); delete urow.owner_id; sb.from('stores').update(urow).eq('id',editId).then(({error})=>{ if(error){toast(error.message);return;} writeMenu(editId); }); }
+      else { sb.from('stores').insert(srow).select('id').single().then(({data,error})=>{ if(error){toast(error.message);return;} writeMenu(data.id); }); }
       resetStore();
       tab='shop'; shopCat=0;
     }else if(writeType===3||writeType===4){const kind=writeType===3?'hire':'seek';
@@ -1873,7 +1919,7 @@ document.addEventListener('click',e=>{
   }
   if(e.target.closest('[data-pall]')){city='all';hood=null;verified=false;locPickerOpen=false;render();return;}
   if(e.target.closest('.rangechip')){locPickerOpen=true;pickRegion=(city!=='all'?city:'bkk');render();return;}
-  const nv=e.target.closest('[data-tab]'); if(nv){tab=nv.dataset.tab;chatOpen=null;storeOpen=null;cart={};golfOpen=false;listingOpen=null;render();page.scrollTo(0,0);return;}
+  const nv=e.target.closest('[data-tab]'); if(nv){tab=nv.dataset.tab;chatOpen=null;storeOpen=null;cart={};golfOpen=false;listingOpen=null;myStores=false;render();page.scrollTo(0,0);return;}
   /* Golf Mate 연동 — 입장하기 → 공유계정 핸드오프 시트 */
   if(e.target.closest('[data-golf]')){gmGateOpen=true;render();return;}
   if(e.target.closest('#gmclose')||e.target.closest('#gmclose2')){gmGateOpen=false;render();return;}
@@ -1893,6 +1939,9 @@ document.addEventListener('click',e=>{
   const st=e.target.closest('[data-store]'); if(st){storeOpen=st.dataset.store;cart={};render();page.scrollTo(0,0);return;}
   const add=e.target.closest('[data-add]'); if(add){cart[add.dataset.add]=(cart[add.dataset.add]||0)+1;viewStore();return;}
   const sub=e.target.closest('[data-sub]'); if(sub){const k=sub.dataset.sub;cart[k]=(cart[k]||0)-1;if(cart[k]<=0)delete cart[k];viewStore();return;}
+  if(e.target.closest('[data-storeedit]')){const s=stores.find(x=>x.id===storeOpen);if(s)openStoreEdit(s);return;}
+  if(e.target.closest('[data-newstore]')){if(!canAct())return;resetStore();writeType=6;writeOpen=true;render();return;}
+  if(e.target.closest('[data-myexit]')){myStores=false;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-storetoggle]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;const nv=!s.open;sb.from('stores').update({is_open:nv}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.open=nv;viewStore();toast(nv?L().shop_open:L().shop_closed);});return;}
   if(e.target.closest('[data-holiday]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;if(s.holiday){sb.from('stores').update({holiday:null}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.holiday=null;viewStore();toast(L().holiday_clear);});}else{const note=(window.prompt(L().holiday_prompt,L().holiday_default)||'').trim();if(!note)return;sb.from('stores').update({holiday:note}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.holiday=note;viewStore();toast('🚫 '+note);});}return;}
   if(e.target.closest('#doorder')){if(!canAct())return;const s=stores.find(x=>x.id===storeOpen);if(s&&(!s.open||s.holiday)){toast(s.holiday?('🚫 '+s.holiday):L().shop_closed_msg);return;}payStore=storeOpen;payAmount=s.menu.reduce((t,m)=>t+(cart[m.id]||0)*m.pr,0);payOpen=true;render();return;}
