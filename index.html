@@ -513,13 +513,14 @@ async function openOrCreateChat(listing){
     if(idx>=0) openChat(idx); else render();
   }catch(e){ toast(String(e.message||e)); }
 }
-async function openStoreChat(store){
+async function openStoreChat(store, firstMsg){
   if(!store||!store.id||!store.owner){ toast(L().reply_demo); return; }
   if(store.owner===uid){ toast(lang==='ko'?'내 가게에는 문의할 수 없어요':'Cannot inquire your own store'); return; }
   try{
     let {data:ex}=await sb.from('chats').select('*').eq('store_id',store.id).eq('buyer_id',uid).maybeSingle();
     let row=ex;
     if(!row){ const ins=await sb.from('chats').insert({store_id:store.id, buyer_id:uid, seller_id:store.owner, last_message_at:new Date().toISOString()}).select().single(); if(ins.error){toast(ins.error.message);return;} row=ins.data; }
+    if(firstMsg){ try{ await sb.from('messages').insert({chat_id:row.id, sender_id:uid, body:firstMsg}); await sb.from('chats').update({last_message_at:new Date().toISOString()}).eq('id',row.id); }catch(_){} }
     await loadChats(); storeOpen=null; tab='chat';
     const idx=chats.findIndex(c=>c.id===row.id);
     if(idx>=0) openChat(idx); else render();
@@ -1961,7 +1962,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('#doorder')){if(!canAct())return;const s=stores.find(x=>x.id===storeOpen);if(s&&(!s.open||s.holiday)){toast(s.holiday?('🚫 '+s.holiday):L().shop_closed_msg);return;}payStore=storeOpen;payAmount=s.menu.reduce((t,m)=>t+(cart[m.id]||0)*m.pr,0);payOpen=true;render();return;}
   if(e.target.closest('#spay')){payStore=storeOpen;payAmount=0;payOpen=true;render();return;}
   if(e.target.closest('#payscrim')||e.target.closest('#payclose')){payOpen=false;render();return;}
-  if(e.target.closest('#paydone')){const s=stores.find(x=>x.id===payStore);placeOrder(s,payAmount,Object.assign({},cart));payOpen=false;cart={};storeOpen=null;tab='chat';chatOpen=null;render();toast(L().order_done);return;}
+  if(e.target.closest('#paydone')){const s=stores.find(x=>x.id===payStore);const _cart=Object.assign({},cart);const _amt=payAmount;placeOrder(s,_amt,_cart);payOpen=false;cart={};const _names=(s&&s.menu||[]).filter(m=>_cart[m.id]).map(m=>tx(m.nm)+' x'+_cart[m.id]).join(', ');const _msg='🛒 '+(lang==='ko'?'송금 완료, 주문 확인 부탁드려요':'Paid — please confirm my order')+(_names?(' ('+_names+(_amt?' / ฿'+_amt.toLocaleString():'')+')'):'');openStoreChat(s,_msg);toast(L().order_done);return;}
   if(e.target.closest('#sback')){storeOpen=null;cart={};render();return;}
   if(e.target.closest('#sinq')){if(!canAct())return;const s=stores.find(x=>x.id===storeOpen);if(s)openStoreChat(s);return;}
   const ask=e.target.closest('.rb.ask'); if(ask){if(!canAct())return;toast(L().reply_demo);return;}
