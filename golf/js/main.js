@@ -1565,6 +1565,9 @@ function showInstallGuide() {
 })();
 
 async function init() {
+  // EMBED: running inside ThaiMate (/golf/?embed=thaimate). Trims marketplace,
+  // admin tools and the tall header so ThaiMate's bar is the only chrome.
+  try { window.__embed = new URL(window.location.href).searchParams.get('embed') === 'thaimate'; } catch (_) { window.__embed = false; }
   await loadSession();
   // 연결 워밍업 — 첫 데이터 쿼리의 콜드스타트(~700ms)를 랜딩 렌더와 겹치도록 미리 데움 (fire-and-forget)
   try { sb.from('golf_clubs').select('id').limit(1).then(() => {}, () => {}); } catch (_) {}

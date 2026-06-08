@@ -45,8 +45,15 @@ export async function homeView() {
   const role = admin ? t('role.admin') : t('role.member');
   const pwaInstalled = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-  
-  return `
+  // EMBED: inside ThaiMate (/golf/?embed=thaimate). ThaiMate's bar already
+  // shows the "Golf Mate" title + exit, so use a slim header instead of the
+  // tall green identity block (header de-duplication).
+  const EMBED = !!window.__embed;
+  const headerBlock = EMBED ? `
+    <div style="display:flex;justify-content:flex-end;gap:6px;padding:8px 2px 2px;">
+      <button class="btn btn-secondary" style="font-size:11px;padding:6px 10px;" onclick="window._gd.doToggleLang()" title="언어 / Language">🌐 ${getLang() === 'ko' ? 'EN' : 'KO'}</button>
+      <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;" onclick="window._gd.goMyPage()">${t('header.my')}</button>
+    </div>` : `
     <div class="card" style="background:linear-gradient(135deg,#2E7D32,#4CAF50);color:white;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
@@ -59,9 +66,12 @@ export async function homeView() {
           <button class="btn" style="background:rgba(255,255,255,0.2);color:white;font-size:12px;padding:8px 12px;" onclick="window._gd.goMyPage()">${t('header.my')}</button>
         </div>
       </div>
-    </div>
-    
-    ${!pwaInstalled && isMobile ? `
+    </div>`;
+
+  return `
+    ${headerBlock}
+
+    ${!EMBED && !pwaInstalled && isMobile ? `
       <div class="card" style="background:linear-gradient(135deg,#43A047,#66BB6A);color:white;cursor:pointer;border:none;" onclick="window._gd.doInstallPwa()">
         <div style="display:flex;align-items:center;gap:14px;">
           <div style="font-size:40px;line-height:1;">📲</div>
@@ -78,26 +88,26 @@ export async function homeView() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
         <button class="btn btn-primary" style="font-size:14px;padding:14px;" onclick="window._gd.goClubs()">${t('menu.clubs')}</button>
         <button class="btn btn-primary" style="font-size:14px;padding:14px;" onclick="window._gd.goMatches()">${t('menu.matches')}</button>
-        <button class="btn btn-secondary" style="font-size:14px;padding:14px;" onclick="window._gd.goBusinessList()">${t('menu.businesses')}</button>
-        <button class="btn btn-secondary" style="font-size:14px;padding:14px;" onclick="window._gd.goMarketList()">${t('menu.market')}</button>
+        <button class="btn btn-secondary" style="font-size:14px;padding:14px;${EMBED ? '' : ''}" onclick="window._gd.goBusinessList()">${t('menu.businesses')}</button>
+        ${EMBED ? '' : `<button class="btn btn-secondary" style="font-size:14px;padding:14px;" onclick="window._gd.goMarketList()">${t('menu.market')}</button>`}
         <button class="btn btn-secondary" style="font-size:14px;padding:14px;grid-column:1 / -1;" onclick="window._gd.goChatList()">${t('menu.chat')}${chatBadge}</button>
       </div>
-      ${canManageCourses ? `<div onclick="window._gd.goCoursesAdmin()" style="margin-top:12px;padding:14px 16px;background:linear-gradient(135deg,#1976D2 0%,#0D47A1 100%);color:white;border-radius:10px;cursor:pointer;">
+      ${canManageCourses && !EMBED ? `<div onclick="window._gd.goCoursesAdmin()" style="margin-top:12px;padding:14px 16px;background:linear-gradient(135deg,#1976D2 0%,#0D47A1 100%);color:white;border-radius:10px;cursor:pointer;">
         <div style="font-weight:700;font-size:15px;">📋 골프장 정보 관리</div>
         <div style="font-size:12px;opacity:0.9;margin-top:4px;font-style:italic;">🤝 함께 만들어 가는 골프장 정보</div>
         <div style="font-size:11px;opacity:0.85;margin-top:4px;">골프장 추가 · Par 수정 · 정보 보강</div>
       </div>` : ''}
-      ${pushPerm === 'default' ? `
+      ${!EMBED && pushPerm === 'default' ? `
         <div style="background:#fff3e0;border:1px solid #ffb74d;padding:12px;border-radius:8px;margin-top:12px;">
           <div style="font-size:13px;color:#e65100;font-weight:600;margin-bottom:6px;">${t('push.enableTitle')}</div>
           <div style="font-size:12px;color:#666;margin-bottom:10px;">${t('push.enableDesc')}</div>
           <button class="btn btn-primary" style="font-size:13px;padding:10px 16px;" onclick="window._gd.doEnablePush()">${t('push.enableBtn')}</button>
         </div>
       ` : ''}
-      ${pushPerm === 'denied' ? `
+      ${!EMBED && pushPerm === 'denied' ? `
         <div style="background:#ffebee;border:1px solid #ef9a9a;padding:10px;border-radius:8px;margin-top:12px;font-size:12px;color:#c62828;">${t('push.blocked')}</div>
       ` : ''}
-      ${admin ? `
+      ${admin && !EMBED ? `
         <div style="background:#fff8e1;border:1px solid #FFB300;padding:12px;border-radius:8px;margin-top:12px;">
           <div style="font-size:13px;font-weight:600;margin-bottom:8px;">${t('admin.tools')}</div>
           <button class="btn btn-secondary" style="width:100%;padding:12px;font-size:14px;text-align:left;" onclick="window._gd.goClubAdmin()">🏌️ 동호회 개설 승인${clubBadge}</button>
@@ -117,27 +127,32 @@ export async function homeView() {
 }
 
 function guestHome() {
+  const EMBED = !!window.__embed;
   return `
-    <div class="card" style="background:linear-gradient(135deg,#2E7D32,#4CAF50);color:white;text-align:center;">
+    ${EMBED ? '' : `<div class="card" style="background:linear-gradient(135deg,#2E7D32,#4CAF50);color:white;text-align:center;">
       <h2 style="margin-top:0;color:white;">⛳ GolfMate</h2>
       <p style="opacity:0.9;margin-bottom:0;">편하고 스마트한 골프 플랫폼 / Smart Golf Platform for Everyone</p>
-    </div>
+    </div>`}
     <div class="card">
       <h3 style="margin-top:0;">👋 둘러보기 모드</h3>
       <p style="color:var(--text-secondary);font-size:14px;line-height:1.6;">
         가입 없이도 동호회·회원사 정보를 둘러볼 수 있습니다.
       </p>
+      ${EMBED ? `
+      <div style="background:#fff8e1;border:1px solid #FFB300;padding:12px 14px;border-radius:8px;margin-top:14px;font-size:13px;color:#7a5b00;line-height:1.6;">
+        ThaiMate에 로그인하면 골프도 같은 계정으로 자동 입장돼요. (골프 전용 로그인은 따로 없습니다.)
+      </div>` : `
       <div style="display:flex;gap:8px;margin-top:16px;">
         <button class="btn btn-primary" style="flex:1;" onclick="window._gd.goSignIn()">로그인</button>
         <button class="btn btn-secondary" style="flex:1;" onclick="window._gd.goSignUp()">신규 가입</button>
-      </div>
+      </div>`}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px;">
           <button onclick="window._gd.goClubs()" style="padding:20px 16px;background:#2E7D32;color:white;border:none;border-radius:12px;font-weight:600;font-size:15px;cursor:pointer;">👥 동호회<br>둘러보기</button>
           <button onclick="window._gd.goMatches()" style="padding:20px 16px;background:#1976D2;color:white;border:none;border-radius:12px;font-weight:600;font-size:15px;cursor:pointer;">🏌️ 동반자 모집<br>둘러보기</button>
-          <button onclick="window._gd.goMarketList()" style="padding:20px 16px;background:#F57C00;color:white;border:none;border-radius:12px;font-weight:600;font-size:15px;cursor:pointer;">🛒 매물<br>둘러보기</button>
+          ${EMBED ? '' : `<button onclick="window._gd.goMarketList()" style="padding:20px 16px;background:#F57C00;color:white;border:none;border-radius:12px;font-weight:600;font-size:15px;cursor:pointer;">🛒 매물<br>둘러보기</button>`}
           <button onclick="window._gd.goBusinessList()" style="padding:20px 16px;background:#7B1FA2;color:white;border:none;border-radius:12px;font-weight:600;font-size:15px;cursor:pointer;">🤝 회원사<br>둘러보기</button>
         </div>
     </div>
-    <div class="card" style="text-align:center;color:var(--text-secondary);font-size:12px;">v2 Phase 4</div>
+    ${EMBED ? '' : `<div class="card" style="text-align:center;color:var(--text-secondary);font-size:12px;">v2 Phase 4</div>`}
   `;
 }
