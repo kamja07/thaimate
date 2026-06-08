@@ -409,6 +409,7 @@ function dbToStore(row){
   const menu=(row.menu_items||[]).slice().sort((a,b)=>a.price-b.price).map(m=>({id:m.id,emo:m.emoji||'🍽️',pr:m.price,nm:m.name||''}));
   if(row.promptpay) PAY[row.id]={pp:row.promptpay,holder:row.holder||row.name};
   return { id:row.id, cat:(SCAT[row.category]!=null?SCAT[row.category]:5), ad:!!row.ad_tier, emo:SEMO[row.category]||'🏪',
+    open:(row.is_open!==false), owner:row.owner_id||null,
     city:h?h.region:'all', hoodId:h?h.id:null, rating:row.rating||5.0, reviews:row.reviews_count||0,
     service:!!row.is_service, nm:row.name||'', product:(row.category==='mart'),
     min: menu.length?('฿'+menu[0].pr):null, menu: menu.length?menu:undefined,
@@ -627,6 +628,7 @@ const T = {
   live:"명이 지금 거래 중", status_sale:"판매중", status_resv:"예약중", status_done:"거래완료", status_match:"매칭대기", status_give:"나눔중", status_give_done:"나눔완료",
   btn_like:"관심", btn_chat:"채팅하기", btn_apply:"문의하기", budget:"예산",
   ad_badge:"광고", btn_order:"주문하기", btn_menu:"메뉴보기", btn_inquire:"예약·문의", min_order:"최소주문", delivery:"배달", pickup:"포장",
+  shop_open:"영업중", shop_closed:"영업종료", shop_set_open:"🟢 영업 시작", shop_set_closed:"⛔ 영업 종료", shop_closed_msg:"지금은 영업종료 상태예요",
   cart:"장바구니", total:"합계", menu_label:"메뉴", products_label:"상품", order_done:"주문이 접수되었습니다 (프로토타입)",
   chat_secure:"1:1 비공개 대화 · 단톡방처럼 공개되지 않아요", input_ph:"메시지 보내기…",
   r_help:"도움돼요", r_save:"저장", r_ask:"1:1 질문", official:"공지",
@@ -679,6 +681,7 @@ const T = {
   live:"people trading now", status_sale:"For sale", status_resv:"Reserved", status_done:"Sold", status_match:"Matching", status_give:"Available", status_give_done:"Gone",
   btn_like:"Save", btn_chat:"Chat", btn_apply:"Apply", budget:"Budget",
   ad_badge:"AD", btn_order:"Order", btn_menu:"Menu", btn_inquire:"Book·Ask", min_order:"Min", delivery:"Delivery", pickup:"Pickup",
+  shop_open:"Open", shop_closed:"Closed", shop_set_open:"🟢 Open now", shop_set_closed:"⛔ Close", shop_closed_msg:"This store is currently closed",
   cart:"Cart", total:"Total", menu_label:"Menu", products_label:"Products", order_done:"Order placed (prototype)",
   chat_secure:"Private 1:1 — never public like a group chat", input_ph:"Send a message…",
   r_help:"Helpful", r_save:"Save", r_ask:"Ask 1:1", official:"Notice",
@@ -731,6 +734,7 @@ const T = {
   live:"คนกำลังซื้อขายอยู่", status_sale:"ขายอยู่", status_resv:"จองแล้ว", status_done:"ขายแล้ว", status_match:"รอจับคู่", status_give:"แจกอยู่", status_give_done:"หมดแล้ว",
   btn_like:"บันทึก", btn_chat:"แชท", btn_apply:"สอบถาม", budget:"งบ",
   ad_badge:"โฆษณา", btn_order:"สั่งซื้อ", btn_menu:"ดูเมนู", btn_inquire:"จอง·สอบถาม", min_order:"ขั้นต่ำ", delivery:"เดลิเวอรี", pickup:"รับเอง",
+  shop_open:"เปิด", shop_closed:"ปิด", shop_set_open:"🟢 เปิดร้าน", shop_set_closed:"⛔ ปิดร้าน", shop_closed_msg:"ร้านปิดอยู่ในขณะนี้",
   cart:"ตะกร้า", total:"รวม", menu_label:"เมนู", products_label:"สินค้า", order_done:"สั่งซื้อสำเร็จ (ต้นแบบ)",
   chat_secure:"แชทส่วนตัว 1:1 · ไม่เปิดเผยเหมือนกลุ่ม", input_ph:"พิมพ์ข้อความ…",
   r_help:"มีประโยชน์", r_save:"บันทึก", r_ask:"ถาม 1:1", official:"ประกาศ",
@@ -1511,6 +1515,8 @@ function viewShop(){
 }
 function viewStore(){
   const s=stores.find(x=>x.id===storeOpen);
+  const isOwner=!!(s.owner&&uid&&s.owner===uid);
+  const statusRow=`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--line)"><span style="font-weight:800;font-size:13.5px;color:${s.open?'#15a05a':'#d33'}">${s.open?'🟢 '+L().shop_open:'⛔ '+L().shop_closed}</span>${isOwner?`<button class="gbtn line" data-storetoggle style="padding:6px 12px;font-size:12.5px">${s.open?L().shop_set_closed:L().shop_set_open}</button>`:''}</div>`;
   const head=`<div class="detail-head">
     <button class="back" id="sback">‹</button>
     <div class="avatar" style="width:42px;height:42px;flex:0 0 42px;border-radius:12px;font-size:22px;background:#fff1e8">${s.emo}</div>
@@ -1518,6 +1524,7 @@ function viewStore(){
   if(s.service){
     page.innerHTML=head+`
       <div class="storebanner">${s.emo}</div>
+      ${statusRow}
       <div style="padding:16px 14px">
         <div class="ipost" style="margin:0"><p class="iexc" style="-webkit-line-clamp:initial;font-size:13.5px">${tx(s.desc)}</p></div>
         <div class="secure" style="border-radius:11px;margin-top:12px">🔒 ${L().chat_secure}</div>
@@ -1541,10 +1548,11 @@ function viewStore(){
   }).join('');
   page.innerHTML=head+`
     <div class="storebanner">${s.emo}</div>
+    ${statusRow}
     <div style="padding:2px 14px 12px">
       <div class="msec">${s.product?L().products_label:L().menu_label}</div>${rows}
     </div>
-    ${count>0?`<div class="cartbar"><span class="cc">${count}</span><span>${L().cart}</span><span class="ct">${L().total} ฿${total.toLocaleString()}</span><button class="orderfab" id="doorder">${L().btn_order}</button></div>`:''}`;
+    ${count>0?`<div class="cartbar"><span class="cc">${count}</span><span>${L().cart}</span><span class="ct">${L().total} ฿${total.toLocaleString()}</span>${(s.open||isOwner)?`<button class="orderfab" id="doorder">${L().btn_order}</button>`:`<button class="orderfab" style="background:#999" disabled>⛔ ${L().shop_closed}</button>`}</div>`:''}`;
 }
 
 /* ===================== chat ===================== */
@@ -1846,7 +1854,8 @@ document.addEventListener('click',e=>{
   const st=e.target.closest('[data-store]'); if(st){storeOpen=st.dataset.store;cart={};render();page.scrollTo(0,0);return;}
   const add=e.target.closest('[data-add]'); if(add){cart[add.dataset.add]=(cart[add.dataset.add]||0)+1;viewStore();return;}
   const sub=e.target.closest('[data-sub]'); if(sub){const k=sub.dataset.sub;cart[k]=(cart[k]||0)-1;if(cart[k]<=0)delete cart[k];viewStore();return;}
-  if(e.target.closest('#doorder')){if(!canAct())return;const s=stores.find(x=>x.id===storeOpen);payStore=storeOpen;payAmount=s.menu.reduce((t,m)=>t+(cart[m.id]||0)*m.pr,0);payOpen=true;render();return;}
+  if(e.target.closest('[data-storetoggle]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;const nv=!s.open;sb.from('stores').update({is_open:nv}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.open=nv;viewStore();toast(nv?L().shop_open:L().shop_closed);});return;}
+  if(e.target.closest('#doorder')){if(!canAct())return;const s=stores.find(x=>x.id===storeOpen);if(s&&!s.open){toast(L().shop_closed_msg);return;}payStore=storeOpen;payAmount=s.menu.reduce((t,m)=>t+(cart[m.id]||0)*m.pr,0);payOpen=true;render();return;}
   if(e.target.closest('#spay')){payStore=storeOpen;payAmount=0;payOpen=true;render();return;}
   if(e.target.closest('#payscrim')||e.target.closest('#payclose')){payOpen=false;render();return;}
   if(e.target.closest('#paydone')){const s=stores.find(x=>x.id===payStore);placeOrder(s,payAmount,Object.assign({},cart));payOpen=false;cart={};storeOpen=null;tab='chat';chatOpen=null;render();toast(L().order_done);return;}
