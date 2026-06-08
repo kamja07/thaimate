@@ -13,6 +13,18 @@ export const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, storageKey: 'sb-jhtsncdeoulanvytfwrl-auth-token' }
 });
 
+// ── CENTRAL golf-course master ──────────────────────────────────────────────
+// Golf course data (name·region·홀별 pars) is a shared community asset across
+// ALL golf instances (this embed, standalone golfdong, future buyers). It lives
+// in the golfdong project and is READ here with its public anon key (no secret).
+// WRITES go through the local `contribute_course` RPC (checks email-verification
+// then forwards to the central DB) — see domain/courses.js.
+const COURSE_URL = 'https://bxhkcodvxtoacbozfhwx.supabase.co';
+const COURSE_ANON = 'sb_publishable_306uPiqTXeg7xZDqEL2MTw_2wPMr2VN';
+export const sbCourses = createClient(COURSE_URL, COURSE_ANON, {
+  auth: { persistSession: false, autoRefreshToken: false, storageKey: 'sb-courses-readonly' }
+});
+
 // Standard query helper — always returns { data, error, rls }
 export async function query(builder) {
   try {

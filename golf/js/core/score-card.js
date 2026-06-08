@@ -2,11 +2,11 @@
 // 종이 스코어카드 UI helper
 // 2026-05-29: renderPeoriaHolesCard 추가 — 신페리오 12홀 시각화
 
-import { sb } from './db.js';
+import { sb, sbCourses } from './db.js';
 
 export async function getCoursePar(courseId, courseKey) {
   if (!courseId) return null;
-  const { data } = await sb.from('golf_courses').select('pars').eq('id', courseId).maybeSingle();
+  const { data } = await sbCourses.from('golf_courses').select('pars').eq('id', courseId).maybeSingle();
   if (!data || !data.pars) return null;
   // 27/36홀 두 코스 조합: "Lagoon+Palm" → 9 + 9 = 18개
   if (courseKey && courseKey.includes('+')) {

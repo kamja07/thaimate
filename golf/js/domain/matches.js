@@ -1,5 +1,5 @@
 // domain/matches.js — 동반 라운드 동반자 모집 (호스트 승인 방식)
-import { sb, query, mutate } from '../core/db.js';
+import { sb, sbCourses, query, mutate } from '../core/db.js';
 import { getSession } from '../core/auth.js';
 
 export async function loadMatches({ region, sortBy } = {}) {
@@ -20,7 +20,7 @@ export async function loadMatches({ region, sortBy } = {}) {
     // course 이름으로 golf_courses 조회 후 region 필터 (한 번에 IN으로)
     const courseNames = [...new Set(result.map(r => r.course).filter(Boolean))];
     if (courseNames.length) {
-      const { data: gc } = await sb.from('golf_courses').select('name, region').in('name', courseNames);
+      const { data: gc } = await sbCourses.from('golf_courses').select('name, region').in('name', courseNames);
       const courseRegion = {};
       (gc || []).forEach(c => { courseRegion[c.name] = c.region; });
       result = result.filter(m => courseRegion[m.course] === region);

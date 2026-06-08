@@ -1,11 +1,11 @@
 // domain/courses.js — Super-admin golf course CRUD (2026-05-29)
-import { sb } from '../core/db.js';
+import { sb, sbCourses } from '../core/db.js';
 
 export const REGION_OPTIONS = ['방콕권','파타야권','라차부리·칸차나부리권','후아힌권','카오야이권','콘깬권','치앙마이권','치앙라이권','푸켓권','기타'];
 export const HOLES_OPTIONS = [18, 27, 36];
 
 export async function loadAllCourses() {
-  const { data, error } = await sb.from('golf_courses')
+  const { data, error } = await sbCourses.from('golf_courses')
     .select('id, name, name_en, region, district, holes, course_names, pars')
     .order('region', { nullsFirst: false })
     .order('name');
@@ -13,7 +13,7 @@ export async function loadAllCourses() {
 }
 
 export async function loadCourse(id) {
-  const { data, error } = await sb.from('golf_courses').select('*').eq('id', id).maybeSingle();
+  const { data, error } = await sbCourses.from('golf_courses').select('*').eq('id', id).maybeSingle();
   return { data, error };
 }
 
@@ -45,8 +45,10 @@ export async function createCourse({ name, region, district, holes, courseNames,
     }
     if (ok) row.pars = pars;
   }
-  const { data, error } = await sb.from('golf_courses').insert(row).select().single();
-  return { data, error };
+  // 중앙(공용) 골프장 DB로 기여 — id를 클라이언트에서 생성(async 전달이라 즉시 알아야 함)
+  row.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined;
+  const { error } = await sb.rpc('contribute_course', { p_course: row });
+  return { data: error ? null : row, error };
 }
 export async function updateCourse({ id, name, region, district, holes, courseNames, pars }) {
   // 안전 update: undefined 필드는 row에서 제외(부분 update 허용, 기존값 보존)
@@ -88,10 +90,11 @@ export async function updateCourse({ id, name, region, district, holes, courseNa
   if (Object.keys(row).length === 0) {
     return { data: null, error: { message: '변경된 항목이 없습니다.' } };
   }
-  const { data, error } = await sb.from('golf_courses').update(row).eq('id', id).select().single();
-  return { data, error };
+  const payload = Object.assign({ id }, row);
+  const { error } = await sb.rpc('contribute_course', { p_course: payload });
+  return { data: error ? null : payload, error };
 }
 export async function deleteCourse(id) {
-  const { data, error } = await sb.rpc('admin_delete_course', { p_id: id });
+  const { data, error } = await sb.rpc('contribute_delete_course', { p_id: id });
   return { data, error };
 }

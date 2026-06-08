@@ -1,11 +1,11 @@
-import { sb } from '../core/db.js';
+import { sb, sbCourses } from '../core/db.js';
 import { escapeHtml } from '../core/ui-kit.js';
 import { renderScorecard } from '../core/score-card.js';
 
 const REGION_ORDER = ['방콕권','파타야권','후아힌권','카오야이권','치앙마이권','푸켓권','기타'];
 
 export async function roundAddView() {
-  const { data } = await sb.from('golf_courses').select('id, name, region, district, holes, course_names, pars').order('region').order('name');
+  const { data } = await sbCourses.from('golf_courses').select('id, name, region, district, holes, course_names, pars').order('region').order('name');
   const courses = data || [];
   const by = {};
   courses.forEach(c => { const r = c.region || '기타'; if (!by[r]) by[r]=[]; by[r].push(c); });

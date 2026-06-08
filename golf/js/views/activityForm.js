@@ -2,13 +2,13 @@
 // Phase B 2026-05-28: 골프장 드롭다운 강제 + course_id 사용 + 27/36홀 course_key 선택
 import { loadClub } from '../domain/clubs.js';
 import { loadEvent } from '../domain/events.js';
-import { sb } from '../core/db.js';
+import { sb, sbCourses } from '../core/db.js';
 import { escapeHtml } from '../core/ui-kit.js';
 
 const REGION_ORDER = ['방콕권','파타야권','라차부리·칸차나부리권','후아힌권','카오야이권','콘깬권','치앙마이권','치앙라이권','푸켓권','기타'];
 
 async function loadCoursesByRegion() {
-  const { data, error } = await sb.from('golf_courses')
+  const { data, error } = await sbCourses.from('golf_courses')
     .select('id, name, region, district, holes, course_names, pars')
     .order('region').order('name');
   if (error) { console.warn('[courses] load err', error); return {}; }

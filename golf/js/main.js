@@ -1,6 +1,6 @@
 // main.js — Entry point (Phase 4 + club management)
 
-import { sb } from './core/db.js';
+import { sb, sbCourses } from './core/db.js';
 import { loadSession, signIn, signOut, getSession } from './core/auth.js';
 import { signInByNickname, signUp, updateMyProfile, grantAdmin, revokeAdmin } from './domain/users.js';
 import { loadEventParticipants, loadEventAwards, createActivity, updateActivity } from './domain/events.js';
@@ -621,7 +621,7 @@ window._gd = {
   async doEditGolfPars(courseId) {
     showLoading();
     const { sb } = await import('./core/db.js');
-    const { data: course, error } = await sb.from('golf_courses').select('*').eq('id', courseId).single();
+    const { data: course, error } = await sbCourses.from('golf_courses').select('*').eq('id', courseId).single();
     hideLoading();
     if (error || !course) { showError(error || new Error('not found'), '골프장 로드'); return; }
     const esc = s => (s == null ? '' : String(s).replace(/[<>&"]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[ch])));
@@ -817,14 +817,14 @@ window._gd = {
       if (parErr) console.warn('events.hole_pars update failed', parErr);
       else parMsg = ' + Par 등록';
       if (!parErr && evRow.course_id) {
-        const { data: gc } = await sb.from('golf_courses').select('pars').eq('id', evRow.course_id).maybeSingle();
+        const { data: gc } = await sbCourses.from('golf_courses').select('pars').eq('id', evRow.course_id).maybeSingle();
         const courseKey = evRow.course_key || 'main';
         const existingPar = gc && gc.pars && gc.pars[courseKey];
         if (!existingPar) {
           if (confirm('이 Par 정보를 골프장 마스터에도 등록하시겠습니까?\n(다른 회원도 이 정보를 사용)')) {
             const newPars = Object.assign({}, (gc && gc.pars) || {});
             newPars[courseKey] = parsArr;
-            const { error: gcErr } = await sb.from('golf_courses').update({ pars: newPars }).eq('id', evRow.course_id);
+            const { error: gcErr } = await sb.rpc('contribute_course', { p_course: { id: evRow.course_id, pars: newPars } });
             if (!gcErr) parMsg += ' + 마스터 동기화';
             else console.warn('golf_courses sync failed', gcErr);
           }
@@ -2282,10 +2282,12 @@ async function doOpenLeaderParEditor(eventId) {
     if (e1) { alert('저장 실패: ' + e1.message); return; }
 
     if (modal.querySelector('#lp_sync_master').checked && ev.course) {
-      const { error: e2 } = await sb.from('golf_courses')
-        .update({ pars: { main: newPars } })
-        .ilike('name', ev.course);
-      if (e2) console.warn('master sync failed', e2);
+      // 중앙 골프장 DB에서 이름으로 id 조회 후 전달 RPC로 동기화
+      const { data: bc } = await sbCourses.from('golf_courses').select('id').ilike('name', ev.course).maybeSingle();
+      if (bc) {
+        const { error: e2 } = await sb.rpc('contribute_course', { p_course: { id: bc.id, pars: { main: newPars } } });
+        if (e2) console.warn('master sync failed', e2);
+      }
     }
     alert('저장 완료');
     modal.remove();

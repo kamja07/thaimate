@@ -1,12 +1,12 @@
 // views/matchCreate.js — 매치 등록 폼 (골프장 권역+선택, 날짜+시간, 인원, 핸디, 그린피, 메모)
-import { sb } from '../core/db.js';
+import { sb, sbCourses } from '../core/db.js';
 import { createMatch } from '../domain/matches.js';
 import { escapeHtml } from '../core/ui-kit.js';
 
 const REGION_ORDER = ['방콕권','파타야권','라차부리·칸차나부리권','후아힌권','카오야이권','콘깬권','치앙마이권','치앙라이권','푸켓권','기타'];
 
 async function loadCoursesByRegion() {
-  const { data, error } = await sb.from('golf_courses').select('id, name, region, district').order('region').order('name');
+  const { data, error } = await sbCourses.from('golf_courses').select('id, name, region, district').order('region').order('name');
   if (error) { console.warn(error); return {}; }
   const by = {};
   (data || []).forEach(c => {
