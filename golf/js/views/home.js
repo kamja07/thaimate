@@ -20,7 +20,10 @@ export async function homeView() {
   let chatUnread = (unreadR && unreadR.count) || 0;
   const _u = session && session.user;
   const _isFakeEmail = (_u && _u.email || '').toLowerCase().endsWith('@golfdong.local');
-  const canManageCourses = !!admin || (!!_u && !!_u.email_confirmed_at && !_isFakeEmail);
+  const EMBED = !!window.__embed;  // inside ThaiMate /golf/?embed=thaimate
+  // 골프장 정보 관리 = 이메일 인증 회원이면 누구나 쓰는 커뮤니티 기여 기능(홀별 파 등).
+  // 임베드에선 ThaiMate 이메일 인증(profiles.email_verified) 기준, 독립판은 auth 기준.
+  const canManageCourses = !!admin || (EMBED ? !!(profile && profile.email_verified) : (!!_u && !!_u.email_confirmed_at && !_isFakeEmail));
 
   // 슈퍼관리자: 승인 대기 카운트 (병렬)
   let pendingBizCount = 0;
@@ -45,10 +48,8 @@ export async function homeView() {
   const role = admin ? t('role.admin') : t('role.member');
   const pwaInstalled = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-  // EMBED: inside ThaiMate (/golf/?embed=thaimate). ThaiMate's bar already
-  // shows the "Golf Mate" title + exit, so use a slim header instead of the
-  // tall green identity block (header de-duplication).
-  const EMBED = !!window.__embed;
+  // EMBED (defined above): ThaiMate's bar already shows the "Golf Mate" title +
+  // exit, so use a slim header instead of the tall green identity block.
   const headerBlock = EMBED ? `
     <div style="display:flex;justify-content:flex-end;gap:6px;padding:8px 2px 2px;">
       <button class="btn btn-secondary" style="font-size:11px;padding:6px 10px;" onclick="window._gd.doToggleLang()" title="언어 / Language">🌐 ${getLang() === 'ko' ? 'EN' : 'KO'}</button>
@@ -92,7 +93,7 @@ export async function homeView() {
         ${EMBED ? '' : `<button class="btn btn-secondary" style="font-size:14px;padding:14px;" onclick="window._gd.goMarketList()">${t('menu.market')}</button>`}
         <button class="btn btn-secondary" style="font-size:14px;padding:14px;grid-column:1 / -1;" onclick="window._gd.goChatList()">${t('menu.chat')}${chatBadge}</button>
       </div>
-      ${canManageCourses && !EMBED ? `<div onclick="window._gd.goCoursesAdmin()" style="margin-top:12px;padding:14px 16px;background:linear-gradient(135deg,#1976D2 0%,#0D47A1 100%);color:white;border-radius:10px;cursor:pointer;">
+      ${canManageCourses ? `<div onclick="window._gd.goCoursesAdmin()" style="margin-top:12px;padding:14px 16px;background:linear-gradient(135deg,#1976D2 0%,#0D47A1 100%);color:white;border-radius:10px;cursor:pointer;">
         <div style="font-weight:700;font-size:15px;">📋 골프장 정보 관리</div>
         <div style="font-size:12px;opacity:0.9;margin-top:4px;font-style:italic;">🤝 함께 만들어 가는 골프장 정보</div>
         <div style="font-size:11px;opacity:0.85;margin-top:4px;">골프장 추가 · Par 수정 · 정보 보강</div>
