@@ -476,12 +476,12 @@ async function placeOrder(store,total,cartObj){
 /* ===================== 1:1 채팅 (DB + Realtime) ===================== */
 let chatSub=null;
 function chatToLocal(row, nameMap){
-  const iAmBuyer=(row.buyer_id===uid), otherId=iAmBuyer?row.seller_id:row.buyer_id, li=row.listings||{};
+  const iAmBuyer=(row.buyer_id===uid), otherId=iAmBuyer?row.seller_id:row.buyer_id, li=row.listings||{}, st=row.stores||null;
   const ms=(row.messages||[]).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
   const lastM=ms.length?ms[ms.length-1]:null;
   return { id:row.id, buyerId:row.buyer_id, sellerId:row.seller_id, listingId:row.listing_id,
     av:'🧑', who:(nameMap&&nameMap[otherId])||(lang==='ko'?'사용자':'User'),
-    item:li.title||(lang==='ko'?'대화':'Chat'), price:li.price_text||'', city:'all',
+    item: st?(st.name+(lang==='ko'?' · 예약·문의':' · Inquiry')):(li.title||(lang==='ko'?'대화':'Chat')), price:li.price_text||'', city:'all',
     unread: iAmBuyer?(row.buyer_unread||0):(row.seller_unread||0),
     last: lastM?lastM.body:'', tm: relTime(row.last_message_at||row.created_at),
     msgs: ms.map(m=>({me:m.sender_id===uid, tx:m.body, id:m.id})) };
@@ -489,7 +489,7 @@ function chatToLocal(row, nameMap){
 async function loadChats(){
   if(!uid) return;
   try{
-    const {data,error}=await sb.from('chats').select('*, listings(title,price_text), messages(id,body,created_at,sender_id)').or(`buyer_id.eq.${uid},seller_id.eq.${uid}`).order('last_message_at',{ascending:false});
+    const {data,error}=await sb.from('chats').select('*, listings(title,price_text), stores(name), messages(id,body,created_at,sender_id)').or(`buyer_id.eq.${uid},seller_id.eq.${uid}`).order('last_message_at',{ascending:false});
     if(error||!Array.isArray(data)) return;
     const otherIds=[...new Set(data.map(r=>r.buyer_id===uid?r.seller_id:r.buyer_id).filter(Boolean))];
     let nameMap={};
@@ -506,6 +506,18 @@ async function openOrCreateChat(listing){
     let row=ex;
     if(!row){ const ins=await sb.from('chats').insert({listing_id:listing.id, buyer_id:uid, seller_id:listing.author_id, last_message_at:new Date().toISOString()}).select().single(); if(ins.error){toast(ins.error.message);return;} row=ins.data; }
     await loadChats(); listingOpen=null; tab='chat';
+    const idx=chats.findIndex(c=>c.id===row.id);
+    if(idx>=0) openChat(idx); else render();
+  }catch(e){ toast(String(e.message||e)); }
+}
+async function openStoreChat(store){
+  if(!store||!store.id||!store.owner){ toast(L().reply_demo); return; }
+  if(store.owner===uid){ toast(lang==='ko'?'내 가게에는 문의할 수 없어요':'Cannot inquire your own store'); return; }
+  try{
+    let {data:ex}=await sb.from('chats').select('*').eq('store_id',store.id).eq('buyer_id',uid).maybeSingle();
+    let row=ex;
+    if(!row){ const ins=await sb.from('chats').insert({store_id:store.id, buyer_id:uid, seller_id:store.owner, last_message_at:new Date().toISOString()}).select().single(); if(ins.error){toast(ins.error.message);return;} row=ins.data; }
+    await loadChats(); storeOpen=null; tab='chat';
     const idx=chats.findIndex(c=>c.id===row.id);
     if(idx>=0) openChat(idx); else render();
   }catch(e){ toast(String(e.message||e)); }
@@ -1860,7 +1872,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('#payscrim')||e.target.closest('#payclose')){payOpen=false;render();return;}
   if(e.target.closest('#paydone')){const s=stores.find(x=>x.id===payStore);placeOrder(s,payAmount,Object.assign({},cart));payOpen=false;cart={};storeOpen=null;tab='chat';chatOpen=null;render();toast(L().order_done);return;}
   if(e.target.closest('#sback')){storeOpen=null;cart={};render();return;}
-  if(e.target.closest('#sinq')){storeOpen=null;tab='chat';chatOpen=null;render();return;}
+  if(e.target.closest('#sinq')){if(!canAct())return;const s=stores.find(x=>x.id===storeOpen);if(s)openStoreChat(s);return;}
   const ask=e.target.closest('.rb.ask'); if(ask){if(!canAct())return;toast(L().reply_demo);return;}
   const rx=e.target.closest('[data-react]'); if(rx){const [pid,ty]=rx.dataset.react.split(':');const p=info.find(x=>x.id===pid);
     if(p){ const on=(ty==='helpful')?!p.rHelp:!p.rSave;
