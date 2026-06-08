@@ -1534,14 +1534,27 @@ function viewJobs(){
 /* ===================== shop (광고/주문) ===================== */
 function storeCard(s){
   const dpill=(hood&&s.hoodId)?((s.hoodId===hood.id)?`<span class="pill" style="color:var(--green);background:#e7f7ee">📍 ${L().my_hood}</span>`:`<span class="pill" style="color:var(--pri);background:var(--pri-soft)">📍 ${itemDist(s).toFixed(1)}km</span>`):'';
-  return `<div class="scard" data-store="${s.id}">
+  const status = s.holiday
+    ? `<span class="pill" style="color:#d33;background:#fdecec;font-weight:800">🚫 ${L().holiday_badge}</span>`
+    : (s.open ? `<span class="pill" style="color:#15a05a;background:#e7f7ee;font-weight:800">🟢 ${L().shop_open}</span>`
+              : `<span class="pill" style="color:#d33;background:#fdecec;font-weight:800">⛔ ${L().shop_closed}</span>`);
+  const opts=[];
+  if(s.delivery) opts.push(s.service?'🚗 '+ws('visit_home'):'🛵 '+L().delivery);
+  if(s.pickup) opts.push('🥡 '+L().pickup);
+  if(s.dinein) opts.push('🍽️ '+ws('dinein'));
+  if(s.visit) opts.push('🏬 '+ws('visit_store'));
+  if(s.service && !opts.length) opts.push('📅 '+L().btn_inquire);
+  const optPills=opts.slice(0,2).map(o=>`<span class="pill">${o}</span>`).join('');
+  const hoursPill = s.hours?`<span class="pill" style="color:var(--sub)">🕒 ${s.hours}</span>`:'';
+  const promoLine = s.promo?`<div class="spills" style="margin-top:3px"><span class="pill" style="color:#c2410c;background:#fff1e8">🎉 ${s.promo.length>22?s.promo.slice(0,22)+'…':s.promo}</span></div>`:'';
+  const dim=(!s.open||s.holiday)?'opacity:.62':'';
+  return `<div class="scard" data-store="${s.id}" style="${dim}">
     <div class="sthumb">${s.ad?`<span class="adb">${L().ad_badge}</span>`:''}${s.emo}</div>
     <div class="sbody">
       <div class="snm">${tx(s.nm)}</div>
       <div class="smeta">⭐ ${s.rating} <span class="sgray">(${s.reviews})</span> · ${L().shop_cats[s.cat]}</div>
-      <div class="spills">
-        ${dpill}${s.service?`<span class="pill">📅 ${L().btn_inquire}</span>`:`<span class="pill">🛵 ${L().delivery}</span><span class="pill">🥡 ${L().pickup}</span>${s.min?`<span class="pill">${L().min_order} ${s.min}</span>`:''}`}
-      </div>
+      <div class="spills">${status}${dpill}${optPills}${hoursPill}</div>
+      ${promoLine}
     </div>
     <div class="sgo">${s.service?'›':`<span class="orderbtn">${L().btn_menu}</span>`}</div>
   </div>`;
