@@ -357,9 +357,32 @@
 </div>
 
 <script>
+/* ════════════════════════════════════════════════════════════════
+   BRAND 설정 — 새 고객용 앱은 "여기만" 바꾸면 됩니다 (5분이면 새 앱)
+   이름·색·로고·탭제목·Supabase·골프임베드 전부 이 한 곳에서 제어
+   ════════════════════════════════════════════════════════════════ */
+const BRAND = {
+  appName:    'ThaiMate',            // 앱 전체 이름 (텍스트 곳곳에 자동 반영됨)
+  nameA:      'Thai', nameB: 'Mate', // 로고/게이트 분리표기 — 뒤쪽(nameB)이 강조색
+  logoText:   'M',                   // 로고 안 글자 (이모지도 가능: '⛳','🍺' 등)
+  titleSuffix:'교민 실시간 1:1 매칭 & 주문',   // 브라우저 탭 제목 뒷부분
+  primary:    '#ff7a33',             // 메인 테마 색
+  primarySoft:'#fff1e8',             // 메인 연한 배경색
+  // 백엔드 — 고객마다 새 Supabase 프로젝트 (Settings→API: Project URL + publishable/anon key)
+  supabaseUrl:'https://jhtsncdeoulanvytfwrl.supabase.co',
+  supabaseKey:'sb_publishable_ChPPAnOQnOUWh-huy83ckg_pK4343IF',
+  golfMateUrl:'https://golfdong-v2.vercel.app'   // 골프메이트 임베드 주소 (안 쓰면 '')
+};
+function applyBrand(){
+  try{ document.title = BRAND.appName + ' — ' + BRAND.titleSuffix; }catch(e){}
+  try{ const r=document.documentElement.style; r.setProperty('--pri', BRAND.primary); r.setProperty('--pri-soft', BRAND.primarySoft); }catch(e){}
+  // i18n 텍스트 안의 'ThaiMate' 를 전부 BRAND.appName 으로 치환
+  try{ (function walk(o){ for(const k in o){ const v=o[k]; if(typeof v==='string'){ if(v.indexOf('ThaiMate')>=0) o[k]=v.split('ThaiMate').join(BRAND.appName); } else if(v&&typeof v==='object') walk(v); } })(T); }catch(e){}
+}
+
 /* ===================== Supabase ===================== */
-const SB_URL='https://jhtsncdeoulanvytfwrl.supabase.co';
-const SB_KEY='sb_publishable_ChPPAnOQnOUWh-huy83ckg_pK4343IF';
+const SB_URL=BRAND.supabaseUrl;
+const SB_KEY=BRAND.supabaseKey;
 const sb = window.supabase.createClient(SB_URL, SB_KEY);
 let uid=null;
 function uname2email(u){return (u||'').toLowerCase().replace(/[^a-z0-9._-]/g,'')+'@thaimate.app';}
@@ -1009,7 +1032,7 @@ const clubs = [
   d:{ko:"한·태·영 언어교환 파트너 1:1 매칭.",en:"1:1 KR·TH·EN language-exchange matching.",th:"จับคู่แลกภาษา เกาหลี·ไทย·อังกฤษ"}}
 ];
 /* Golf Mate 연동 (독립 앱 — 느슨한 결합) */
-const GM_URL="https://golfdong-v2.vercel.app";
+const GM_URL=BRAND.golfMateUrl;
 const GM={
  ko:{partner:"ThaiMate 공식 골프 파트너",sub:"태국 한인 골퍼 1:1 매칭 · 골프투어",linked:"ThaiMate 계정 그대로 — 동네·매너온도·핸디캡 연동",
   acts:["티타임 부킹","번개 라운딩","중고채 장터","라운드·시상","동호회","핸디캡"],
@@ -1242,8 +1265,8 @@ function renderGate(){
   gateEl.innerHTML=`
    <div class="glang">${langToggle()}</div>
    <div class="ghero">
-     <div class="glogo">M</div>
-     <div class="gname">Thai<span>Mate</span></div>
+     <div class="glogo">${BRAND.logoText}</div>
+     <div class="gname">${BRAND.nameA}<span>${BRAND.nameB}</span></div>
      <div class="gtag">${L().g_tag.replace(/\n/g,'<br>')}</div>
    </div>
    <div class="gmid">
@@ -1770,6 +1793,7 @@ fab.addEventListener('click',()=>{if(!canAct())return;writeType=(tab==='shop'?6:
 document.addEventListener('input',e=>{if(e.target.id==='searchInput'){searchQ=e.target.value;renderFsView();}});
 document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendMessage(v);e.target.value='';}}});
 
+applyBrand();
 (async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} render(); loadListings(); loadStores(); loadPosts(); loadJobs(); })();
 </script>
 </body>
