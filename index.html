@@ -649,7 +649,7 @@ const T = {
   direct_badge:"직거래", pay_title:"결제 (직거래)", pay_warn_t:"직거래입니다",
   pay_warn_p:"ThaiMate는 결제를 중개하지 않아요. 아래 QR로 판매자에게 직접 송금한 뒤, 채팅으로 확인하세요. 분쟁·환불 책임은 거래 당사자에게 있습니다.",
   pay_pp:"프롬페이(PromptPay)", pay_holder:"예금주", pay_amount:"결제금액", pay_scan:"QR을 스캔해 직접 송금하세요", pay_done:"송금 완료 · 판매자와 채팅", pay_info:"결제정보 (직거래 QR)",
-  gm_enter_title:"Golf Mate 입장", gm_auto:"ThaiMate 계정으로 자동 로그인됩니다", gm_auto_sub:"별도 가입 없이 ThaiMate 계정 그대로 사용",
+  gm_enter_title:"Golf Mate 입장", gm_intro:"골프 전용 앱 'Golf Mate'로 이동해요", gm_intro_sub:"동호회·동반자 모집·라운드·시상은 골프메이트에서 이용해요. 별도 골프 앱이라 골프메이트 로그인이 따로 필요합니다.",
   gm_enter_btn:"Golf Mate 입장하기", gm_need:"Golf Mate 이용엔 계정이 필요해요", gm_need_sub:"ThaiMate와 같은 계정 — 한 번 가입으로 두 앱 모두",
   a_id:"아이디", a_pw:"비밀번호", a_pw2:"비밀번호 확인", a_login_btn:"로그인", a_signup_btn:"가입하고 시작하기",
   a_signup_note:"아이디·비밀번호만으로 바로 시작 — 이메일 인증은 활동할 때 받으면 돼요",
@@ -701,7 +701,7 @@ const T = {
   direct_badge:"Direct deal", pay_title:"Payment (direct deal)", pay_warn_t:"This is a direct deal",
   pay_warn_p:"ThaiMate does not process payments. Pay the seller directly via the QR below, then confirm in chat. Disputes & refunds are between the two parties.",
   pay_pp:"PromptPay", pay_holder:"Account name", pay_amount:"Amount", pay_scan:"Scan the QR to pay directly", pay_done:"Paid · chat with seller", pay_info:"Payment info (direct QR)",
-  gm_enter_title:"Enter Golf Mate", gm_auto:"Auto-login with your ThaiMate account", gm_auto_sub:"No separate signup — same ThaiMate account",
+  gm_enter_title:"Enter Golf Mate", gm_intro:"Opening the golf app 'Golf Mate'", gm_intro_sub:"Clubs, partner matching, rounds & awards live in Golf Mate — a separate app with its own login.",
   gm_enter_btn:"Enter Golf Mate", gm_need:"Golf Mate needs an account", gm_need_sub:"Same account as ThaiMate — one signup for both apps",
   a_id:"User ID", a_pw:"Password", a_pw2:"Confirm password", a_login_btn:"Log in", a_signup_btn:"Sign up & start",
   a_signup_note:"Start with just ID & password — verify email later (needed to act)",
@@ -753,7 +753,7 @@ const T = {
   direct_badge:"ซื้อขายตรง", pay_title:"ชำระเงิน (ซื้อขายตรง)", pay_warn_t:"เป็นการซื้อขายโดยตรง",
   pay_warn_p:"ThaiMate ไม่ได้เป็นตัวกลางการชำระเงิน โอนให้ผู้ขายโดยตรงผ่าน QR ด้านล่าง แล้วยืนยันในแชท ข้อพิพาท/คืนเงินเป็นความรับผิดชอบของคู่กรณี",
   pay_pp:"พร้อมเพย์ (PromptPay)", pay_holder:"ชื่อบัญชี", pay_amount:"ยอดชำระ", pay_scan:"สแกน QR เพื่อโอนโดยตรง", pay_done:"โอนแล้ว · แชทผู้ขาย", pay_info:"ข้อมูลชำระเงิน (QR ซื้อขายตรง)",
-  gm_enter_title:"เข้า Golf Mate", gm_auto:"ล็อกอินอัตโนมัติด้วยบัญชี ThaiMate", gm_auto_sub:"ไม่ต้องสมัครใหม่ — ใช้บัญชี ThaiMate เดิม",
+  gm_enter_title:"เข้า Golf Mate", gm_intro:"กำลังเปิดแอปกอล์ฟ 'Golf Mate'", gm_intro_sub:"ชมรม·จับคู่·รอบ·รางวัล อยู่ใน Golf Mate เป็นแอปแยกที่ต้องล็อกอินของตัวเอง",
   gm_enter_btn:"เข้า Golf Mate", gm_need:"Golf Mate ต้องมีบัญชี", gm_need_sub:"บัญชีเดียวกับ ThaiMate — สมัครครั้งเดียวใช้ได้สองแอป",
   a_id:"ไอดี", a_pw:"รหัสผ่าน", a_pw2:"ยืนยันรหัสผ่าน", a_login_btn:"เข้าสู่ระบบ", a_signup_btn:"สมัครและเริ่ม",
   a_signup_note:"เริ่มด้วยไอดี·รหัสผ่าน — ยืนยันอีเมลภายหลัง (จำเป็นตอนใช้งาน)",
@@ -1034,15 +1034,15 @@ const clubs = [
 /* Golf Mate 연동 (독립 앱 — 느슨한 결합) */
 const GM_URL=BRAND.golfMateUrl;
 const GM={
- ko:{partner:"ThaiMate 공식 골프 파트너",sub:"태국 한인 골퍼 1:1 매칭 · 골프투어",linked:"ThaiMate 계정 그대로 — 동네·매너온도·핸디캡 연동",
+ ko:{partner:"ThaiMate 공식 골프 파트너",sub:"태국 한인 골퍼 1:1 매칭 · 골프투어",linked:"골프 전용 별도 앱 — 골프메이트에서 로그인해 이용",
   acts:["티타임 부킹","번개 라운딩","중고채 장터","라운드·시상","동호회","핸디캡"],
   today:"오늘의 번개 라운딩",join:"참여",seats:"자리",partners:"파트너 (후원사)",sponsor:"후원",
   openFull:"Golf Mate 풀버전 열기",ssTitle:"스마트스코어 연동 (예정)",ssDesc:"스코어카드·핸디캡 자동 동기화. 플랫폼 안정화 후 연동 — 지금은 핸디캡 입력만.",handi:"핸디캡"},
- en:{partner:"Official golf partner of ThaiMate",sub:"1:1 matching for Korean golfers · tours",linked:"Your ThaiMate account — area·manner·handicap linked",
+ en:{partner:"Official golf partner of ThaiMate",sub:"1:1 matching for Korean golfers · tours",linked:"Separate golf app — sign in within Golf Mate",
   acts:["Tee booking","Casual round","Used clubs","Awards","Clubs","Handicap"],
   today:"Today's casual rounds",join:"Join",seats:"left",partners:"Partners (sponsors)",sponsor:"Sponsor",
   openFull:"Open full Golf Mate",ssTitle:"SmartScore integration (planned)",ssDesc:"Auto-sync scorecard & handicap. After the platform stabilizes.",handi:"Handicap"},
- th:{partner:"พาร์ทเนอร์กอล์ฟอย่างเป็นทางการ",sub:"จับคู่กอล์ฟเกาหลี 1:1 · ทัวร์",linked:"ใช้บัญชี ThaiMate — ย่าน·เมตตา·แฮนดิแคป เชื่อมกัน",
+ th:{partner:"พาร์ทเนอร์กอล์ฟอย่างเป็นทางการ",sub:"จับคู่กอล์ฟเกาหลี 1:1 · ทัวร์",linked:"แอปกอล์ฟแยก — ล็อกอินใน Golf Mate",
   acts:["จองที","ออกรอบ","ขายไม้มือสอง","รางวัล","ชมรม","แฮนดิแคป"],
   today:"ออกรอบวันนี้",join:"เข้าร่วม",seats:"ที่ว่าง",partners:"พาร์ทเนอร์ (สปอนเซอร์)",sponsor:"สปอนเซอร์",
   openFull:"เปิด Golf Mate เต็ม",ssTitle:"เชื่อม SmartScore (เร็วๆ นี้)",ssDesc:"ซิงค์สกอร์การ์ด·แฮนดิแคปอัตโนมัติ หลังแพลตฟอร์มเสถียร",handi:"แฮนดิแคป"}
@@ -1183,33 +1183,14 @@ function renderVerify(){
 function renderGmGate(){
   if(!gmGateOpen){gmGateEl.classList.add('hidden');gmGateEl.innerHTML='';return;}
   gmGateEl.classList.remove('hidden');
-  const who=(acctId||tx(L().me_name))+(hood?(' · 📍 '+tx(hood)):(city!=='all'?' · 📍 '+tx(REGIONS[city].nm):''));
-  let body;
-  if(!authed){
-    body=`<div style="font-size:36px;margin:8px 0 10px">⛳</div>
-       <div style="font-weight:800;font-size:15px">${L().gm_need}</div>
-       <div style="font-size:12px;color:var(--sub);margin:8px 0 18px;line-height:1.5">${L().gm_need_sub}</div>
-       <button class="gbtn primary" data-gmauth="login" style="width:100%;margin-bottom:9px">${L().g_login}</button>
-       <button class="gbtn line" data-gmauth="signup" style="width:100%">${L().g_signup}</button>`;
-  }else if(!emailVerified){
-    body=`<div style="font-size:36px;margin:8px 0 10px">✉️</div>
-       <div style="font-weight:800;font-size:15px">${L().v_need_verify}</div>
-       <div style="font-size:12px;color:var(--sub);margin:8px 0 16px;line-height:1.5">${L().gm_auto_sub}</div>
-       <button class="gbtn primary" data-vfromgm style="width:100%">${L().v_btn}</button>`;
-  }else{
-    body=`<div style="background:#eaf7ef;border:1px solid #bfe9cf;border-radius:14px;padding:16px;margin-bottom:13px">
-         <div style="font-size:30px">⛳</div>
-         <div style="font-weight:800;color:#0d8a47;margin-top:7px;font-size:13.5px">✓ ${L().gm_auto}</div>
-         <div style="font-size:13px;color:var(--ink);margin-top:6px;font-weight:800">${who}</div>
-       </div>
-       <div class="gfield" style="text-align:left;margin-bottom:13px"><label>⛳ ${L().gm_handi_q}</label><input id="gmHandi" type="number" placeholder="${L().gm_handi_ph}"></div>
-       <button class="gbtn primary" data-gmenter style="width:100%">${L().gm_enter_btn} →</button>`;
-  }
   gmGateEl.innerHTML=`
    <div class="pscrim" id="gmclose"></div>
    <div class="psheet" style="text-align:center">
      <div class="phead" style="justify-content:center;position:relative"><b>⛳ ${L().gm_enter_title}</b><button class="pclose" id="gmclose2" style="position:absolute;right:0;top:-2px">✕</button></div>
-     ${body}
+     <div style="font-size:40px;margin:6px 0 10px">⛳</div>
+     <div style="font-weight:800;font-size:15px">${L().gm_intro}</div>
+     <div style="font-size:12.5px;color:var(--sub);margin:9px 0 18px;line-height:1.55">${L().gm_intro_sub}</div>
+     <button class="gbtn primary" data-gmenter style="width:100%">${L().gm_enter_btn} →</button>
    </div>`;
 }
 
@@ -1687,7 +1668,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('#vconfirm')){ const cd=((document.getElementById('vCode')||{}).value||'').trim(); if(!cd){toast(L().v_code_label);return;} confirmEmailCode(cd); return;}
   if(e.target.closest('#vclose')||e.target.closest('#vclose2')){verifyOpen=false;verifySent=false;render();return;}
   if(e.target.closest('[data-vfromgm]')){gmGateOpen=false;verifyOpen=true;verifySent=false;render();return;}
-  if(e.target.closest('[data-gmenter]')){const h=(document.getElementById('gmHandi')||{}).value||'';gmFrameSrc=GM_URL+'/?embed=thaimate&handi='+encodeURIComponent(h);gmGateOpen=false;gmFrameOpen=true;render();return;}
+  if(e.target.closest('[data-gmenter]')){gmFrameSrc=GM_URL+'/?embed=thaimate';gmGateOpen=false;gmFrameOpen=true;render();return;}
   if(e.target.closest('[data-gmframeback]')){gmFrameOpen=false;render();return;}
   /* 알림센터 · 검색 */
   if(e.target.closest('[data-noti]')){NOTI.forEach(n=>n.unread=false);fsView='noti';render();return;}
