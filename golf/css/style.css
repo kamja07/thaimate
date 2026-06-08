@@ -1,0 +1,62 @@
+/* Golfdong v2 — Mobile-first */
+:root {
+  --primary: #2E7D32;
+  --primary-light: #4CAF50;
+  --primary-dark: #1B5E20;
+  --accent: #FB8C00;
+  --bg: #f5f5f5;
+  --surface: #ffffff;
+  --text: #212121;
+  --text-secondary: #666666;
+  --border: #e0e0e0;
+  --danger: #d32f2f;
+  --success: #2e7d32;
+  --shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; color: var(--text); background: var(--bg); }
+body { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; min-height: 100vh; }
+
+#app { max-width: 480px; margin: 0 auto; padding-bottom: 80px; }
+
+/* Boot screen */
+#boot { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; text-align: center; padding: 20px; }
+.boot-emoji { font-size: 60px; animation: spin 2s linear infinite; }
+.boot-text { font-size: 18px; margin-top: 20px; color: var(--text-secondary); }
+.boot-hint { font-size: 13px; margin-top: 16px; color: var(--text-secondary); }
+.boot-hint code { background: #eee; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+
+@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+/* UI primitives */
+.btn { display: inline-block; padding: 12px 16px; border: 0; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; -webkit-appearance: none; appearance: none; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:active { background: var(--primary-dark); }
+.btn-accent { background: var(--accent); color: white; }
+.btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+.btn-danger { background: var(--danger); color: white; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.card { background: var(--surface); border-radius: 12px; padding: 16px; margin: 12px; box-shadow: var(--shadow); }
+
+/* Toast */
+#toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast { background: rgba(33,33,33,0.92); color: white; padding: 10px 16px; border-radius: 8px; font-size: 14px; max-width: 320px; animation: toastIn 0.2s ease, toastOut 0.3s ease 2.7s forwards; pointer-events: auto; }
+.toast-success { background: rgba(46,125,50,0.95); }
+.toast-error { background: rgba(211,47,47,0.95); }
+.toast-warn { background: rgba(245,124,0,0.95); }
+@keyframes toastIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-10px); } }
+
+/* Dialog */
+#dialog-container:empty { display: none; }
+.dialog-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.dialog { background: white; border-radius: 12px; padding: 20px; max-width: 360px; width: 100%; max-height: 80vh; overflow-y: auto; }
+.dialog-title { font-size: 17px; font-weight: 600; margin-bottom: 12px; }
+.dialog-body { font-size: 14px; line-height: 1.5; color: var(--text-secondary); white-space: pre-line; }
+.dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+/* Loading */
+#loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.6); z-index: 9997; display: flex; align-items: center; justify-content: center; }
+.spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }

@@ -1033,6 +1033,8 @@ const clubs = [
 ];
 /* Golf Mate 연동 (독립 앱 — 느슨한 결합) */
 const GM_URL=BRAND.golfMateUrl;
+// 임베드용 골프(같은 도메인 /golf/ — ThaiMate Supabase 공유, 한 로그인). 독립 golfdong-v2와 다름.
+const GM_EMBED=(BRAND.golfEmbedUrl||'/golf/')+'?embed=thaimate';
 const GM={
  ko:{partner:"ThaiMate 공식 골프 파트너",sub:"태국 한인 골퍼 1:1 매칭 · 골프투어",linked:"골프 전용 별도 앱 — 골프메이트에서 로그인해 이용",
   acts:["티타임 부킹","번개 라운딩","중고채 장터","라운드·시상","동호회","핸디캡"],
@@ -1668,7 +1670,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('#vconfirm')){ const cd=((document.getElementById('vCode')||{}).value||'').trim(); if(!cd){toast(L().v_code_label);return;} confirmEmailCode(cd); return;}
   if(e.target.closest('#vclose')||e.target.closest('#vclose2')){verifyOpen=false;verifySent=false;render();return;}
   if(e.target.closest('[data-vfromgm]')){gmGateOpen=false;verifyOpen=true;verifySent=false;render();return;}
-  if(e.target.closest('[data-gmenter]')){gmFrameSrc=GM_URL+'/?embed=thaimate';gmGateOpen=false;gmFrameOpen=true;render();return;}
+  if(e.target.closest('[data-gmenter]')){gmFrameSrc=GM_EMBED;gmGateOpen=false;gmFrameOpen=true;render();return;}
   if(e.target.closest('[data-gmframeback]')){gmFrameOpen=false;render();return;}
   /* 알림센터 · 검색 */
   if(e.target.closest('[data-noti]')){NOTI.forEach(n=>n.unread=false);fsView='noti';render();return;}
