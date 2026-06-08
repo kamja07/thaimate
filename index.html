@@ -250,6 +250,11 @@
   .repreason:active{background:#f6f6f4}
   /* picker */
   .picker-wrap{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center}
+  .gmframe{position:fixed;inset:0;z-index:62;background:#fff;display:flex;flex-direction:column;max-width:430px;margin:0 auto}
+  .gmframe.hidden{display:none}
+  .gmf-bar{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid var(--line);background:#fff;flex:0 0 auto;font-weight:800;font-size:15px}
+  .gmf-bar button{border:none;background:#f0f1f4;border-radius:9px;padding:7px 11px;font-size:14px;font-weight:800;cursor:pointer;color:var(--ink)}
+  .gmframe iframe{flex:1;width:100%;border:none;display:block}
   .picker-wrap.hidden{display:none}
   .pscrim{position:absolute;inset:0;background:rgba(18,20,24,.46)}
   .psheet{position:relative;width:100%;max-width:430px;background:#fff;border-radius:22px 22px 0 0;padding:18px 18px 26px;max-height:84vh;overflow-y:auto;box-shadow:0 -10px 40px rgba(0,0,0,.28);animation:slideup .22s ease}
@@ -347,6 +352,7 @@
   <div class="picker-wrap hidden" id="write"></div>
   <div class="picker-wrap hidden" id="report"></div>
   <div class="picker-wrap hidden" id="review"></div>
+  <div class="gmframe hidden" id="gmframe"></div>
   <div class="fsview" id="fsview"></div>
 </div>
 
@@ -1056,7 +1062,7 @@ listings.forEach((x,i)=>x.id=x.id||('L'+i));
 info.forEach((x,i)=>x.id=x.id||('I'+i));
 
 /* ===================== state ===================== */
-let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null;
+let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gmFrameOpen=false, gmFrameSrc="", gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null;
 const L=()=>T[lang];
 const gm=()=>GM[lang];
 const tx=o=> o==null?"":(typeof o==="string"?o:(o[lang]||o.ko));
@@ -1070,6 +1076,7 @@ const fab=document.getElementById('fab');
 const pickerEl=document.getElementById('picker');
 const payEl=document.getElementById('pay');
 const gmGateEl=document.getElementById('gmgate');
+const gmFrameEl=document.getElementById('gmframe');
 const verifyEl=document.getElementById('verify');
 const writeEl2=document.getElementById('write');
 const reportEl=document.getElementById('report');
@@ -1183,6 +1190,20 @@ function renderGmGate(){
    </div>`;
 }
 
+function renderGmFrame(){
+  if(!gmFrameOpen){ gmFrameEl.classList.add('hidden'); gmFrameEl.innerHTML=''; return; }
+  gmFrameEl.classList.remove('hidden');
+  // build iframe once — avoid reloading Golf Mate on every re-render
+  if(!gmFrameEl.querySelector('iframe')){
+    gmFrameEl.innerHTML=`
+      <div class="gmf-bar">
+        <button data-gmframeback>‹ ${L().nav_community}</button>
+        <span style="flex:1">⛳ Golf Mate</span>
+        <a href="${gmFrameSrc}" target="_blank" rel="noopener" style="font-size:12px;color:var(--sub);text-decoration:none">↗</a>
+      </div>
+      <iframe src="${gmFrameSrc}" allow="geolocation; clipboard-write"></iframe>`;
+  }
+}
 function byCity(a){return city==='all'?a:a.filter(x=>x.city===city||x.city==='all');}
 function locShort(){return (city==='all'||!hood)?L().loc_all:tx(hood);}
 function locFull(){return (city==='all'||!hood)?L().loc_all:tx(REGIONS[city].nm)+' · '+tx(hood);}
@@ -1605,7 +1626,7 @@ function renderFab(){
 function render(){
   if(screen==='gate'){
     gateEl.style.display='flex'; topEl.style.display='none'; page.style.display='none'; fab.style.display='none'; navEl.style.display='none';
-    renderGate(); renderPicker(); renderPay(); renderGmGate(); renderVerify(); return;
+    renderGate(); renderPicker(); renderPay(); renderGmGate(); renderGmFrame(); renderVerify(); return;
   }
   gateEl.style.display='none'; topEl.style.display=''; page.style.display=''; navEl.style.display='';
   renderTop(); renderNav(); renderFab();
@@ -1615,7 +1636,7 @@ function render(){
   else if(tab==='chat') chatOpen!==null?viewChatDetail():viewChatList();
   else if(tab==='community') viewCommunity();
   else if(tab==='me') viewMe();
-  renderPicker(); renderPay(); renderGmGate(); renderVerify(); renderWrite(); renderReport(); renderReview(); renderFsView();
+  renderPicker(); renderPay(); renderGmGate(); renderGmFrame(); renderVerify(); renderWrite(); renderReport(); renderReview(); renderFsView();
 }
 
 /* ===================== events ===================== */
@@ -1643,7 +1664,8 @@ document.addEventListener('click',e=>{
   if(e.target.closest('#vconfirm')){ const cd=((document.getElementById('vCode')||{}).value||'').trim(); if(!cd){toast(L().v_code_label);return;} confirmEmailCode(cd); return;}
   if(e.target.closest('#vclose')||e.target.closest('#vclose2')){verifyOpen=false;verifySent=false;render();return;}
   if(e.target.closest('[data-vfromgm]')){gmGateOpen=false;verifyOpen=true;verifySent=false;render();return;}
-  if(e.target.closest('[data-gmenter]')){const h=(document.getElementById('gmHandi')||{}).value||'';window.open(GM_URL+'/?sso=thaimate&handi='+encodeURIComponent(h),'_blank');return;}
+  if(e.target.closest('[data-gmenter]')){const h=(document.getElementById('gmHandi')||{}).value||'';gmFrameSrc=GM_URL+'/?embed=thaimate&handi='+encodeURIComponent(h);gmGateOpen=false;gmFrameOpen=true;render();return;}
+  if(e.target.closest('[data-gmframeback]')){gmFrameOpen=false;render();return;}
   /* 알림센터 · 검색 */
   if(e.target.closest('[data-noti]')){NOTI.forEach(n=>n.unread=false);fsView='noti';render();return;}
   if(e.target.closest('[data-search]')){fsView='search';searchQ='';render();return;}
