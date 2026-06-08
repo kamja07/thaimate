@@ -498,7 +498,7 @@ async function loadChats(){
     let nameMap={};
     if(otherIds.length){ const {data:ps}=await sb.from('profiles').select('id,username,nickname').in('id',otherIds); (ps||[]).forEach(p=>nameMap[p.id]=p.nickname||p.username); }
     chats.length=0; data.forEach(r=>chats.push(chatToLocal(r,nameMap)));
-    if(screen==='app'&&tab==='chat'&&chatOpen===null) render();
+    if(screen==='app'){ renderNav(); if(tab==='chat'&&chatOpen===null) render(); }
   }catch(e){}
 }
 async function openOrCreateChat(listing){
@@ -1004,30 +1004,7 @@ const PAY={
  s6:{pp:'080-909-1212',holder:'SABAI SERVICE'},
  s7:{pp:'02-258-4040',holder:'K TRAVEL AGENCY'}
 };
-const chats = [
- {av:"🧑",unread:1,city:"bkk",
-  who:{ko:"김민수",en:"Minsu",th:"มินซู"}, item:{ko:"혼다 PCX 2023",en:"Honda PCX 2023",th:"Honda PCX 2023"}, price:"฿58,000",
-  tm:{ko:"2분 전",en:"2 min",th:"2 นาที"}, last:{ko:"혹시 네고 가능할까요?",en:"Any room on the price?",th:"ต่อราคาได้ไหมครับ"},
-  msgs:[
-   {me:false,tx:{ko:"안녕하세요! PCX 아직 판매하시나요?",en:"Hi! Is the PCX still available?",th:"สวัสดีครับ PCX ยังขายอยู่ไหม"}},
-   {me:true,tx:{ko:"네 판매중입니다 :)",en:"Yes, still for sale :)",th:"ครับ ยังขายอยู่ :)"}},
-   {me:false,tx:{ko:"혹시 네고 가능할까요?",en:"Any room on the price?",th:"ต่อราคาได้ไหมครับ"}}
-  ]},
- {av:"🧔",unread:0,city:"north",
-  who:{ko:"Somchai",en:"Somchai",th:"สมชาย"}, item:{ko:"아이폰 15 프로",en:"iPhone 15 Pro",th:"iPhone 15 Pro"}, price:"฿29,500",
-  tm:{ko:"1시간 전",en:"1h",th:"1 ชม."}, last:{ko:"오늘 직접 볼 수 있을까요?",en:"Can I see it today?",th:"ขอดูวันนี้ได้ไหม"},
-  msgs:[
-   {me:false,tx:{ko:"오늘 직접 볼 수 있을까요?",en:"Can I see it today?",th:"ขอดูวันนี้ได้ไหม"}},
-   {me:true,tx:{ko:"네! 저녁 7시 통러 어떠세요?",en:"Sure! 7pm at Thonglor?",th:"ได้ครับ 1 ทุ่มที่ทองหล่อไหม"}}
-  ]},
- {av:"👩",unread:2,city:"bkk",
-  who:{ko:"이지은",en:"Jieun",th:"จีอึน"}, item:{ko:"골프채 (구해요)",en:"Iron set (wanted)",th:"ไม้กอล์ฟ (หา)"}, price:{ko:"예산 ฿15,000",en:"Budget ฿15,000",th:"งบ ฿15,000"},
-  tm:{ko:"어제",en:"yesterday",th:"เมื่อวาน"}, last:{ko:"제가 미즈노 아이언 세트 있어요!",en:"I have a Mizuno iron set!",th:"ฉันมีชุดเหล็ก Mizuno!"},
-  msgs:[
-   {me:false,tx:{ko:"구해요 글 보고 연락드려요. 미즈노 아이언 세트 있어요!",en:"Saw your wanted post — I have a Mizuno iron set!",th:"เห็นโพสต์หา ฉันมีชุดเหล็ก Mizuno!"}},
-   {me:false,tx:{ko:"상태 좋고 ฿13,000에 드릴게요 :)",en:"Good condition, ฿13,000 :)",th:"สภาพดี ฿13,000 ครับ :)"}}
-  ]}
-];
+const chats = [];   // 실제 채팅은 loadChats(DB)로 채움 — 데모 데이터 제거
 const info=[
  {official:true,cat:0,city:"all",help:212,save:140,view:1820,
   t:{ko:"[공지] 5월 한인회 정기모임 + 무료 법률·세무 상담",en:"[Notice] May Korean Assoc. meetup + free consult",th:"[ประกาศ] นัดพบสมาคมเกาหลี พ.ค."},
@@ -1656,12 +1633,12 @@ function viewStore(){
 function viewChatList(){
   page.innerHTML=`
    <h2 class="sech">💬 ${L().sec_chats}</h2>
-   <div class="list">${chats.map((c,i)=>`
+   <div class="list">${chats.length?chats.map((c,i)=>`
      <div class="chatrow" data-chat="${i}">
        <div class="avatar">${c.av}</div>
        <div class="ci"><div class="cn">${tx(c.who)} <span class="chip">${tx(c.item)}</span></div><div class="lastmsg">${tx(c.last)}</div></div>
        <div class="cr"><span class="tm">${tx(c.tm)}</span>${c.unread?`<span class="unread">${c.unread}</span>`:''}</div>
-     </div>`).join('')}</div>`;
+     </div>`).join(''):`<div class="empty" style="padding:46px 0;text-align:center;color:var(--sub)">${lang==='ko'?'아직 대화가 없어요':lang==='th'?'ยังไม่มีการสนทนา':'No conversations yet'}</div>`}</div>`;
 }
 function viewChatDetail(){
   const c=chats[chatOpen];
@@ -1782,10 +1759,11 @@ function viewMe(){
 /* ===================== nav / fab / render ===================== */
 function renderNav(){
   const items=[["shop","🏪","nav_shop"],["market","🛍️","nav_market"],["jobs","💼","nav_jobs"],["chat","💬","nav_chat"],["community","🏘️","nav_community"],["me","👤","nav_me"]];
+  const unread=authed?chats.reduce((s,c)=>s+(c.unread||0),0):0;  // 실제 안읽음 (로그인 시에만)
   navEl.innerHTML=items.map(([k,ic,key])=>`
     <button data-tab="${k}" class="${tab===k?'on':''}">
       <span class="ic">${ic}</span><span>${L()[key]}</span>
-      ${k==='chat'&&totalUnread?`<span class="ndot">${totalUnread}</span>`:''}
+      ${k==='chat'&&unread?`<span class="ndot">${unread}</span>`:''}
     </button>`).join('');
 }
 function renderFab(){
