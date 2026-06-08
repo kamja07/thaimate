@@ -59,6 +59,18 @@ async function loadProfile() {
   if (!_session || !_session.user) return;
   const { data, error } = await sb.from('profiles').select('*').eq('id', _session.user.id).maybeSingle();
   if (error) { console.warn('[auth] profile fetch err', error); return; }
+  // EMBED: this profile row is the ThaiMate identity. Map its columns into the
+  // shape golf expects so nickname/동네/handicap carry over with no re-entry.
+  if (data && window.__embed) {
+    data.name = data.name || data.nickname || (_session.user.email || '').split('@')[0];
+    if (!data.location && data.hood_id) {
+      try {
+        const { data: hood } = await sb.from('neighborhoods')
+          .select('name_ko, name_en').eq('id', data.hood_id).maybeSingle();
+        if (hood) data.location = hood.name_ko || hood.name_en || null;
+      } catch (_) {}
+    }
+  }
   _profile = data;
 }
 
