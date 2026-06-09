@@ -1143,7 +1143,7 @@ function viewMyClubs(){
 }
 async function openClub(id){
   clubOpen=id; clubData=null; actFormOpen=false; noticeEditOpen=false; rosterOpen=false; actEditId=null; render(); page.scrollTo(0,0);
-  const cd={activities:[],members:[],pending:[],names:{},joined:new Set(),notices:[]};
+  const cd={activities:[],members:[],pending:[],names:{},joined:new Set(),notices:[],partCounts:{}};
   try{ const a=await sb.from('club_activities').select('*').eq('club_id',id).order('when_at',{ascending:true,nullsFirst:false}); cd.activities=a.data||[]; }catch(e){}
   try{ const n=await sb.from('club_notices').select('*').eq('club_id',id).order('pinned',{ascending:false}).order('created_at',{ascending:false}); cd.notices=n.data||[]; }catch(e){}
   try{ const m=await sb.from('club_members').select('user_id,status,role,created_at').eq('club_id',id).order('created_at');
@@ -1151,7 +1151,9 @@ async function openClub(id){
     const ids=[...new Set([...ms.map(x=>x.user_id), ...cd.activities.map(a=>a.creator_id), ...cd.notices.map(n=>n.author_id)].filter(Boolean))];
     if(ids.length){ try{ const p=await sb.from('profiles').select('id,nickname').in('id',ids); (p.data||[]).forEach(r=>cd.names[r.id]=r.nickname); }catch(e){} }
   }catch(e){}
-  try{ const ap=await sb.from('activity_participants').select('activity_id').eq('user_id',uid); cd.joined=new Set((ap.data||[]).map(x=>x.activity_id)); }catch(e){}
+  const actIds=cd.activities.map(a=>a.id);
+  if(actIds.length){ try{ const ap=await sb.from('activity_participants').select('activity_id,user_id').in('activity_id',actIds);
+    (ap.data||[]).forEach(r=>{ cd.partCounts[r.activity_id]=(cd.partCounts[r.activity_id]||0)+1; if(r.user_id===uid) cd.joined.add(r.activity_id); }); }catch(e){} }
   if(clubOpen===id){ clubData=cd; render(); }
 }
 async function decideMember(clubId,userId,approve){
@@ -1192,6 +1194,12 @@ async function joinActivity(clubId,actId){
   try{ const {error}=await sb.from('activity_participants').insert({activity_id:actId,user_id:uid});
     if(error){ toast(error.message); return; }
     toast(lang==='ko'?'참가 신청!':'Joined!'); openClub(clubId);
+  }catch(e){ toast(String(e.message||e)); }
+}
+async function leaveActivity(clubId,actId){
+  try{ const {error}=await sb.from('activity_participants').delete().eq('activity_id',actId).eq('user_id',uid);
+    if(error){ toast(error.message); return; }
+    toast(lang==='ko'?'참가 취소됨':'Cancelled'); openClub(clubId);
   }catch(e){ toast(String(e.message||e)); }
 }
 const CLUB_CATS=[{k:'running',l:{ko:'스포츠',en:'Sports',th:'กีฬา'}},{k:'language',l:{ko:'언어교환',en:'Language',th:'ภาษา'}},{k:'food',l:{ko:'맛집/모임',en:'Food',th:'อาหาร'}},{k:'study',l:{ko:'스터디',en:'Study',th:'สตั๊ดดี้'}},{k:'parenting',l:{ko:'육아',en:'Parenting',th:'เลี้ยงลูก'}},{k:'hobby',l:{ko:'취미',en:'Hobby',th:'งานอดิเรก'}},{k:'etc',l:{ko:'기타',en:'Etc',th:'อื่นๆ'}}];
@@ -1276,10 +1284,17 @@ function viewClubHub(){
   const actList=clubData.activities.length?clubData.activities.map(a=>{
     const joined=clubData.joined&&clubData.joined.has(a.id);
     const canEdit=(a.creator_id===uid)||isLeader;
-    const meta=[actFmt(a),a.place?('📍 '+escT(a.place)):'',a.capacity?('👥 '+a.capacity):'',('🧑 '+escT(nm(a.creator_id)))].filter(Boolean).join(' · ');
+    const cnt=clubData.partCounts[a.id]||0;
+    const cap=a.capacity||0;
+    const full=cap&&cnt>=cap&&!joined;
+    const meta=[actFmt(a),a.place?('📍 '+escT(a.place)):'',('🧑 '+escT(nm(a.creator_id)))].filter(Boolean).join(' · ');
+    const partTxt=cap?`${lang==='ko'?'모집':'Spots'} ${cap}${lang==='ko'?'명':''} · ${lang==='ko'?'참가':'Joined'} ${cnt}${lang==='ko'?'명':''}`:`${lang==='ko'?'참가':'Joined'} ${cnt}${lang==='ko'?'명':''}`;
+    const partLine=`<span style="display:inline-flex;align-items:center;gap:4px;margin-top:7px;font-size:12.5px;font-weight:800;color:${full?'#e67514':'#2f6df0'};background:${full?'#fff3e0':'#eef4ff'};border-radius:8px;padding:3px 10px">👥 ${partTxt}${full?(' · '+(lang==='ko'?'마감':'Full')):''}</span>`;
     const editRow=canEdit?`<button class="join" style="padding:5px 10px;background:#eef0f3;color:#333" data-actedit="${a.id}">${lang==='ko'?'수정':'Edit'}</button><button class="join" style="padding:5px 10px;background:#fdecec;color:#d33" data-actdel="${c.id}:${a.id}">${lang==='ko'?'삭제':'Del'}</button>`:'';
-    const joinRow=joined?`<span style="font-size:12px;color:#16a34a;font-weight:700">✓ ${lang==='ko'?'참가중':'Joined'}</span>`:`<button class="join" data-actjoin="${c.id}:${a.id}">${lang==='ko'?'참가 신청':'Join'}</button>`;
-    return `<div class="club" style="margin-bottom:10px"><div class="cbody2" style="padding:12px 14px"><div style="font-weight:800;font-size:14px">⚡ ${escT(a.title)}</div><div style="font-size:12px;color:var(--sub);margin-top:4px">${meta}</div><div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap">${editRow}${joinRow}</div></div></div>`;
+    const joinRow=joined
+      ?`<span style="font-size:12px;color:#16a34a;font-weight:700">✓ ${lang==='ko'?'참가중':'Joined'}</span><button class="join" style="background:#fdecec;color:#d33;padding:6px 12px" data-actleave="${c.id}:${a.id}">${lang==='ko'?'참가 취소':'Leave'}</button>`
+      :(full?`<button class="join" disabled style="background:#cbd5e1;cursor:default;color:#fff">${lang==='ko'?'모집 마감':'Full'}</button>`:`<button class="join" data-actjoin="${c.id}:${a.id}">${lang==='ko'?'참가 신청':'Join'}</button>`);
+    return `<div class="club" style="margin-bottom:10px"><div class="cbody2" style="padding:12px 14px"><div style="font-weight:800;font-size:14px">⚡ ${escT(a.title)}</div><div style="font-size:12px;color:var(--sub);margin-top:4px">${meta}</div><div>${partLine}</div><div style="display:flex;justify-content:flex-end;gap:6px;margin-top:10px;align-items:center;flex-wrap:wrap">${editRow}${joinRow}</div></div></div>`;
   }).join(''):`<div class="empty" style="padding:24px 0;text-align:center;color:var(--sub)">${lang==='ko'?'아직 활동이 없어요':'No activities yet'}</div>`;
   const editAct=actEditId?clubData.activities.find(a=>a.id===actEditId):null;
   const aIn='width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px';
@@ -2210,6 +2225,7 @@ document.addEventListener('click',e=>{
   const adl=e.target.closest('[data-actdel]'); if(adl){const[ci,ai]=adl.dataset.actdel.split(':');deleteActivity(ci,ai);return;}
   const acr=e.target.closest('[data-actcreate]'); if(acr){createActivity(acr.dataset.actcreate);return;}
   const ajn=e.target.closest('[data-actjoin]'); if(ajn){if(!canAct())return;const[cid,aid]=ajn.dataset.actjoin.split(':');joinActivity(cid,aid);return;}
+  const alv=e.target.closest('[data-actleave]'); if(alv){const[cid,aid]=alv.dataset.actleave.split(':');leaveActivity(cid,aid);return;}
   if(e.target.closest('#gmclose')||e.target.closest('#gmclose2')){gmGateOpen=false;render();return;}
   const gau=e.target.closest('[data-gmauth]'); if(gau){authed=true;render();return;}
   if(e.target.closest('[data-golfback]')){golfOpen=false;render();page.scrollTo(0,0);return;}
