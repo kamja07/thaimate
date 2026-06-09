@@ -1732,6 +1732,15 @@ function renderPay(){
 /* ===================== top ===================== */
 function renderTop(){
   if((tab==='chat'&&chatOpen!==null)||(tab==='shop'&&storeOpen)||(tab==='market'&&listingOpen)){topEl.innerHTML='';return;}
+  if(tab==='community'&&commSeg==='clubs'&&golfOpen){
+    topEl.innerHTML=`
+   <div class="top-row">
+     <div class="locpill" style="font-weight:800;cursor:default;background:linear-gradient(120deg,#0b7a3b,#16a34a);color:#fff;border-color:transparent"><span class="lpin">⛳</span>${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</div>
+     <div class="spacer"></div>
+     ${langToggle()}
+   </div>`;
+    return;
+  }
   topEl.innerHTML=`
    <div class="top-row">
      <button class="locpill" id="locpill"><span class="lpin">📍</span>${locShort()}${verified?'<span style="color:var(--green);font-size:13px">✓</span>':''}<span class="lcv">▾</span></button>
