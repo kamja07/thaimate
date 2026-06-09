@@ -1104,7 +1104,7 @@ async function joinActivity(clubId,actId){
     toast(lang==='ko'?'참가 신청!':'Joined!'); openClub(clubId);
   }catch(e){ toast(String(e.message||e)); }
 }
-const CLUB_CATS=[{k:'running',l:{ko:'러닝/운동',en:'Sports',th:'กีฬา'}},{k:'language',l:{ko:'언어교환',en:'Language',th:'ภาษา'}},{k:'food',l:{ko:'맛집/모임',en:'Food',th:'อาหาร'}},{k:'study',l:{ko:'스터디',en:'Study',th:'สตั๊ดดี้'}},{k:'parenting',l:{ko:'육아',en:'Parenting',th:'เลี้ยงลูก'}},{k:'hobby',l:{ko:'취미',en:'Hobby',th:'งานอดิเรก'}},{k:'etc',l:{ko:'기타',en:'Etc',th:'อื่นๆ'}}];
+const CLUB_CATS=[{k:'running',l:{ko:'스포츠',en:'Sports',th:'กีฬา'}},{k:'language',l:{ko:'언어교환',en:'Language',th:'ภาษา'}},{k:'food',l:{ko:'맛집/모임',en:'Food',th:'อาหาร'}},{k:'study',l:{ko:'스터디',en:'Study',th:'สตั๊ดดี้'}},{k:'parenting',l:{ko:'육아',en:'Parenting',th:'เลี้ยงลูก'}},{k:'hobby',l:{ko:'취미',en:'Hobby',th:'งานอดิเรก'}},{k:'etc',l:{ko:'기타',en:'Etc',th:'อื่นๆ'}}];
 const CLUB_GRADS=['linear-gradient(120deg,#2f6df0,#6f9bff)','linear-gradient(120deg,#16a34a,#4ade80)','linear-gradient(120deg,#b45309,#f5a524)','linear-gradient(120deg,#7c3aed,#a78bfa)','linear-gradient(120deg,#db2777,#f472b6)','linear-gradient(120deg,#0891b2,#22d3ee)'];
 let wClub={emoji:'👥',grad:CLUB_GRADS[0],cat:'etc'};
 function clubCreateForm(){
