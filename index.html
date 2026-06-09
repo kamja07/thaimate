@@ -1134,9 +1134,12 @@ function viewMyClubs(){
   if(!led.length) return back+head+`<div class="empty" style="padding:40px 14px;text-align:center;color:var(--sub);line-height:1.6">${lang==='ko'?'아직 개설한 모임이 없어요.<br>커뮤니티 → 모임 → ➕ 모임 개설':'No clubs yet.<br>Community → Clubs → Create a club'}</div>`;
   const cards=led.map(c=>{
     const pend=clubPending[c.id]||0;
+    const notApproved=(c.approved===false);
+    const statusLine=notApproved?` · <b style="color:#b45309">⏳ ${lang==='ko'?'관리자 승인 대기중':'Awaiting approval'}</b>`:(pend?` · <b style="color:#e67514">🛎️ ${lang==='ko'?'승인 대기':'Pending'} ${pend}</b>`:'');
+    const manageBtn=notApproved?`<button class="gbtn line" disabled style="flex:2;color:#b45309;border-color:#ffe6b3;background:#fff7e8;cursor:default">⏳ ${lang==='ko'?'승인 대기':'Pending'}</button>`:`<button class="gbtn primary" data-clubmanage="${c.id}" style="flex:2">${lang==='ko'?'관리 / 입장':'Manage'}</button>`;
     return `<div style="display:block;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:10px"><div style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;display:grid;place-items:center;font-size:20px;color:#fff;background:${c.grad||'linear-gradient(120deg,#64748b,#94a3b8)'}">${c.emoji||'👥'}</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:15px">${escT(c.name)}</div><div style="font-size:12px;color:var(--sub)">👑 ${lang==='ko'?'방장':'Leader'}${pend?` · <b style="color:#e67514">🛎️ ${lang==='ko'?'승인 대기':'Pending'} ${pend}</b>`:''}</div></div></div>
-      <div style="display:flex;gap:8px;margin-top:12px"><button class="gbtn primary" data-clubmanage="${c.id}" style="flex:2">${lang==='ko'?'관리 / 입장':'Manage'}</button><button class="gbtn line" data-clubclose="${c.id}" style="flex:1;color:var(--red);border-color:#f6c9c4">${lang==='ko'?'폐쇄':'Close'}</button></div>
+      <div style="display:flex;align-items:center;gap:10px"><div style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;display:grid;place-items:center;font-size:20px;color:#fff;background:${c.grad||'linear-gradient(120deg,#64748b,#94a3b8)'}">${c.emoji||'👥'}</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:15px">${escT(c.name)}</div><div style="font-size:12px;color:var(--sub)">👑 ${lang==='ko'?'방장':'Leader'}${statusLine}</div></div></div>
+      <div style="display:flex;gap:8px;margin-top:12px">${manageBtn}<button class="gbtn line" data-clubclose="${c.id}" style="flex:1;color:var(--red);border-color:#f6c9c4">${lang==='ko'?'폐쇄':'Close'}</button></div>
     </div>`;
   }).join('');
   return back+head+cards;
@@ -1277,15 +1280,24 @@ async function createClub(){
   const intro=((document.getElementById('clIntro')||{}).value||'').trim();
   const cat=(document.getElementById('clCat')||{}).value||'etc';
   const region=((document.getElementById('clRegion')||{}).value||'').trim();
+  const isGolf=(cat==='golf');   // 골프 동호회는 관리자 승인 후 공개
   clubBusy=true;
   try{
-    const {data,error}=await sb.from('clubs').insert({name,emoji,intro:intro||null,category:cat,region:region||null,grad:wClub.grad,leader_id:uid}).select().single();
+    const row={name,emoji,intro:intro||null,category:cat,region:region||null,grad:wClub.grad,leader_id:uid};
+    if(isGolf) row.approved=false;
+    const {data,error}=await sb.from('clubs').insert(row).select().single();
     if(error){ toast(error.message); clubBusy=false; return; }
     clubCreateOpen=false; wClub={emoji:'👥',grad:CLUB_GRADS[0],cat:'etc'};
-    toast(lang==='ko'?'모임 개설 완료! 당신이 방장이에요':'Club created — you are the leader');
+    toast(isGolf?(lang==='ko'?'개설 신청 완료 — 관리자 승인을 기다려 주세요':'Submitted — awaiting admin approval'):(lang==='ko'?'모임 개설 완료! 당신이 방장이에요':'Club created — you are the leader'));
     await loadClubs(); clubBusy=false;
-    if(data&&data.id) openClub(data.id);
+    if(!isGolf && data&&data.id) openClub(data.id);   // 골프는 승인 전이라 자동 입장 안 함
   }catch(e){ toast(String(e.message||e)); clubBusy=false; }
+}
+async function approveClub(id, ok){
+  if(!ok && !confirm(lang==='ko'?'이 골프 동호회 개설을 거절(삭제)할까요?':'Reject (delete) this club?')) return;
+  try{ const {error}=await sb.rpc('club_approve',{p_club:id,p_ok:ok}); if(error){ toast(error.message); return; }
+    toast(ok?(lang==='ko'?'동호회 승인 완료':'Approved'):(lang==='ko'?'개설 거절됨':'Rejected')); await loadClubs(); render();
+  }catch(e){ toast(String(e.message||e)); }
 }
 function viewClubHub(){
   const c=dbClubs.find(x=>x.id===clubOpen);
@@ -2410,7 +2422,7 @@ function viewGolfHub(){
   if(golfSub==='clubs') return golfClubsView();
   const back=`<button class="gmback" data-golfback>‹ ${L().comm_clubs}</button>`;
   const hero=`<div class="club" style="margin-bottom:14px"><div class="banner" style="background:linear-gradient(120deg,#0b7a3b,#16a34a);height:58px">⛳ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</div><div class="cbody2"><div class="desc">${lang==='ko'?'태국 골퍼 — 동호회 · 동반자 모집 · 개인 기록 · 골프장 정보':lang==='th'?'นักกอล์ฟในไทย':'Golfers in Thailand'}</div></div></div>`;
-  const golfCnt=dbClubs.filter(c=>c.category==='golf').length;
+  const golfCnt=dbClubs.filter(c=>c.category==='golf'&&c.approved!==false).length;
   const card=(sub,emo,title,desc,badge)=>`<div class="club" style="margin-bottom:11px;cursor:pointer" data-golfsub="${sub}"><div class="cbody2" style="padding:16px 15px"><div style="font-weight:800;font-size:15.5px">${emo} ${title}${badge||''} <span class="ar" style="float:right;color:var(--sub);font-size:18px">›</span></div><div style="font-size:12px;color:var(--sub);margin-top:5px">${desc}</div></div></div>`;
   return back+hero
     +card('clubs','⛳',lang==='ko'?'동호회':lang==='th'?'ชมรม':'Clubs',lang==='ko'?'골프 동호회 가입 · 정기 라운드 · 시상':lang==='th'?'เข้าร่วมชมรม · ออกรอบ · รางวัล':'Join clubs · rounds · awards',golfCnt?` <span style="font-size:11px;color:#0b7a3b;background:#e7f6ee;border-radius:8px;padding:1px 8px;font-weight:800;vertical-align:middle">${golfCnt}</span>`:'')
@@ -2421,18 +2433,26 @@ function viewGolfHub(){
 function golfClubsView(){
   const back=`<button class="gmback" data-golfsubback>‹ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</button>`;
   const enter=lang==='ko'?'입장':'Enter';
-  const golfClubs=dbClubs.filter(c=>c.category==='golf');
-  const clubCards=golfClubs.map(c=>{
+  const allGolf=dbClubs.filter(c=>c.category==='golf');
+  // 공개: 승인됨 + (본인이 개설한 승인대기). 관리자는 전부 봄
+  const visible=allGolf.filter(c=>c.approved!==false || c.leader_id===uid || isAdmin);
+  const pendingClubs=allGolf.filter(c=>c.approved===false);
+  // 관리자 승인 대기 섹션
+  const adminSec=(isAdmin&&pendingClubs.length)?`<div style="background:#fff7e8;border:1px solid #ffe6b3;border-radius:14px;padding:12px;margin-bottom:12px"><b style="font-size:14px">🛎️ ${lang==='ko'?'개설 승인 대기':'Pending approval'} (${pendingClubs.length})</b>`+pendingClubs.map(c=>`<div style="display:flex;align-items:center;gap:8px;margin-top:9px"><span style="flex:1;min-width:0;font-size:13px">${c.emoji||'⛳'} <b>${escT(c.name||'')}</b>${c.intro?` <span style="color:var(--sub);font-size:11.5px">· ${escT(c.intro)}</span>`:''}</span><button class="join" style="background:#16a34a;padding:6px 12px" data-clubok="${c.id}">${lang==='ko'?'승인':'OK'}</button><button class="join" style="background:#e5e7eb;color:#374151;padding:6px 12px" data-clubno="${c.id}">${lang==='ko'?'거절':'No'}</button></div>`).join('')+`</div>`:'';
+  const clubCards=visible.map(c=>{
+    const pend=(c.approved===false);
     const st=myClubMem[c.id]; let btn;
-    if(st==='leader'||st==='vice'||st==='member') btn=`<button class="join" data-clubenter="${c.id}">${enter}</button>`;
+    if(pend) btn=`<button class="join" disabled style="background:#fde9c8;color:#b45309;cursor:default">⏳ ${lang==='ko'?'승인 대기':'Pending'}</button>`;
+    else if(st==='leader'||st==='vice'||st==='member') btn=`<button class="join" data-clubenter="${c.id}">${enter}</button>`;
     else if(st==='pending') btn=`<button class="join" disabled style="background:#cbd5e1;cursor:default">${lang==='ko'?'승인 대기':'Pending'}</button>`;
     else if(st==='rejected') btn=`<button class="join" disabled style="background:#e5e7eb;color:#9ca3af;cursor:default">${lang==='ko'?'거절됨':'Rejected'}</button>`;
     else btn=`<button class="join" data-clubapply="${c.id}">${lang==='ko'?'가입 신청':'Apply'}</button>`;
-    const left=st==='leader'?`<span class="flag">👑 ${lang==='ko'?'방장':'Leader'}</span>`:(st==='vice'?`<span class="flag" style="color:#2f6df0;background:#eef4ff;border-color:#cfe0ff">⭐ ${lang==='ko'?'부방장':'Vice'}</span>`:(c.region?`<span>📍 ${escT(c.region)}</span>`:`<span>⛳ ${lang==='ko'?'동호회':'Club'}</span>`));
-    return `<div class="club"><div class="banner" style="background:${c.grad||'linear-gradient(120deg,#0b7a3b,#16a34a)'}">${c.emoji||'⛳'} ${escT(c.name||'')}</div><div class="cbody2"><div class="desc">${escT(c.intro||'')}</div><div class="cfoot">${left}${btn}</div></div></div>`;
+    const left=pend?`<span class="flag" style="color:#b45309;background:#fff7e8;border-color:#ffe6b3">⏳ ${lang==='ko'?'관리자 승인 대기중':'Awaiting approval'}</span>`:(st==='leader'?`<span class="flag">👑 ${lang==='ko'?'방장':'Leader'}</span>`:(st==='vice'?`<span class="flag" style="color:#2f6df0;background:#eef4ff;border-color:#cfe0ff">⭐ ${lang==='ko'?'부방장':'Vice'}</span>`:(c.region?`<span>📍 ${escT(c.region)}</span>`:`<span>⛳ ${lang==='ko'?'동호회':'Club'}</span>`)));
+    return `<div class="club"${pend?' style="opacity:.75"':''}><div class="banner" style="background:${c.grad||'linear-gradient(120deg,#0b7a3b,#16a34a)'}">${c.emoji||'⛳'} ${escT(c.name||'')}</div><div class="cbody2"><div class="desc">${escT(c.intro||'')}</div><div class="cfoot">${left}${btn}</div></div></div>`;
   }).join('')||`<div class="empty" style="padding:18px 0;text-align:center;color:var(--sub);font-size:13px">${lang==='ko'?'아직 골프 동호회가 없어요. 첫 동호회를 만들어보세요!':'No golf clubs yet'}</div>`;
-  const createUI=authed?(clubCreateOpen?clubCreateForm():`<button class="gbtn primary" data-golfnewclub style="width:100%;margin-bottom:12px">➕ ${lang==='ko'?'골프 동호회 개설':'New golf club'}</button>`):'';
-  return back+`<h2 class="sech" style="margin:6px 0 10px">⛳ ${lang==='ko'?'골프 동호회':'Golf clubs'}</h2>`+createUI+clubCards;
+  const createUI=authed?(clubCreateOpen?clubCreateForm():`<button class="gbtn primary" data-golfnewclub style="width:100%;margin-bottom:8px">➕ ${lang==='ko'?'골프 동호회 개설':'New golf club'}</button>`):'';
+  const note=(authed&&!clubCreateOpen)?`<div style="font-size:11.5px;color:var(--sub);text-align:center;margin-bottom:12px">${lang==='ko'?'골프 동호회는 관리자 승인 후 공개됩니다':'Golf clubs go live after admin approval'}</div>`:'';
+  return back+`<h2 class="sech" style="margin:6px 0 10px">⛳ ${lang==='ko'?'골프 동호회':'Golf clubs'}</h2>`+adminSec+createUI+note+clubCards;
 }
 function viewCommunity(){
   if(commSeg==='clubs'&&clubOpen!==null){page.innerHTML=viewClubHub();return;}
@@ -2669,6 +2689,8 @@ document.addEventListener('click',e=>{
   const mch=e.target.closest('[data-mchat]'); if(mch){openUserChat(mch.dataset.mchat);return;}
   const mvc=e.target.closest('[data-mvice]'); if(mvc){const[cu,rl]=mvc.dataset.mvice.split(':');setMemberRole(clubOpen,cu,rl);return;}
   const mkk=e.target.closest('[data-mkick]'); if(mkk){const c=dbClubs.find(x=>x.id===clubOpen);kickMember(clubOpen,mkk.dataset.mkick,(clubData&&clubData.names[mkk.dataset.mkick])||'');return;}
+  const cok=e.target.closest('[data-clubok]'); if(cok){approveClub(cok.dataset.clubok,true);return;}
+  const cno=e.target.closest('[data-clubno]'); if(cno){approveClub(cno.dataset.clubno,false);return;}
   const cap=e.target.closest('[data-clubapply]'); if(cap){applyClub(cap.dataset.clubapply);return;}
   const cen=e.target.closest('[data-clubenter]'); if(cen){openClub(cen.dataset.clubenter);return;}
   if(e.target.closest('[data-clubback]')){clubChatStop();clubOpen=null;clubData=null;evOpen=null;evData=null;render();page.scrollTo(0,0);return;}
