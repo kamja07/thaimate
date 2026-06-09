@@ -1420,7 +1420,7 @@ let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk
     myClubsOpen=false, noticeEditOpen=false, clubPending={}, rosterOpen=false, actEditId=null,
     golfSub=null, golfMatches=[], golfMatchForm=false, golfMatchEdit=null,
     golfCourses=[], golfCourseForm=false, golfCourseEdit=null, golfCourseRegion='',
-    golfRounds=[], golfRoundForm=false,
+    golfRounds=[], golfRoundForm=false, golfRoundOpen=null, myHcp=null, hcpEditOpen=false,
     evOpen=null, evData=null, evParts=[], evAwards=null, evScoreOpen=false, evCreateOpen=false;
 const L=()=>T[lang];
 const gm=()=>GM[lang];
@@ -2213,19 +2213,41 @@ function golfCoursesView(){
   return back+`<h2 class="sech" style="margin:6px 0 10px">📋 ${lang==='ko'?'골프장 정보':'Golf courses'} <span style="font-size:12px;color:var(--sub);font-weight:600">${golfCourses.length}</span></h2>`+intro+(verified?form:`<div style="font-size:12px;color:var(--sub);background:#f7f8fa;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px">${lang==='ko'?'골프장 등록·수정은 이메일 인증 회원만 가능해요.':'Email-verified members can add/edit.'}</div>`)+chips+list;
 }
 /* ===== 개인 활동 (내 라운드 기록 — rounds, event_id=null이 개인) ===== */
-async function openGolfRounds(){ golfSub='rounds'; golfRoundForm=false; render(); page.scrollTo(0,0); await loadGolfRounds(); }
+async function openGolfRounds(){ golfSub='rounds'; golfRoundForm=false; golfRoundOpen=null; hcpEditOpen=false; render(); page.scrollTo(0,0);
+  if(authed){ if(!golfCourses.length){ try{ const gc=await sb.from('golf_courses').select('id,name,name_en,region,district,holes,course_names,pars').order('name'); golfCourses=gc.data||[]; }catch(e){} }
+    try{ const pr=await sb.from('profiles').select('handicap').eq('id',uid).maybeSingle(); myHcp=pr.data?pr.data.handicap:null; }catch(e){} }
+  await loadGolfRounds();
+}
 async function loadGolfRounds(){
   if(!authed){ golfRounds=[]; if(golfSub==='rounds')render(); return; }
-  try{ const {data}=await sb.from('rounds').select('id,course,played_at,total,holes,event_id,created_at').eq('user_id',uid).order('played_at',{ascending:false,nullsFirst:false}).order('created_at',{ascending:false}).limit(100); golfRounds=data||[]; if(golfSub==='rounds')render(); }catch(e){}
+  try{ const {data}=await sb.from('rounds').select('id,course,course_id,course_key,played_at,total,holes,event_id,created_at,events(name,hole_pars)').eq('user_id',uid).order('played_at',{ascending:false,nullsFirst:false}).order('created_at',{ascending:false}).limit(100); golfRounds=data||[]; if(golfSub==='rounds')render(); }catch(e){}
 }
+function roundPars(r){ if(r.events&&Array.isArray(r.events.hole_pars)&&r.events.hole_pars.length===18)return r.events.hole_pars; if(r.course_id){ const co=golfCourses.find(c=>c.id===r.course_id); if(co)return coursePars18(co,r.course_key); } return null; }
 async function saveRound(){
   if(!canAct())return;
-  const v=id=>((document.getElementById(id)||{}).value||'').trim();
-  const course=v('grCourse'), date=v('grDate'), total=v('grTotal');
-  if(!course){ toast(lang==='ko'?'골프장을 입력하세요':'Enter course'); return; }
+  const courseId=(document.getElementById('grCourse')||{}).value||'';
+  const co=golfCourses.find(c=>c.id===courseId);
+  const courseTxt=((document.getElementById('grCourseText')||{}).value||'').trim();
+  const courseNm=co?co.name:courseTxt;
+  const date=(document.getElementById('grDate')||{}).value||'';
+  const combo=(document.getElementById('grCombo')||{}).value||'';
+  if(!courseNm){ toast(lang==='ko'?'골프장을 선택하거나 입력하세요':'Pick/enter a course'); return; }
   if(!date){ toast(lang==='ko'?'라운드 날짜를 선택하세요':'Pick a date'); return; }
-  if(total===''||isNaN(+total)){ toast(lang==='ko'?'총 스코어를 입력하세요':'Enter total score'); return; }
-  try{ const {error}=await sb.from('rounds').insert({user_id:uid, course, played_at:date, total:parseInt(total,10), event_id:null}); if(error){toast(error.message);return;} toast(lang==='ko'?'라운드 기록됨!':'Saved'); golfRoundForm=false; loadGolfRounds(); }catch(e){toast(String(e.message||e));}
+  const holes=[]; let filled=0; for(let i=0;i<18;i++){ const el=document.getElementById('grh'+i); const s=el?el.value.trim():''; if(s===''){holes.push(null);} else {const n=parseInt(s,10); holes.push(isNaN(n)?null:n); if(!isNaN(n))filled++;} }
+  let total=null, holesArr=null;
+  if(filled===18&&holes.every(x=>x!=null)){ holesArr=holes; total=holes.reduce((a,b)=>a+b,0); }
+  else { const mt=((document.getElementById('grTotal')||{}).value||'').trim(); if(mt!==''&&!isNaN(+mt)) total=parseInt(mt,10); }
+  if(total==null){ toast(lang==='ko'?'18홀 스코어를 모두 입력하거나 총 스코어를 입력하세요':'Enter all 18 holes or a total'); return; }
+  const row={user_id:uid, course:courseNm, played_at:date, total, event_id:null};
+  if(co){ row.course_id=co.id; if(combo)row.course_key=combo; }
+  if(holesArr)row.holes=holesArr;
+  try{ const {error}=await sb.from('rounds').insert(row); if(error){toast(error.message);return;} toast(lang==='ko'?'라운드 기록됨!':'Saved'); golfRoundForm=false; loadGolfRounds(); }catch(e){toast(String(e.message||e));}
+}
+async function saveHcp(){
+  const s=((document.getElementById('hcpInput')||{}).value||'').trim();
+  if(s===''){ toast(lang==='ko'?'핸디캡을 입력하세요':'Enter handicap'); return; }
+  const n=parseFloat(s); if(isNaN(n)||n<0||n>54){ toast(lang==='ko'?'핸디캡은 0~54':'0-54'); return; }
+  try{ const {error}=await sb.from('profiles').update({handicap:n}).eq('id',uid); if(error){toast(error.message);return;} myHcp=n; hcpEditOpen=false; toast(lang==='ko'?'핸디캡 저장됨':'Saved'); render(); }catch(e){toast(String(e.message||e));}
 }
 async function deleteRound(id){ if(!confirm(lang==='ko'?'이 라운드 기록을 삭제할까요?':'Delete this round?'))return; try{ const {error}=await sb.from('rounds').delete().eq('id',id).eq('user_id',uid).is('event_id',null); if(error){toast(error.message);return;} loadGolfRounds(); }catch(e){toast(String(e.message||e));} }
 function golfRoundsView(){
@@ -2236,18 +2258,40 @@ function golfRoundsView(){
   const stats=valid.length?{count:valid.length, avg:Math.round(valid.reduce((s,r)=>s+r.total,0)/valid.length), best:Math.min(...valid.map(r=>r.total)), recent:valid[0].total}:null;
   const cell=(lbl,val)=>`<div style="flex:1;text-align:center;padding:10px 4px"><div style="font-size:20px;font-weight:800;color:#0b7a3b">${val}</div><div style="font-size:11px;color:var(--sub);margin-top:2px">${lbl}</div></div>`;
   const statCard=stats?`<div style="display:flex;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-bottom:12px;divide">${cell(lang==='ko'?'라운드':'Rounds',stats.count)}${cell(lang==='ko'?'평균':'Avg',stats.avg)}${cell(lang==='ko'?'베스트':'Best',stats.best)}${cell(lang==='ko'?'최근':'Recent',stats.recent)}</div>`:'';
-  const form=golfRoundForm?`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px"><div style="font-weight:800;margin-bottom:10px">${lang==='ko'?'라운드 기록 추가':'Add round'}</div>`
-    +`<input id="grCourse" list="grCourseList" placeholder="${lang==='ko'?'골프장 *':'Course *'}" style="${inp}"><datalist id="grCourseList">${golfCourses.map(c=>`<option value="${escA(c.name||'')}">`).join('')}</datalist>`
-    +`<div style="display:flex;gap:8px"><input id="grDate" type="date" style="${inp};flex:1"><input id="grTotal" type="number" min="18" max="200" placeholder="${lang==='ko'?'총 스코어 *':'Total *'}" style="${inp};flex:1"></div>`
-    +`<div style="display:flex;gap:8px"><button class="gbtn line" data-grcancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-grsave style="flex:2">${lang==='ko'?'기록 저장':'Save'}</button></div></div>`
-    :`<button class="gbtn primary" data-grnew style="width:100%;margin-bottom:12px">➕ ${lang==='ko'?'라운드 기록 추가':'Add round'}</button>`;
+  // 핸디캡 카드
+  const hcpCard=hcpEditOpen
+    ?`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow);margin-bottom:12px;display:flex;gap:8px;align-items:center"><span style="font-size:13px;font-weight:700">${lang==='ko'?'핸디캡':'Handicap'}</span><input id="hcpInput" type="number" min="0" max="54" step="0.1" value="${myHcp!=null?myHcp:''}" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px"><button class="join" data-hcpsave>${lang==='ko'?'저장':'Save'}</button><button class="join" style="background:#eef0f3;color:#333" data-hcpcancel>${lang==='ko'?'취소':'Cancel'}</button></div>`
+    :`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 14px;box-shadow:var(--shadow);margin-bottom:12px"><span style="font-size:13px"><b>🎯 ${lang==='ko'?'내 핸디캡':'My handicap'}</b> · <span style="color:#0b7a3b;font-weight:800;font-size:15px">${myHcp!=null?myHcp:'—'}</span></span><button class="join" style="background:#eef0f3;color:#333;font-size:12px" data-hcpedit>${lang==='ko'?'수정':'Edit'}</button></div>`;
+  // 라운드 추가 폼 (지역→골프장→조합 + 스코어카드)
+  let form;
+  if(golfRoundForm){
+    window.__grComboSel=function(cid){ const wrap=document.getElementById('grComboWrap'),sel=document.getElementById('grCombo'); if(!wrap||!sel)return; const co=golfCourses.find(x=>x.id===cid); const combos=courseCombos(co); if(!combos.length){wrap.style.display='none';sel.innerHTML='';} else {wrap.style.display='';sel.innerHTML=`<option value="">${lang==='ko'?'칠 코스 조합 (예 A+B)':'9s combo'}</option>`+combos.map(c=>`<option value="${escA(c.key)}">${escT(c.label)}</option>`).join('');} window.__grRebuild(); };
+    window.__grCourseSel=function(region){ const sel=document.getElementById('grCourse'); if(!sel)return; const list=(region?golfCourses.filter(x=>x.region===region):golfCourses).slice().sort((a,b)=>courseName(a).localeCompare(courseName(b))); sel.innerHTML=`<option value="">${lang==='ko'?'골프장 선택':'Select course'}</option>`+list.map(co=>`<option value="${co.id}">${escA(courseName(co))}</option>`).join(''); window.__grComboSel(''); };
+    window.__grRebuild=function(){ const area=document.getElementById('grScoreArea'); if(!area)return; const cur=[]; for(let i=0;i<18;i++){const el=document.getElementById('grh'+i);cur.push(el?el.value:'');} const cid=(document.getElementById('grCourse')||{}).value||''; const combo=(document.getElementById('grCombo')||{}).value||''; const co=golfCourses.find(c=>c.id===cid); const pars=co?coursePars18(co,combo):null; area.innerHTML=scorecardHTML(pars,cur,'grh'); };
+    const regions=[...new Set(golfCourses.map(co=>co.region).filter(Boolean))];
+    const regOpts=`<option value="">${lang==='ko'?'지역 선택':'Region'}</option>`+regions.map(r=>`<option value="${escA(r)}">${escT(regionLabel(r))}</option>`).join('');
+    const courseOpts=`<option value="">${lang==='ko'?'골프장 선택':'Select course'}</option>`+golfCourses.slice().sort((a,b)=>courseName(a).localeCompare(courseName(b))).map(co=>`<option value="${co.id}">${escA(courseName(co))}</option>`).join('');
+    form=`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px"><div style="font-weight:800;margin-bottom:10px">${lang==='ko'?'라운드 기록 추가':'Add round'}</div>`
+      +`<div style="display:flex;gap:8px"><select id="grRegion" onchange="window.__grCourseSel(this.value)" style="${inp};flex:0 0 40%">${regOpts}</select><select id="grCourse" onchange="window.__grComboSel(this.value)" style="${inp};flex:1">${courseOpts}</select></div>`
+      +`<div id="grComboWrap" style="display:none"><select id="grCombo" onchange="window.__grRebuild()" style="${inp}"></select></div>`
+      +`<input id="grCourseText" placeholder="${lang==='ko'?'또는 골프장 직접 입력 (선택)':'or type course name'}" style="${inp}">`
+      +`<input id="grDate" type="date" value="${(new Date()).toISOString().slice(0,10)}" style="${inp}">`
+      +`<div style="font-size:11.5px;color:var(--sub);margin:4px 0 6px">${lang==='ko'?'⛳ 18홀 스코어 (총 스코어 자동 합산) — 또는 아래 총 스코어만 입력':'Enter 18 holes (auto total) or just a total'}</div>`
+      +`<div id="grScoreArea">${scorecardHTML(null,[],'grh')}</div>`
+      +`<input id="grTotal" type="number" min="18" max="200" placeholder="${lang==='ko'?'총 스코어만 입력 (스코어카드 미입력 시)':'Total only (if no scorecard)'}" style="${inp};margin-top:10px">`
+      +`<div style="display:flex;gap:8px"><button class="gbtn line" data-grcancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-grsave style="flex:2">${lang==='ko'?'기록 저장':'Save'}</button></div></div>`;
+  } else form=`<button class="gbtn primary" data-grnew style="width:100%;margin-bottom:12px">➕ ${lang==='ko'?'라운드 기록 추가':'Add round'}</button>`;
   const fmtDate=d=>{ if(!d)return ''; try{ const x=new Date(d+'T00:00'); return `${x.getFullYear()}.${String(x.getMonth()+1).padStart(2,'0')}.${String(x.getDate()).padStart(2,'0')}`; }catch(e){return d;} };
   const rows=golfRounds.length?golfRounds.map(r=>{
-    const ev=r.event_id?`<span class="flag" style="color:#b45309;background:#fef3c7;border-color:#fcd34d">🏆 ${lang==='ko'?'동호회':'Club'}</span>`:'';
+    const ev=r.event_id?`<span class="flag" style="color:#b45309;background:#fef3c7;border-color:#fcd34d">🏆 ${escT((r.events&&r.events.name)||(lang==='ko'?'동호회':'Club'))}</span>`:'';
     const del=!r.event_id?`<button class="join" style="background:#fdecec;color:#d33;padding:4px 9px;font-size:11px" data-grdel="${r.id}">${lang==='ko'?'삭제':'Del'}</button>`:'';
-    return `<div style="display:flex;align-items:center;gap:8px;padding:11px 0;border-bottom:1px solid var(--line)"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">⛳ ${escT(r.course||'')} ${ev}</div><div style="font-size:11.5px;color:var(--sub);margin-top:2px">${fmtDate(r.played_at)}</div></div><div style="font-size:18px;font-weight:800;color:#111;flex-shrink:0">${r.total!=null?r.total:'-'}</div><div style="flex-shrink:0">${del}</div></div>`;
+    const hasCard=Array.isArray(r.holes)&&r.holes.length>=18;
+    const cardBtn=hasCard?`<button class="join" style="background:#eef0f3;color:#333;padding:4px 9px;font-size:11px" data-grview="${r.id}">${golfRoundOpen===r.id?'▲':'▦'}</button>`:'';
+    const tp=r.total!=null?r.total:null; const col=tp!=null?(tp<=80?'#0b7a3b':(tp>=100?'#d33':'#111')):'#111';
+    const expanded=(golfRoundOpen===r.id&&hasCard)?scorecardView(roundPars(r), r.holes):'';
+    return `<div style="padding:11px 0;border-bottom:1px solid var(--line)"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">⛳ ${escT(r.course||'')}${r.course_key?` <span style="font-size:11px;color:var(--sub)">(${escT(r.course_key)})</span>`:''} ${ev}</div><div style="font-size:11.5px;color:var(--sub);margin-top:2px">${fmtDate(r.played_at)}</div></div><div style="font-size:18px;font-weight:800;color:${col};flex-shrink:0">${tp!=null?tp:'-'}</div><div style="display:flex;gap:5px;flex-shrink:0">${cardBtn}${del}</div></div>${expanded}</div>`;
   }).join(''):`<div class="empty" style="padding:26px 0;text-align:center;color:var(--sub)">${lang==='ko'?'아직 기록이 없어요. 첫 라운드를 남겨보세요!':'No rounds yet'}</div>`;
-  return back+`<h2 class="sech" style="margin:6px 0 10px">🏌️ ${lang==='ko'?'개인 활동':'My golf'} <span style="font-size:12px;color:var(--sub);font-weight:600">${lang==='ko'?'내 라운드 · 핸디 통계':'My rounds'}</span></h2>`+statCard+form+`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 14px;box-shadow:var(--shadow)">${rows}</div>`;
+  return back+`<h2 class="sech" style="margin:6px 0 10px">🏌️ ${lang==='ko'?'개인 활동':'My golf'} <span style="font-size:12px;color:var(--sub);font-weight:600">${lang==='ko'?'내 라운드 · 핸디 통계':'My rounds'}</span></h2>`+hcpCard+statCard+form+`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 14px;box-shadow:var(--shadow)">${rows}</div>`;
 }
 /* ===== 시상 프로세스 (골프 동호회 내 정기 라운드 — events/event_participants/event_awards) =====
    점수 계산은 골프메이트 로직 그대로 카피: 신페리오/스테이블포드/그로스/넷 + 카운트백 */
@@ -2437,39 +2481,69 @@ function golfEventsSecHtml(c,isStaff){
   return `<h2 class="sech" style="margin:14px 0 8px">🏆 ${lang==='ko'?'정기 라운드 · 시상':'Rounds & awards'}</h2>`+createUI+list;
 }
 // 통상 스코어카드 포맷: Par행(읽기) + 스코어행(입력) + OUT/IN/Total, 입력 id=evh0..17
-function scorecardHTML(pars, vals){
+function scoreColor(s,par){ if(s==null||!par)return ''; const d=s-par; if(d<=-2)return '#1565c0'; if(d===-1)return '#2E7D32'; if(d===0)return '#111'; if(d===1)return '#e67514'; return '#d32f2f'; }
+// 입력형 스코어카드 (Par행 + 스코어 입력행 + OUT/IN/Total 라이브, 색상코딩). prefix로 재사용
+function scorecardHTML(pars, vals, prefix){
+  prefix=prefix||'evh';
   const P=(Array.isArray(pars)&&pars.length===18)?pars:null;
-  window.__gmParTot=P?P.reduce((a,b)=>a+(+b||0),0):0;
-  const V=Array.isArray(vals)?vals:[];
-  window.__gmSC=function(){
-    const g=i=>{const e=document.getElementById('evh'+i);const v=e?parseInt(e.value,10):NaN;return isNaN(v)?0:v;};
+  const parTot=P?P.reduce((a,b)=>a+(+b||0),0):0; window['__gmParTot_'+prefix]=parTot;
+  const V=Array.isArray(vals)?vals:[]; const fn='__gmSC_'+prefix;
+  window[fn]=function(){
+    const g=i=>{const e=document.getElementById(prefix+i);const v=e?parseInt(e.value,10):NaN;return isNaN(v)?0:v;};
     let out=0,inn=0;for(let i=0;i<9;i++)out+=g(i);for(let i=9;i<18;i++)inn+=g(i);
     const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-    set('evOut',out||'');set('evIn',inn||'');const tot=out+inn;set('evTot',tot||0);
-    const pt=window.__gmParTot||0;const el=document.getElementById('evToPar');
+    set(prefix+'_out',out||'');set(prefix+'_in',inn||'');const tot=out+inn;set(prefix+'_tot',tot||0);
+    const pt=window['__gmParTot_'+prefix]||0;const el=document.getElementById(prefix+'_topar');
     if(el){ if(tot&&pt){const d=tot-pt;el.textContent='('+(d>=0?'+':'')+d+')';} else el.textContent=''; }
+    if(pt){ for(let i=0;i<18;i++){ const e=document.getElementById(prefix+i); if(!e)continue; const par=(window['__gmPars_'+prefix]||[])[i]; const v=parseInt(e.value,10); if(isNaN(v)||!par){e.style.color='';e.style.fontWeight='';} else {e.style.color=scoreColor(v,par);e.style.fontWeight='800';} } }
   };
+  window['__gmPars_'+prefix]=P||[];
   const th='padding:3px 0;font-size:10px;color:#475569;font-weight:700;background:#eef2f7;border:1px solid var(--line)';
   const pd='padding:3px 0;font-size:11.5px;border:1px solid var(--line);text-align:center';
   const lab='padding:3px 5px;font-size:10px;font-weight:800;border:1px solid var(--line);background:#f8fafc;white-space:nowrap';
   const sumc=(from,to)=>{let s=0;for(let i=from;i<to;i++){const v=parseInt(V[i],10);if(!isNaN(v))s+=v;}return s;};
   const outInit=sumc(0,9),inInit=sumc(9,18),totInit=outInit+inInit;
-  function nine(s,lbl,sumId){
+  function nine(s,lbl){
     let hRow=`<td style="${lab}">${lang==='ko'?'홀':'Hole'}</td>`,pRow=`<td style="${lab}">Par</td>`,scRow=`<td style="${lab}">${lang==='ko'?'스코어':'Score'}</td>`;let psum=0;
     for(let k=0;k<9;k++){const i=s+k;const par=P?P[i]:null;if(par)psum+=par;
       hRow+=`<td style="${th}">${i+1}</td>`;
       pRow+=`<td style="${pd};color:var(--sub)">${par||'-'}</td>`;
-      const v=(V[i]!=null&&V[i]!=='')?V[i]:'';
-      scRow+=`<td style="padding:0;border:1px solid var(--line)"><input id="evh${i}" type="number" inputmode="numeric" min="1" max="15" value="${v}" oninput="window.__gmSC()" style="width:100%;box-sizing:border-box;padding:8px 0;border:none;text-align:center;font-size:14px;outline:none;background:transparent"></td>`;
+      const v=(V[i]!=null&&V[i]!=='')?V[i]:''; const col=(v!==''&&par)?scoreColor(+v,par):'';
+      scRow+=`<td style="padding:0;border:1px solid var(--line)"><input id="${prefix}${i}" type="number" inputmode="numeric" min="1" max="15" value="${v}" oninput="window.${fn}()" style="width:100%;box-sizing:border-box;padding:8px 0;border:none;text-align:center;font-size:14px;outline:none;background:transparent;${col?`color:${col};font-weight:800`:''}"></td>`;
     }
     hRow+=`<td style="${th}">${lbl}</td>`;
     pRow+=`<td style="${pd};font-weight:800;background:#eef2f7">${psum||'-'}</td>`;
-    scRow+=`<td style="${pd};font-weight:800;background:#eef2f7;color:#0b7a3b" id="${sumId}">${(s===0?outInit:inInit)||''}</td>`;
+    scRow+=`<td style="${pd};font-weight:800;background:#eef2f7;color:#0b7a3b" id="${prefix}_${s===0?'out':'in'}">${(s===0?outInit:inInit)||''}</td>`;
     return `<tr>${hRow}</tr><tr>${pRow}</tr><tr>${scRow}</tr>`;
   }
-  const toParInit=(totInit&&P)?('('+((totInit-window.__gmParTot)>=0?'+':'')+(totInit-window.__gmParTot)+')'):'';
-  return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed">${nine(0,'OUT','evOut')}<tr><td colspan="11" style="height:5px;border:none"></td></tr>${nine(9,'IN','evIn')}</table></div>`
-   +`<div style="display:flex;justify-content:flex-end;align-items:baseline;gap:6px;margin-top:9px;font-size:14px;font-weight:800">${lang==='ko'?'합계':'Total'} <span id="evTot" style="color:#0b7a3b;font-size:17px">${totInit||0}</span>${P?` <span style="color:var(--sub);font-weight:600;font-size:12px">/ Par ${window.__gmParTot}</span> <span id="evToPar" style="color:var(--sub);font-weight:700">${toParInit}</span>`:''}</div>`;
+  const toParInit=(totInit&&P)?('('+((totInit-parTot)>=0?'+':'')+(totInit-parTot)+')'):'';
+  return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed">${nine(0,'OUT')}<tr><td colspan="11" style="height:5px;border:none"></td></tr>${nine(9,'IN')}</table></div>`
+   +`<div style="display:flex;justify-content:flex-end;align-items:baseline;gap:6px;margin-top:9px;font-size:14px;font-weight:800">${lang==='ko'?'합계':'Total'} <span id="${prefix}_tot" style="color:#0b7a3b;font-size:17px">${totInit||0}</span>${P?` <span style="color:var(--sub);font-weight:600;font-size:12px">/ Par ${parTot}</span> <span id="${prefix}_topar" style="color:var(--sub);font-weight:700">${toParInit}</span>`:''}</div>`;
+}
+// 읽기전용 스코어카드 표시 (라운드 기록·결과용, 색상코딩 + 전·후반 ±)
+function scorecardView(pars, holes){
+  const H=Array.isArray(holes)&&holes.length>=18?holes:null; if(!H) return '';
+  const P=(Array.isArray(pars)&&pars.length===18)?pars:null;
+  const th='padding:2px 0;font-size:9px;color:#475569;font-weight:700;background:#eef2f7;border:1px solid var(--line);text-align:center';
+  const pd='padding:2px 0;font-size:10.5px;border:1px solid var(--line);text-align:center';
+  const lab='padding:2px 4px;font-size:9px;font-weight:800;border:1px solid var(--line);background:#f8fafc;white-space:nowrap';
+  function nine(s){
+    let hRow=`<td style="${lab}">홀</td>`,pRow=P?`<td style="${lab}">Par</td>`:'',scRow=`<td style="${lab}">${lang==='ko'?'타수':'Sc'}</td>`;let psum=0,ssum=0;
+    for(let k=0;k<9;k++){const i=s+k;const par=P?P[i]:null;const sc=H[i];if(par)psum+=par;if(sc!=null)ssum+=sc;
+      hRow+=`<td style="${th}">${i+1}</td>`;
+      if(P)pRow+=`<td style="${pd};color:var(--sub)">${par||'-'}</td>`;
+      scRow+=`<td style="${pd};font-weight:700;${par?`color:${scoreColor(sc,par)}`:''}">${sc!=null?sc:'-'}</td>`;
+    }
+    hRow+=`<td style="${th}">${s===0?'OUT':'IN'}</td>`;
+    if(P)pRow+=`<td style="${pd};font-weight:800;background:#eef2f7">${psum}</td>`;
+    scRow+=`<td style="${pd};font-weight:800;background:#eef2f7;color:#0b7a3b">${ssum}</td>`;
+    return `<tr>${hRow}</tr>${P?`<tr>${pRow}</tr>`:''}<tr>${scRow}</tr>`;
+  }
+  const fs=H.slice(0,9).reduce((a,b)=>a+(+b||0),0), bs=H.slice(9,18).reduce((a,b)=>a+(+b||0),0);
+  const fp=P?P.slice(0,9).reduce((a,b)=>a+(+b||0),0):0, bp=P?P.slice(9,18).reduce((a,b)=>a+(+b||0),0):0;
+  const dd=d=>d===0?'E':(d>0?'+'+d:''+d);
+  const foot=P?`<div style="font-size:10.5px;color:var(--sub);margin-top:4px;text-align:right">${lang==='ko'?'전반':'Out'} ${fs} (${dd(fs-fp)}) · ${lang==='ko'?'후반':'In'} ${bs} (${dd(bs-bp)})</div>`:'';
+  return `<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;table-layout:fixed">${nine(0)}<tr><td colspan="11" style="height:3px;border:none"></td></tr>${nine(9)}</table></div>${foot}`;
 }
 function eventDetailView(){
   const c=dbClubs.find(x=>x.id===clubOpen);
@@ -2785,6 +2859,10 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-grcancel]')){golfRoundForm=false;render();return;}
   if(e.target.closest('[data-grsave]')){saveRound();return;}
   const grd=e.target.closest('[data-grdel]'); if(grd){deleteRound(grd.dataset.grdel);return;}
+  const grvw=e.target.closest('[data-grview]'); if(grvw){const id=grvw.dataset.grview;golfRoundOpen=(golfRoundOpen===id?null:id);render();return;}
+  if(e.target.closest('[data-hcpedit]')){hcpEditOpen=true;render();return;}
+  if(e.target.closest('[data-hcpcancel]')){hcpEditOpen=false;render();return;}
+  if(e.target.closest('[data-hcpsave]')){saveHcp();return;}
   const gcr=e.target.closest('[data-gcregion]'); if(gcr){golfCourseRegion=gcr.dataset.gcregion;render();return;}
   if(e.target.closest('[data-gcnew]')){golfCourseForm=true;golfCourseEdit=null;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-gccancel]')){golfCourseForm=false;golfCourseEdit=null;render();return;}
