@@ -1157,7 +1157,7 @@ async function openClub(id){
   // 단체대화방 메시지 (멤버만 RLS 허용 — 비멤버면 빈 배열)
   const amMember=['leader','vice','member'].includes(myClubMem[id]);
   if(amMember){ try{ const cm=await sb.from('club_messages').select('*').eq('club_id',id).order('created_at',{ascending:true}).limit(300);
-    cd.cmsgs=(cm.data||[]).map(m=>({me:m.sender_id===uid,who:(cd.names[m.sender_id]||(lang==='ko'?'회원':'Member')),tx:m.body,id:m.id})); }catch(e){} }
+    cd.cmsgs=(cm.data||[]).map(m=>({me:m.sender_id===uid,who:(cd.names[m.sender_id]||(lang==='ko'?'회원':'Member')),tx:m.body,id:m.id,ts:m.created_at})); }catch(e){} }
   if(clubOpen===id){ clubData=cd; render();
     if(amMember){ subscribeClubMsgs(id); setTimeout(()=>{ const b=document.getElementById('clubChatBox'); if(b) b.scrollTop=b.scrollHeight; },60); }
   }
@@ -1211,10 +1211,11 @@ async function leaveActivity(clubId,actId){
 /* ── 모임 단체대화방 (허브 인라인 그룹챗 + Realtime) ── */
 let clubChatSub=null;
 function cmName(u){ return (clubData&&clubData.names&&clubData.names[u])||(lang==='ko'?'회원':'Member'); }
+function msgTime(ts){ if(!ts) return ''; try{ const d=new Date(ts); const mm=d.getMonth()+1, dd=d.getDate(), h=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0'); return `${mm}/${dd} ${h}:${mi}`; }catch(e){ return ''; } }
 function clubMsgsHtml(){
   const ms=(clubData&&clubData.cmsgs)||[];
   if(!ms.length) return `<div style="text-align:center;color:var(--sub);font-size:13px;padding:28px 0">${lang==='ko'?'첫 메시지를 남겨보세요 👋':'Say hi 👋'}</div>`;
-  return ms.map(m=>`<div class="bub ${m.me?'me':'them'}">${m.me?'':`<div style="font-size:10.5px;color:var(--sub);font-weight:700;margin-bottom:2px">${escT(m.who)}</div>`}${escT(m.tx)}</div>`).join('');
+  return ms.map(m=>`<div style="display:flex;flex-direction:column;align-items:${m.me?'flex-end':'flex-start'}"><div class="bub ${m.me?'me':'them'}">${m.me?'':`<div style="font-size:10.5px;color:var(--sub);font-weight:700;margin-bottom:2px">${escT(m.who)}</div>`}${escT(m.tx)}</div><div style="font-size:10px;color:var(--sub);margin:2px 5px 0">${msgTime(m.ts)}</div></div>`).join('');
 }
 function refreshClubChatBox(){ const b=document.getElementById('clubChatBox'); if(b){ b.innerHTML=clubMsgsHtml(); b.scrollTop=b.scrollHeight; } }
 function clubChatStop(){ try{ if(clubChatSub){ sb.removeChannel(clubChatSub); clubChatSub=null; } }catch(e){} }
@@ -1224,13 +1225,13 @@ function subscribeClubMsgs(clubId){
     const m=payload.new; if(m.sender_id===uid) return;
     if(!clubData||clubOpen!==clubId) return; clubData.cmsgs=clubData.cmsgs||[];
     if(clubData.cmsgs.some(x=>x.id===m.id)) return;
-    clubData.cmsgs.push({me:false,who:cmName(m.sender_id),tx:m.body,id:m.id});
+    clubData.cmsgs.push({me:false,who:cmName(m.sender_id),tx:m.body,id:m.id,ts:m.created_at});
     refreshClubChatBox();
   }).subscribe(); }catch(e){}
 }
 async function sendClubMsg(clubId,text){
   if(!text||!clubData) return;
-  const tmpId='tmp'+Date.now(); clubData.cmsgs=clubData.cmsgs||[]; clubData.cmsgs.push({me:true,who:'',tx:text,id:tmpId}); refreshClubChatBox();
+  const tmpId='tmp'+Date.now(); clubData.cmsgs=clubData.cmsgs||[]; clubData.cmsgs.push({me:true,who:'',tx:text,id:tmpId,ts:new Date().toISOString()}); refreshClubChatBox();
   try{ const ins=await sb.from('club_messages').insert({club_id:clubId,sender_id:uid,body:text}).select().single();
     if(ins.error){ toast(ins.error.message); return; }
     const mm=clubData.cmsgs.find(x=>x.id===tmpId); if(mm) mm.id=ins.data.id;
