@@ -1142,8 +1142,8 @@ function viewMyClubs(){
   return back+head+cards;
 }
 async function openClub(id){
-  clubOpen=id; clubData=null; actFormOpen=false; noticeEditOpen=false; rosterOpen=false; actEditId=null; render(); page.scrollTo(0,0);
-  const cd={activities:[],members:[],pending:[],names:{},joined:new Set(),notices:[],partCounts:{}};
+  clubOpen=id; clubData=null; actFormOpen=false; noticeEditOpen=false; rosterOpen=false; actEditId=null; clubChatStop(); render(); page.scrollTo(0,0);
+  const cd={activities:[],members:[],pending:[],names:{},joined:new Set(),notices:[],partCounts:{},cmsgs:[]};
   try{ const a=await sb.from('club_activities').select('*').eq('club_id',id).order('when_at',{ascending:true,nullsFirst:false}); cd.activities=a.data||[]; }catch(e){}
   try{ const n=await sb.from('club_notices').select('*').eq('club_id',id).order('pinned',{ascending:false}).order('created_at',{ascending:false}); cd.notices=n.data||[]; }catch(e){}
   try{ const m=await sb.from('club_members').select('user_id,status,role,created_at').eq('club_id',id).order('created_at');
@@ -1154,7 +1154,13 @@ async function openClub(id){
   const actIds=cd.activities.map(a=>a.id);
   if(actIds.length){ try{ const ap=await sb.from('activity_participants').select('activity_id,user_id').in('activity_id',actIds);
     (ap.data||[]).forEach(r=>{ cd.partCounts[r.activity_id]=(cd.partCounts[r.activity_id]||0)+1; if(r.user_id===uid) cd.joined.add(r.activity_id); }); }catch(e){} }
-  if(clubOpen===id){ clubData=cd; render(); }
+  // 단체대화방 메시지 (멤버만 RLS 허용 — 비멤버면 빈 배열)
+  const amMember=['leader','vice','member'].includes(myClubMem[id]);
+  if(amMember){ try{ const cm=await sb.from('club_messages').select('*').eq('club_id',id).order('created_at',{ascending:true}).limit(300);
+    cd.cmsgs=(cm.data||[]).map(m=>({me:m.sender_id===uid,who:(cd.names[m.sender_id]||(lang==='ko'?'회원':'Member')),tx:m.body,id:m.id})); }catch(e){} }
+  if(clubOpen===id){ clubData=cd; render();
+    if(amMember){ subscribeClubMsgs(id); setTimeout(()=>{ const b=document.getElementById('clubChatBox'); if(b) b.scrollTop=b.scrollHeight; },60); }
+  }
 }
 async function decideMember(clubId,userId,approve){
   try{ const {error}=await sb.from('club_members').update({status:approve?'approved':'rejected'}).eq('club_id',clubId).eq('user_id',userId);
@@ -1200,6 +1206,34 @@ async function leaveActivity(clubId,actId){
   try{ const {error}=await sb.from('activity_participants').delete().eq('activity_id',actId).eq('user_id',uid);
     if(error){ toast(error.message); return; }
     toast(lang==='ko'?'참가 취소됨':'Cancelled'); openClub(clubId);
+  }catch(e){ toast(String(e.message||e)); }
+}
+/* ── 모임 단체대화방 (허브 인라인 그룹챗 + Realtime) ── */
+let clubChatSub=null;
+function cmName(u){ return (clubData&&clubData.names&&clubData.names[u])||(lang==='ko'?'회원':'Member'); }
+function clubMsgsHtml(){
+  const ms=(clubData&&clubData.cmsgs)||[];
+  if(!ms.length) return `<div style="text-align:center;color:var(--sub);font-size:13px;padding:28px 0">${lang==='ko'?'첫 메시지를 남겨보세요 👋':'Say hi 👋'}</div>`;
+  return ms.map(m=>`<div class="bub ${m.me?'me':'them'}">${m.me?'':`<div style="font-size:10.5px;color:var(--sub);font-weight:700;margin-bottom:2px">${escT(m.who)}</div>`}${escT(m.tx)}</div>`).join('');
+}
+function refreshClubChatBox(){ const b=document.getElementById('clubChatBox'); if(b){ b.innerHTML=clubMsgsHtml(); b.scrollTop=b.scrollHeight; } }
+function clubChatStop(){ try{ if(clubChatSub){ sb.removeChannel(clubChatSub); clubChatSub=null; } }catch(e){} }
+function subscribeClubMsgs(clubId){
+  clubChatStop();
+  try{ clubChatSub=sb.channel('clubchat-'+clubId).on('postgres_changes',{event:'INSERT',schema:'public',table:'club_messages',filter:'club_id=eq.'+clubId}, payload=>{
+    const m=payload.new; if(m.sender_id===uid) return;
+    if(!clubData||clubOpen!==clubId) return; clubData.cmsgs=clubData.cmsgs||[];
+    if(clubData.cmsgs.some(x=>x.id===m.id)) return;
+    clubData.cmsgs.push({me:false,who:cmName(m.sender_id),tx:m.body,id:m.id});
+    refreshClubChatBox();
+  }).subscribe(); }catch(e){}
+}
+async function sendClubMsg(clubId,text){
+  if(!text||!clubData) return;
+  const tmpId='tmp'+Date.now(); clubData.cmsgs=clubData.cmsgs||[]; clubData.cmsgs.push({me:true,who:'',tx:text,id:tmpId}); refreshClubChatBox();
+  try{ const ins=await sb.from('club_messages').insert({club_id:clubId,sender_id:uid,body:text}).select().single();
+    if(ins.error){ toast(ins.error.message); return; }
+    const mm=clubData.cmsgs.find(x=>x.id===tmpId); if(mm) mm.id=ins.data.id;
   }catch(e){ toast(String(e.message||e)); }
 }
 const CLUB_CATS=[{k:'running',l:{ko:'스포츠',en:'Sports',th:'กีฬา'}},{k:'language',l:{ko:'언어교환',en:'Language',th:'ภาษา'}},{k:'food',l:{ko:'맛집/모임',en:'Food',th:'อาหาร'}},{k:'study',l:{ko:'스터디',en:'Study',th:'สตั๊ดดี้'}},{k:'parenting',l:{ko:'육아',en:'Parenting',th:'เลี้ยงลูก'}},{k:'hobby',l:{ko:'취미',en:'Hobby',th:'งานอดิเรก'}},{k:'etc',l:{ko:'기타',en:'Etc',th:'อื่นๆ'}}];
@@ -1313,7 +1347,10 @@ function viewClubHub(){
   const noticeAdd=(isStaff&&!noticeEditOpen)?`<button class="gbtn line" data-noticeadd style="width:100%;margin-bottom:8px">📌 ${lang==='ko'?'공지 작성':'Write a notice'}</button>`:'';
   const noticeEmpty=(!noticeItems&&!isStaff)?`<div class="empty" style="padding:14px 0;text-align:center;color:var(--sub);font-size:13px">${lang==='ko'?'공지가 없어요':'No notices'}</div>`:'';
   const noticeSec=(noticeItems||noticeAdd||noticeForm||noticeEmpty)?`<h2 class="sech" style="margin:4px 0 8px">📢 ${lang==='ko'?'공지사항':'Notices'}</h2>`+noticeAdd+noticeForm+noticeItems+noticeEmpty:'';
-  return back+hero+noticeSec+memberBar+rosterBtn+approvals+newAct+`<h2 class="sech" style="margin:4px 0 10px">⚡ ${lang==='ko'?'활동':'Activities'}</h2>`+actList;
+  // 단체대화방 — 허브 인라인 (승인 멤버만, 지난 대화 기록 포함)
+  const amMember=['leader','vice','member'].includes(myRole);
+  const chatSec=amMember?`<h2 class="sech" style="margin:16px 0 8px">💬 ${lang==='ko'?'대화방':'Chat'} · 👥 ${clubData.members.length}</h2><div id="clubChatBox" class="msgs" style="border:1px solid var(--line);border-radius:12px;max-height:46vh;overflow-y:auto">${clubMsgsHtml()}</div><div style="display:flex;gap:8px;padding:8px 0 2px"><input id="clubcin" placeholder="${L().input_ph}" autocomplete="off" style="flex:1;border:1px solid var(--line);border-radius:999px;padding:11px 14px;font-size:13px;outline:none"><button id="clubcsend" style="border:none;background:var(--pri);color:#fff;border-radius:999px;width:42px;font-size:18px;cursor:pointer">↑</button></div>`:'';
+  return back+hero+noticeSec+memberBar+rosterBtn+approvals+newAct+`<h2 class="sech" style="margin:4px 0 10px">⚡ ${lang==='ko'?'활동':'Activities'}</h2>`+actList+chatSec;
 }
 /* Golf Mate 연동 (독립 앱 — 느슨한 결합) */
 const GM_URL=BRAND.golfMateUrl;
@@ -2211,12 +2248,13 @@ document.addEventListener('click',e=>{
   const ndl=e.target.closest('[data-noticedel]'); if(ndl){const[ci,ni]=ndl.dataset.noticedel.split(':');deleteNotice(ci,ni);return;}
   if(e.target.closest('[data-roster]')){rosterOpen=true;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-rosterback]')){rosterOpen=false;render();page.scrollTo(0,0);return;}
+  if(e.target.closest('#clubcsend')){const i=document.getElementById('clubcin'); if(i&&i.value.trim()){sendClubMsg(clubOpen,i.value.trim());i.value='';} return;}
   const mch=e.target.closest('[data-mchat]'); if(mch){openUserChat(mch.dataset.mchat);return;}
   const mvc=e.target.closest('[data-mvice]'); if(mvc){const[cu,rl]=mvc.dataset.mvice.split(':');setMemberRole(clubOpen,cu,rl);return;}
   const mkk=e.target.closest('[data-mkick]'); if(mkk){const c=dbClubs.find(x=>x.id===clubOpen);kickMember(clubOpen,mkk.dataset.mkick,(clubData&&clubData.names[mkk.dataset.mkick])||'');return;}
   const cap=e.target.closest('[data-clubapply]'); if(cap){applyClub(cap.dataset.clubapply);return;}
   const cen=e.target.closest('[data-clubenter]'); if(cen){openClub(cen.dataset.clubenter);return;}
-  if(e.target.closest('[data-clubback]')){clubOpen=null;clubData=null;render();page.scrollTo(0,0);return;}
+  if(e.target.closest('[data-clubback]')){clubChatStop();clubOpen=null;clubData=null;render();page.scrollTo(0,0);return;}
   const cap2=e.target.closest('[data-clubapprove]'); if(cap2){const[cid,uid2]=cap2.dataset.clubapprove.split(':');decideMember(cid,uid2,true);return;}
   const crj=e.target.closest('[data-clubreject]'); if(crj){const[cid,uid2]=crj.dataset.clubreject.split(':');decideMember(cid,uid2,false);return;}
   if(e.target.closest('[data-actnew]')){actFormOpen=true;actEditId=null;render();return;}
@@ -2275,7 +2313,8 @@ document.addEventListener('click',e=>{
 });
 fab.addEventListener('click',()=>{if(!canAct())return;writeType=(tab==='shop'?6:(tab==='jobs'?3:(tab==='community'?5:0)));if(writeType===6)resetStore();writeOpen=true;render();});
 document.addEventListener('input',e=>{if(e.target.id==='searchInput'){searchQ=e.target.value;renderFsView();}});
-document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendMessage(v);e.target.value='';}}});
+document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendMessage(v);e.target.value='';}}
+  if(e.target.id==='clubcin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendClubMsg(clubOpen,v);e.target.value='';}}});
 
 applyBrand();
 (async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} render(); loadListings(); loadStores(); loadPosts(); loadJobs(); loadClubs(); })();
