@@ -1108,20 +1108,24 @@ const CLUB_CATS=[{k:'running',l:{ko:'러닝/운동',en:'Sports',th:'กีฬา
 const CLUB_GRADS=['linear-gradient(120deg,#2f6df0,#6f9bff)','linear-gradient(120deg,#16a34a,#4ade80)','linear-gradient(120deg,#b45309,#f5a524)','linear-gradient(120deg,#7c3aed,#a78bfa)','linear-gradient(120deg,#db2777,#f472b6)','linear-gradient(120deg,#0891b2,#22d3ee)'];
 let wClub={emoji:'👥',grad:CLUB_GRADS[0],cat:'etc'};
 function clubCreateForm(){
-  return `<div class="card" style="border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px">
-    <b style="font-size:15px">➕ ${lang==='ko'?'모임 개설':'New club'}</b>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <input id="clName" placeholder="${lang==='ko'?'모임 이름 *':'Club name *'}" style="flex:1;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px">
-      <input id="clEmoji" value="${escA(wClub.emoji)}" maxlength="2" style="width:54px;box-sizing:border-box;text-align:center;font-size:18px;padding:9px;border:1px solid var(--line);border-radius:9px">
+  const inp='width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff;outline:none';
+  const lab='display:block;font-size:12px;font-weight:700;color:var(--sub);margin:0 0 5px';
+  return `<div style="background:var(--card);border:1px solid var(--line);border-radius:15px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px">
+    <div style="font-size:16px;font-weight:800;margin-bottom:14px">➕ ${lang==='ko'?'모임 개설':'New club'}</div>
+    <label style="${lab}">${lang==='ko'?'모임 이름':'Club name'}</label>
+    <div style="display:flex;gap:8px;margin-bottom:13px">
+      <input id="clName" placeholder="${lang==='ko'?'예: 방콕 등산 모임':'e.g. Bangkok Hiking'}" style="${inp};flex:1">
+      <input id="clEmoji" value="${escA(wClub.emoji)}" maxlength="2" title="${lang==='ko'?'대표 이모지':'Emoji'}" style="${inp};width:56px;flex:0 0 56px;text-align:center;font-size:20px;padding-left:0;padding-right:0">
     </div>
-    <input id="clIntro" placeholder="${lang==='ko'?'한 줄 소개':'One-line intro'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-top:8px">
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <select id="clCat" style="flex:1;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px">${CLUB_CATS.map(c=>`<option value="${c.k}" ${wClub.cat===c.k?'selected':''}>${tx(c.l)}</option>`).join('')}</select>
-      <input id="clRegion" placeholder="${lang==='ko'?'지역(예: 방콕)':'Region'}" style="flex:1;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px">
+    <label style="${lab}">${lang==='ko'?'한 줄 소개':'Intro'}</label>
+    <input id="clIntro" placeholder="${lang==='ko'?'어떤 모임인가요?':'What is it about?'}" style="${inp};margin-bottom:13px">
+    <div style="display:flex;gap:10px;margin-bottom:13px">
+      <div style="flex:1"><label style="${lab}">${lang==='ko'?'카테고리':'Category'}</label><select id="clCat" style="${inp}">${CLUB_CATS.map(c=>`<option value="${c.k}" ${wClub.cat===c.k?'selected':''}>${tx(c.l)}</option>`).join('')}</select></div>
+      <div style="flex:1"><label style="${lab}">${lang==='ko'?'지역':'Region'}</label><input id="clRegion" placeholder="${lang==='ko'?'예: 방콕':'e.g. Bangkok'}" style="${inp}"></div>
     </div>
-    <div style="margin-top:10px;font-size:12px;color:var(--sub)">${lang==='ko'?'배너 색':'Banner color'}</div>
-    <div style="display:flex;gap:7px;margin-top:6px">${CLUB_GRADS.map(g=>`<button type="button" data-clgrad="${g}" style="flex:1;height:30px;border-radius:8px;border:${wClub.grad===g?'3px solid #111':'1px solid #ddd'};background:${g};cursor:pointer"></button>`).join('')}</div>
-    <div style="display:flex;gap:8px;margin-top:12px">
+    <label style="${lab}">${lang==='ko'?'배너 색':'Banner color'}</label>
+    <div style="display:flex;gap:8px;margin-bottom:16px">${CLUB_GRADS.map(g=>`<button type="button" data-clgrad="${g}" style="flex:1;height:34px;border-radius:9px;border:${wClub.grad===g?'3px solid var(--ink,#111)':'1px solid #e0e2e6'};background:${g};cursor:pointer;padding:0"></button>`).join('')}</div>
+    <div style="display:flex;gap:8px">
       <button class="gbtn line" data-clcancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button>
       <button class="gbtn primary" data-clcreate style="flex:2">${lang==='ko'?'개설하기':'Create'}</button>
     </div>
@@ -1155,7 +1159,7 @@ function viewClubHub(){
   const nm=u=>clubData.names[u]||(lang==='ko'?'회원':'Member');
   let approvals='';
   if(isLeader&&clubData.pending.length){
-    approvals=`<div class="card" style="background:#fff7e8;border:1px solid #ffe6b3;border-radius:14px;padding:12px;margin-bottom:12px"><b style="font-size:14px">🛎️ ${lang==='ko'?'가입 신청':'Join requests'} (${clubData.pending.length})</b>`+
+    approvals=`<div style="display:block;background:#fff7e8;border:1px solid #ffe6b3;border-radius:14px;padding:12px;margin-bottom:12px"><b style="font-size:14px">🛎️ ${lang==='ko'?'가입 신청':'Join requests'} (${clubData.pending.length})</b>`+
       clubData.pending.map(p=>`<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><span style="flex:1;font-size:13px">${escT(nm(p.user_id))}</span><button class="join" style="background:#16a34a;padding:6px 12px" data-clubapprove="${c.id}:${p.user_id}">${lang==='ko'?'승인':'OK'}</button><button class="join" style="background:#e5e7eb;color:#374151;padding:6px 12px" data-clubreject="${c.id}:${p.user_id}">${lang==='ko'?'거절':'No'}</button></div>`).join('')+`</div>`;
   }
   const actFmt=a=>{ if(!a.when_at) return ''; try{ return new Date(a.when_at).toLocaleString(lang==='ko'?'ko-KR':'en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } };
@@ -1163,7 +1167,7 @@ function viewClubHub(){
     const joined=clubData.joined&&clubData.joined.has(a.id);
     return `<div class="club" style="margin-bottom:10px"><div class="cbody2" style="padding:12px 14px"><div style="font-weight:800;font-size:14px">⚡ ${escT(a.title)}</div><div style="font-size:12px;color:var(--sub);margin-top:4px">${[actFmt(a),a.place?('📍 '+escT(a.place)):'',a.capacity?('👥 '+a.capacity):''].filter(Boolean).join(' · ')}</div><div style="display:flex;justify-content:flex-end;margin-top:8px">${joined?`<span style="font-size:12px;color:#16a34a;font-weight:700">✓ ${lang==='ko'?'참가중':'Joined'}</span>`:`<button class="join" data-actjoin="${c.id}:${a.id}">${lang==='ko'?'참가 신청':'Join'}</button>`}</div></div></div>`;
   }).join(''):`<div class="empty" style="padding:24px 0;text-align:center;color:var(--sub)">${lang==='ko'?'아직 활동이 없어요':'No activities yet'}</div>`;
-  const newAct=actFormOpen?`<div class="card" style="border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px"><input id="actTitle" placeholder="${lang==='ko'?'활동 제목 (예: 토요일 룸피니 5km)':'Title'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px"><input id="actWhen" type="datetime-local" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px"><input id="actPlace" placeholder="${lang==='ko'?'장소':'Place'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px"><input id="actCap" type="number" min="2" placeholder="${lang==='ko'?'정원(선택)':'Capacity'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:9px"><button class="gbtn primary" data-actcreate="${c.id}" style="width:100%">${lang==='ko'?'활동 등록':'Create'}</button></div>`:`<button class="gbtn line" data-actnew style="width:100%;margin-bottom:12px">+ ${lang==='ko'?'활동 번개 모집':'New activity'}</button>`;
+  const newAct=actFormOpen?`<div style="display:block;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px"><input id="actTitle" placeholder="${lang==='ko'?'활동 제목 (예: 토요일 룸피니 5km)':'Title'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px"><input id="actWhen" type="datetime-local" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px"><input id="actPlace" placeholder="${lang==='ko'?'장소':'Place'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px"><input id="actCap" type="number" min="2" placeholder="${lang==='ko'?'정원(선택)':'Capacity'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:9px"><button class="gbtn primary" data-actcreate="${c.id}" style="width:100%">${lang==='ko'?'활동 등록':'Create'}</button></div>`:`<button class="gbtn line" data-actnew style="width:100%;margin-bottom:12px">+ ${lang==='ko'?'활동 번개 모집':'New activity'}</button>`;
   const memberBar=`<div style="font-size:12px;color:var(--sub);margin:4px 0 12px">👥 ${lang==='ko'?'멤버':'Members'} ${clubData.members.length}${isLeader?' · 👑 '+(lang==='ko'?'개설자':'Leader'):''}</div>`;
   return back+hero+memberBar+approvals+newAct+`<h2 class="sech" style="margin:4px 0 10px">⚡ ${lang==='ko'?'활동':'Activities'}</h2>`+actList;
 }
