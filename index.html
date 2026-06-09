@@ -1053,12 +1053,15 @@ const clubs = [
 /* ===== 모임(clubs) DB 연동: 가입신청 → 승인 → 멤버 내부활동 ===== */
 async function loadClubs(){
   try{ const {data}=await sb.from('clubs').select('*').order('created_at'); dbClubs=data||[]; }catch(e){ dbClubs=[]; }
-  myClubMem={};
+  myClubMem={}; clubPending={};
   if(authed&&uid){
     try{ const {data:ms}=await sb.from('club_members').select('club_id,status,role').eq('user_id',uid);
       (ms||[]).forEach(m=>{ myClubMem[m.club_id]=(m.role==='leader'?'leader':m.status); }); }catch(e){}
+    const ledIds=Object.keys(myClubMem).filter(id=>myClubMem[id]==='leader');
+    if(ledIds.length){ try{ const {data:pend}=await sb.from('club_members').select('club_id').eq('status','pending').in('club_id',ledIds);
+      (pend||[]).forEach(r=>{ clubPending[r.club_id]=(clubPending[r.club_id]||0)+1; }); }catch(e){} }
   }
-  if(screen==='app'&&tab==='community'&&commSeg==='clubs'&&clubOpen===null) render();
+  if(screen==='app'&&((tab==='community'&&commSeg==='clubs'&&clubOpen===null)||(tab==='me'&&myClubsOpen))) render();
 }
 async function applyClub(id){
   if(!canAct()) return; if(clubBusy) return; clubBusy=true;
@@ -1067,8 +1070,39 @@ async function applyClub(id){
   }catch(e){ toast(String(e.message||e)); }
   clubBusy=false; render();
 }
+async function saveNotice(clubId){
+  const v=((document.getElementById('clubNotice')||{}).value||'').trim();
+  try{ const {error}=await sb.from('clubs').update({notice:v||null}).eq('id',clubId);
+    if(error){ toast(error.message); return; }
+    const c=dbClubs.find(x=>x.id===clubId); if(c) c.notice=v||null;
+    noticeEditOpen=false; toast(lang==='ko'?'공지 저장됨':'Notice saved'); render();
+  }catch(e){ toast(String(e.message||e)); }
+}
+async function closeClub(clubId){
+  const c=dbClubs.find(x=>x.id===clubId);
+  if(!confirm((lang==='ko'?'이 모임을 폐쇄할까요?\n멤버·활동·공지가 모두 삭제되며 되돌릴 수 없어요.\n\n':'Close this club permanently?\n\n')+(c?c.name:''))) return;
+  try{ const {error}=await sb.from('clubs').delete().eq('id',clubId);
+    if(error){ toast(error.message); return; }
+    toast(lang==='ko'?'모임이 폐쇄됐어요':'Club closed'); clubOpen=null; clubData=null;
+    await loadClubs(); render();
+  }catch(e){ toast(String(e.message||e)); }
+}
+function viewMyClubs(){
+  const led=dbClubs.filter(c=>myClubMem[c.id]==='leader');
+  const back=`<button class="gmback" data-myclubsback>‹ ${L().nav_me}</button>`;
+  const head=`<h2 class="sech" style="margin:6px 0 12px">🏘️ ${lang==='ko'?'내 모임 관리':'My clubs'}</h2>`;
+  if(!led.length) return back+head+`<div class="empty" style="padding:40px 14px;text-align:center;color:var(--sub);line-height:1.6">${lang==='ko'?'아직 개설한 모임이 없어요.<br>커뮤니티 → 모임 → ➕ 모임 개설':'No clubs yet.<br>Community → Clubs → Create a club'}</div>`;
+  const cards=led.map(c=>{
+    const pend=clubPending[c.id]||0;
+    return `<div style="display:block;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px"><div style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;display:grid;place-items:center;font-size:20px;color:#fff;background:${c.grad||'linear-gradient(120deg,#64748b,#94a3b8)'}">${c.emoji||'👥'}</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:15px">${escT(c.name)}</div><div style="font-size:12px;color:var(--sub)">👑 ${lang==='ko'?'개설자':'Leader'}${pend?` · <b style="color:#e67514">🛎️ ${lang==='ko'?'승인 대기':'Pending'} ${pend}</b>`:''}</div></div></div>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="gbtn primary" data-clubmanage="${c.id}" style="flex:2">${lang==='ko'?'관리 / 입장':'Manage'}</button><button class="gbtn line" data-clubclose="${c.id}" style="flex:1;color:var(--red);border-color:#f6c9c4">${lang==='ko'?'폐쇄':'Close'}</button></div>
+    </div>`;
+  }).join('');
+  return back+head+cards;
+}
 async function openClub(id){
-  clubOpen=id; clubData=null; actFormOpen=false; render(); page.scrollTo(0,0);
+  clubOpen=id; clubData=null; actFormOpen=false; noticeEditOpen=false; render(); page.scrollTo(0,0);
   const cd={activities:[],members:[],pending:[],names:{},joined:new Set()};
   try{ const a=await sb.from('club_activities').select('*').eq('club_id',id).order('when_at',{ascending:true,nullsFirst:false}); cd.activities=a.data||[]; }catch(e){}
   try{ const m=await sb.from('club_members').select('user_id,status,role,created_at').eq('club_id',id).order('created_at');
@@ -1169,7 +1203,16 @@ function viewClubHub(){
   }).join(''):`<div class="empty" style="padding:24px 0;text-align:center;color:var(--sub)">${lang==='ko'?'아직 활동이 없어요':'No activities yet'}</div>`;
   const newAct=actFormOpen?`<div style="display:block;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px"><input id="actTitle" placeholder="${lang==='ko'?'활동 제목 (예: 토요일 룸피니 5km)':'Title'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px"><input id="actWhen" type="datetime-local" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px"><input id="actPlace" placeholder="${lang==='ko'?'장소':'Place'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px"><input id="actCap" type="number" min="2" placeholder="${lang==='ko'?'정원(선택)':'Capacity'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:9px"><button class="gbtn primary" data-actcreate="${c.id}" style="width:100%">${lang==='ko'?'활동 등록':'Create'}</button></div>`:`<button class="gbtn line" data-actnew style="width:100%;margin-bottom:12px">+ ${lang==='ko'?'활동 번개 모집':'New activity'}</button>`;
   const memberBar=`<div style="font-size:12px;color:var(--sub);margin:4px 0 12px">👥 ${lang==='ko'?'멤버':'Members'} ${clubData.members.length}${isLeader?' · 👑 '+(lang==='ko'?'개설자':'Leader'):''}</div>`;
-  return back+hero+memberBar+approvals+newAct+`<h2 class="sech" style="margin:4px 0 10px">⚡ ${lang==='ko'?'활동':'Activities'}</h2>`+actList;
+  // 모임 공지란 (개설자만 작성/수정)
+  let notice='';
+  if(noticeEditOpen&&isLeader){
+    notice=`<div style="display:block;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px"><label style="display:block;font-size:12px;font-weight:700;color:var(--sub);margin-bottom:6px">📌 ${lang==='ko'?'모임 공지':'Club notice'}</label><textarea id="clubNotice" rows="3" placeholder="${lang==='ko'?'멤버에게 알릴 공지를 적어주세요':'Write a notice for members'}" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px;resize:vertical;font-family:inherit">${escT(c.notice||'')}</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="gbtn line" data-noticecancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-noticesave="${c.id}" style="flex:2">${lang==='ko'?'공지 저장':'Save'}</button></div></div>`;
+  } else if(c.notice){
+    notice=`<div style="display:block;background:#eef4ff;border:1px solid #cfe0ff;border-radius:14px;padding:12px 14px;margin-bottom:12px"><div style="font-size:12px;font-weight:800;color:#2f6df0;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center"><span>📌 ${lang==='ko'?'모임 공지':'Notice'}</span>${isLeader?`<button data-noticeedit style="border:none;background:none;color:#2f6df0;font-size:12px;cursor:pointer;font-weight:700">${lang==='ko'?'수정':'Edit'}</button>`:''}</div><div style="font-size:13.5px;line-height:1.5;white-space:pre-wrap;color:#1f2937">${escT(c.notice)}</div></div>`;
+  } else if(isLeader){
+    notice=`<button class="gbtn line" data-noticeedit style="width:100%;margin-bottom:12px">📌 ${lang==='ko'?'모임 공지 작성':'Write a notice'}</button>`;
+  }
+  return back+hero+notice+memberBar+approvals+newAct+`<h2 class="sech" style="margin:4px 0 10px">⚡ ${lang==='ko'?'활동':'Activities'}</h2>`+actList;
 }
 /* Golf Mate 연동 (독립 앱 — 느슨한 결합) */
 const GM_URL=BRAND.golfMateUrl;
@@ -1216,7 +1259,8 @@ info.forEach((x,i)=>x.id=x.id||('I'+i));
 /* ===================== state ===================== */
 let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gmFrameOpen=false, gmFrameSrc="", gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null,
     wStore={cat:0,delivery:false,pickup:false,menu:[]}, wStoreEditId=null, myStores=false,
-    dbClubs=[], myClubMem={}, clubCounts={}, clubOpen=null, clubData=null, clubBusy=false, actFormOpen=false, clubCreateOpen=false;
+    dbClubs=[], myClubMem={}, clubCounts={}, clubOpen=null, clubData=null, clubBusy=false, actFormOpen=false, clubCreateOpen=false,
+    myClubsOpen=false, noticeEditOpen=false, clubPending={};
 const L=()=>T[lang];
 const gm=()=>GM[lang];
 const tx=o=> o==null?"":(typeof o==="string"?o:(o[lang]||o.ko));
@@ -1869,6 +1913,7 @@ function viewCommunity(){
 
 /* ===================== me ===================== */
 function viewMe(){
+  if(myClubsOpen){ page.innerHTML=viewMyClubs(); return; }
   page.innerHTML=`
    <div class="profile">
      <div class="pav">😀</div>
@@ -1883,6 +1928,7 @@ function viewMe(){
      ${L().me_menu.map((m,i)=>`<div class="mrow" data-me="${i}"><span class="em">${["🧾","🏪","❤️","🌡️","📩"][i]}</span><span>${m}</span>
        <span class="ar">›</span></div>`).join('')}
    </div>
+   ${authed?`<div class="menu" style="margin-top:10px"><div class="mrow" data-myclubs><span class="em">🏘️</span><span>${lang==='ko'?'내 모임 관리':lang==='th'?'จัดการชมรมของฉัน':'My clubs'}</span>${(()=>{const p=Object.keys(clubPending).reduce((s,k)=>s+(clubPending[k]||0),0);return p?`<span style="background:var(--red);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px;margin-left:auto">${p}</span>`:'<span class="ar" style="margin-left:auto">›</span>';})()}</div></div>`:''}
    ${isAdmin?`<a href="admin.html" class="gbtn line" style="display:block;box-sizing:border-box;width:100%;text-align:center;margin-top:14px;text-decoration:none;color:#2f6df0;border-color:#bcd2f7;background:#f3f7ff">🛠 ${L().admin_console}</a>`:''}
    ${authed?`<button class="gbtn line" data-logout style="width:100%;margin-top:10px;color:var(--red);border-color:#f6c9c4">↩ ${L().logout}</button>`:`<button class="gbtn primary" data-dologin style="width:100%;margin-top:14px">${L().do_login}</button>`}
    <p style="text-align:center;font-size:11.5px;color:var(--sub);margin-top:16px;line-height:1.5">${L().lang_label}</p>`;
@@ -2053,6 +2099,13 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-clcancel]')){clubCreateOpen=false;render();return;}
   const clg=e.target.closest('[data-clgrad]'); if(clg){ wClub.emoji=((document.getElementById('clEmoji')||{}).value||wClub.emoji); wClub.grad=clg.dataset.clgrad; const par=clg.parentElement; par.querySelectorAll('[data-clgrad]').forEach(b=>b.style.border='1px solid #ddd'); clg.style.border='3px solid #111'; return; }
   if(e.target.closest('[data-clcreate]')){createClub();return;}
+  if(e.target.closest('[data-myclubs]')){myClubsOpen=true;render();page.scrollTo(0,0);return;}
+  if(e.target.closest('[data-myclubsback]')){myClubsOpen=false;render();page.scrollTo(0,0);return;}
+  const cmg=e.target.closest('[data-clubmanage]'); if(cmg){myClubsOpen=false;tab='community';commSeg='clubs';golfOpen=false;renderNav();openClub(cmg.dataset.clubmanage);return;}
+  const ccl=e.target.closest('[data-clubclose]'); if(ccl){closeClub(ccl.dataset.clubclose);return;}
+  if(e.target.closest('[data-noticeedit]')){noticeEditOpen=true;render();return;}
+  if(e.target.closest('[data-noticecancel]')){noticeEditOpen=false;render();return;}
+  const nsv=e.target.closest('[data-noticesave]'); if(nsv){saveNotice(nsv.dataset.noticesave);return;}
   const cap=e.target.closest('[data-clubapply]'); if(cap){applyClub(cap.dataset.clubapply);return;}
   const cen=e.target.closest('[data-clubenter]'); if(cen){openClub(cen.dataset.clubenter);return;}
   if(e.target.closest('[data-clubback]')){clubOpen=null;clubData=null;render();page.scrollTo(0,0);return;}
