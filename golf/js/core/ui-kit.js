@@ -25,13 +25,27 @@ export function toastError(m) { toast(m, 'error'); }
 export function toastWarn(m) { toast(m, 'warn'); }
 
 let _loadingCount = 0;
+let _loadingTimer = null;
+const LOADING_DELAY = 350; // 이보다 빨리 끝나는 화면전환/액션은 스피너를 띄우지 않음 (번쩍임 제거)
 export function showLoading() {
   _loadingCount++;
-  document.getElementById('loading-overlay').style.display = 'flex';
+  if (_loadingCount === 1 && _loadingTimer === null) {
+    _loadingTimer = setTimeout(() => {
+      _loadingTimer = null;
+      if (_loadingCount > 0) {
+        const el = document.getElementById('loading-overlay');
+        if (el) el.style.display = 'flex';
+      }
+    }, LOADING_DELAY);
+  }
 }
 export function hideLoading() {
   _loadingCount = Math.max(0, _loadingCount - 1);
-  if (_loadingCount === 0) document.getElementById('loading-overlay').style.display = 'none';
+  if (_loadingCount === 0) {
+    if (_loadingTimer !== null) { clearTimeout(_loadingTimer); _loadingTimer = null; }
+    const el = document.getElementById('loading-overlay');
+    if (el) el.style.display = 'none';
+  }
 }
 
 export function dialog({ title, body, buttons = [{ label: '확인', value: true, primary: true }] }) {
