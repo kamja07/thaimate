@@ -1056,7 +1056,7 @@ async function loadClubs(){
   myClubMem={}; clubPending={};
   if(authed&&uid){
     try{ const {data:ms}=await sb.from('club_members').select('club_id,status,role').eq('user_id',uid);
-      (ms||[]).forEach(m=>{ myClubMem[m.club_id]=(m.role==='leader'?'leader':m.status); }); }catch(e){}
+      (ms||[]).forEach(m=>{ myClubMem[m.club_id]=(m.status==='approved'?m.role:m.status); }); }catch(e){}  // approved → leader/vice/member
     const ledIds=Object.keys(myClubMem).filter(id=>myClubMem[id]==='leader');
     if(ledIds.length){ try{ const {data:pend}=await sb.from('club_members').select('club_id').eq('status','pending').in('club_id',ledIds);
       (pend||[]).forEach(r=>{ clubPending[r.club_id]=(clubPending[r.club_id]||0)+1; }); }catch(e){} }
@@ -1070,9 +1070,36 @@ async function applyClub(id){
   }catch(e){ toast(String(e.message||e)); }
   clubBusy=false; render();
 }
+async function openUserChat(otherId, firstMsg){
+  if(!otherId){ return; }
+  if(otherId===uid){ toast(lang==='ko'?'본인과는 채팅할 수 없어요':'Cannot chat with yourself'); return; }
+  if(!canAct()) return;
+  try{
+    let {data:ex}=await sb.from('chats').select('*').is('listing_id',null).is('store_id',null).or(`and(buyer_id.eq.${uid},seller_id.eq.${otherId}),and(buyer_id.eq.${otherId},seller_id.eq.${uid})`);
+    let row=(ex&&ex[0])||null;
+    if(!row){ const ins=await sb.from('chats').insert({buyer_id:uid, seller_id:otherId, last_message_at:new Date().toISOString()}).select().single(); if(ins.error){toast(ins.error.message);return;} row=ins.data; }
+    if(firstMsg){ try{ await sb.from('messages').insert({chat_id:row.id, sender_id:uid, body:firstMsg}); await sb.from('chats').update({last_message_at:new Date().toISOString()}).eq('id',row.id); }catch(_){} }
+    await loadChats(); clubOpen=null; clubData=null; rosterOpen=false; myClubsOpen=false; golfOpen=false; storeOpen=null; tab='chat'; renderNav();
+    const idx=chats.findIndex(c=>c.id===row.id);
+    if(idx>=0) openChat(idx); else render();
+  }catch(e){ toast(String(e.message||e)); }
+}
+async function setMemberRole(clubId, userId, newRole){
+  try{ const {error}=await sb.rpc('club_set_role',{p_club:clubId,p_user:userId,p_role:newRole});
+    if(error){ toast(error.message); return; }
+    toast(newRole==='vice'?(lang==='ko'?'부방장으로 지정했어요':'Set as vice-leader'):(lang==='ko'?'부방장 해제':'Vice-leader removed')); openClub(clubId);
+  }catch(e){ toast(String(e.message||e)); }
+}
+async function kickMember(clubId, userId, name){
+  if(!confirm((lang==='ko'?'이 회원을 강퇴할까요?\n\n':'Kick this member?\n\n')+(name||''))) return;
+  try{ const {error}=await sb.rpc('club_kick',{p_club:clubId,p_user:userId});
+    if(error){ toast(error.message); return; }
+    toast(lang==='ko'?'강퇴했어요':'Kicked'); openClub(clubId);
+  }catch(e){ toast(String(e.message||e)); }
+}
 async function saveNotice(clubId){
   const v=((document.getElementById('clubNotice')||{}).value||'').trim();
-  try{ const {error}=await sb.from('clubs').update({notice:v||null}).eq('id',clubId);
+  try{ const {error}=await sb.rpc('club_set_notice',{p_club:clubId,p_notice:v});
     if(error){ toast(error.message); return; }
     const c=dbClubs.find(x=>x.id===clubId); if(c) c.notice=v||null;
     noticeEditOpen=false; toast(lang==='ko'?'공지 저장됨':'Notice saved'); render();
@@ -1095,14 +1122,14 @@ function viewMyClubs(){
   const cards=led.map(c=>{
     const pend=clubPending[c.id]||0;
     return `<div style="display:block;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:10px"><div style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;display:grid;place-items:center;font-size:20px;color:#fff;background:${c.grad||'linear-gradient(120deg,#64748b,#94a3b8)'}">${c.emoji||'👥'}</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:15px">${escT(c.name)}</div><div style="font-size:12px;color:var(--sub)">👑 ${lang==='ko'?'개설자':'Leader'}${pend?` · <b style="color:#e67514">🛎️ ${lang==='ko'?'승인 대기':'Pending'} ${pend}</b>`:''}</div></div></div>
+      <div style="display:flex;align-items:center;gap:10px"><div style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;display:grid;place-items:center;font-size:20px;color:#fff;background:${c.grad||'linear-gradient(120deg,#64748b,#94a3b8)'}">${c.emoji||'👥'}</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:15px">${escT(c.name)}</div><div style="font-size:12px;color:var(--sub)">👑 ${lang==='ko'?'방장':'Leader'}${pend?` · <b style="color:#e67514">🛎️ ${lang==='ko'?'승인 대기':'Pending'} ${pend}</b>`:''}</div></div></div>
       <div style="display:flex;gap:8px;margin-top:12px"><button class="gbtn primary" data-clubmanage="${c.id}" style="flex:2">${lang==='ko'?'관리 / 입장':'Manage'}</button><button class="gbtn line" data-clubclose="${c.id}" style="flex:1;color:var(--red);border-color:#f6c9c4">${lang==='ko'?'폐쇄':'Close'}</button></div>
     </div>`;
   }).join('');
   return back+head+cards;
 }
 async function openClub(id){
-  clubOpen=id; clubData=null; actFormOpen=false; noticeEditOpen=false; render(); page.scrollTo(0,0);
+  clubOpen=id; clubData=null; actFormOpen=false; noticeEditOpen=false; rosterOpen=false; render(); page.scrollTo(0,0);
   const cd={activities:[],members:[],pending:[],names:{},joined:new Set()};
   try{ const a=await sb.from('club_activities').select('*').eq('club_id',id).order('when_at',{ascending:true,nullsFirst:false}); cd.activities=a.data||[]; }catch(e){}
   try{ const m=await sb.from('club_members').select('user_id,status,role,created_at').eq('club_id',id).order('created_at');
@@ -1178,7 +1205,7 @@ async function createClub(){
     const {data,error}=await sb.from('clubs').insert({name,emoji,intro:intro||null,category:cat,region:region||null,grad:wClub.grad,leader_id:uid}).select().single();
     if(error){ toast(error.message); clubBusy=false; return; }
     clubCreateOpen=false; wClub={emoji:'👥',grad:CLUB_GRADS[0],cat:'etc'};
-    toast(lang==='ko'?'모임 개설 완료! 당신이 개설자예요':'Club created — you are the leader');
+    toast(lang==='ko'?'모임 개설 완료! 당신이 방장이에요':'Club created — you are the leader');
     await loadClubs(); clubBusy=false;
     if(data&&data.id) openClub(data.id);
   }catch(e){ toast(String(e.message||e)); clubBusy=false; }
@@ -1186,11 +1213,31 @@ async function createClub(){
 function viewClubHub(){
   const c=dbClubs.find(x=>x.id===clubOpen);
   if(!c){ clubOpen=null; return clubsInner(); }
-  const isLeader=myClubMem[c.id]==='leader';
+  const myRole=myClubMem[c.id];
+  const isLeader=myRole==='leader';
+  const isStaff=isLeader||myRole==='vice';   // 운영진: 공지·회원채팅 가능
   const back=`<button class="gmback" data-clubback>‹ ${L().comm_clubs}</button>`;
   const hero=`<div class="club" style="margin-bottom:12px"><div class="banner" style="background:${c.grad||'linear-gradient(120deg,#64748b,#94a3b8)'};height:64px">${c.emoji||'👥'} ${escT(c.name||'')}</div><div class="cbody2"><div class="desc">${escT(c.intro||'')}</div></div></div>`;
   if(!clubData) return back+hero+`<div class="empty" style="padding:40px 0;text-align:center;color:var(--sub)">${lang==='ko'?'불러오는 중…':'Loading…'}</div>`;
   const nm=u=>clubData.names[u]||(lang==='ko'?'회원':'Member');
+  // ── 회원명부 (방장·회원 모두 열람) ──
+  if(rosterOpen){
+    const rback=`<button class="gmback" data-rosterback>‹ ${escT(c.name||'')}</button>`;
+    const roleBadge=r=> r==='leader'?`<span class="flag">👑 ${lang==='ko'?'방장':'Leader'}</span>`:(r==='vice'?`<span class="flag" style="color:#2f6df0;background:#eef4ff;border-color:#cfe0ff">⭐ ${lang==='ko'?'부방장':'Vice'}</span>`:`<span style="font-size:11px;color:var(--sub)">${lang==='ko'?'회원':'Member'}</span>`);
+    const ord={leader:0,vice:1,member:2};
+    const chatBtn=u=>`<button class="join" style="padding:5px 10px;background:#eef0f3;color:#333" data-mchat="${u}">💬</button>`;
+    const rows=clubData.members.slice().sort((a,b)=>(ord[a.role]??2)-(ord[b.role]??2)).map(m=>{
+      const isMe=m.user_id===uid, rowStaff=(m.role==='leader'||m.role==='vice');
+      let acts='';
+      if(isMe){ acts=`<span style="font-size:11px;color:var(--sub)">${lang==='ko'?'나':'me'}</span>`; }
+      else {
+        if(isStaff||rowStaff) acts+=chatBtn(m.user_id);   // 운영진↔회원, 회원→운영진 채팅
+        if(isLeader && m.role!=='leader') acts+=`<button class="join" style="padding:5px 10px;background:#eef4ff;color:#2f6df0" data-mvice="${m.user_id}:${m.role==='vice'?'member':'vice'}">${m.role==='vice'?(lang==='ko'?'부방장 해제':'Unvice'):(lang==='ko'?'부방장':'Vice')}</button><button class="join" style="padding:5px 10px;background:#fdecec;color:#d33" data-mkick="${m.user_id}">${lang==='ko'?'강퇴':'Kick'}</button>`;
+      }
+      return `<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)"><div style="width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:#eef0f3;display:grid;place-items:center;font-size:16px">🧑</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escT(nm(m.user_id))}</div><div style="margin-top:3px">${roleBadge(m.role)}</div></div><div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;align-items:center">${acts}</div></div>`;
+    }).join('');
+    return rback+`<h2 class="sech" style="margin:8px 0 8px">👥 ${lang==='ko'?'회원명부':'Members'} (${clubData.members.length})</h2><div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2px 14px 0;box-shadow:var(--shadow)">${rows}</div>`;
+  }
   let approvals='';
   if(isLeader&&clubData.pending.length){
     approvals=`<div style="display:block;background:#fff7e8;border:1px solid #ffe6b3;border-radius:14px;padding:12px;margin-bottom:12px"><b style="font-size:14px">🛎️ ${lang==='ko'?'가입 신청':'Join requests'} (${clubData.pending.length})</b>`+
@@ -1202,17 +1249,19 @@ function viewClubHub(){
     return `<div class="club" style="margin-bottom:10px"><div class="cbody2" style="padding:12px 14px"><div style="font-weight:800;font-size:14px">⚡ ${escT(a.title)}</div><div style="font-size:12px;color:var(--sub);margin-top:4px">${[actFmt(a),a.place?('📍 '+escT(a.place)):'',a.capacity?('👥 '+a.capacity):''].filter(Boolean).join(' · ')}</div><div style="display:flex;justify-content:flex-end;margin-top:8px">${joined?`<span style="font-size:12px;color:#16a34a;font-weight:700">✓ ${lang==='ko'?'참가중':'Joined'}</span>`:`<button class="join" data-actjoin="${c.id}:${a.id}">${lang==='ko'?'참가 신청':'Join'}</button>`}</div></div></div>`;
   }).join(''):`<div class="empty" style="padding:24px 0;text-align:center;color:var(--sub)">${lang==='ko'?'아직 활동이 없어요':'No activities yet'}</div>`;
   const newAct=actFormOpen?`<div style="display:block;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px"><input id="actTitle" placeholder="${lang==='ko'?'활동 제목 (예: 토요일 룸피니 5km)':'Title'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px"><input id="actWhen" type="datetime-local" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px"><input id="actPlace" placeholder="${lang==='ko'?'장소':'Place'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px"><input id="actCap" type="number" min="2" placeholder="${lang==='ko'?'정원(선택)':'Capacity'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:9px"><button class="gbtn primary" data-actcreate="${c.id}" style="width:100%">${lang==='ko'?'활동 등록':'Create'}</button></div>`:`<button class="gbtn line" data-actnew style="width:100%;margin-bottom:12px">+ ${lang==='ko'?'활동 번개 모집':'New activity'}</button>`;
-  const memberBar=`<div style="font-size:12px;color:var(--sub);margin:4px 0 12px">👥 ${lang==='ko'?'멤버':'Members'} ${clubData.members.length}${isLeader?' · 👑 '+(lang==='ko'?'개설자':'Leader'):''}</div>`;
-  // 모임 공지란 (개설자만 작성/수정)
+  const myTag=isLeader?' · 👑 '+(lang==='ko'?'방장':'Leader'):(myRole==='vice'?' · ⭐ '+(lang==='ko'?'부방장':'Vice'):'');
+  const memberBar=`<div style="font-size:12px;color:var(--sub);margin:4px 0 10px">👥 ${lang==='ko'?'멤버':'Members'} ${clubData.members.length}${myTag}</div>`;
+  const rosterBtn=`<button class="gbtn line" data-roster style="width:100%;margin-bottom:12px">👥 ${lang==='ko'?'회원명부':'Members'} ${clubData.members.length}${lang==='ko'?'명':''}</button>`;
+  // 모임 공지란 (운영진=방장·부방장 작성/수정)
   let notice='';
-  if(noticeEditOpen&&isLeader){
+  if(noticeEditOpen&&isStaff){
     notice=`<div style="display:block;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px"><label style="display:block;font-size:12px;font-weight:700;color:var(--sub);margin-bottom:6px">📌 ${lang==='ko'?'모임 공지':'Club notice'}</label><textarea id="clubNotice" rows="3" placeholder="${lang==='ko'?'멤버에게 알릴 공지를 적어주세요':'Write a notice for members'}" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px;resize:vertical;font-family:inherit">${escT(c.notice||'')}</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="gbtn line" data-noticecancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-noticesave="${c.id}" style="flex:2">${lang==='ko'?'공지 저장':'Save'}</button></div></div>`;
   } else if(c.notice){
-    notice=`<div style="display:block;background:#eef4ff;border:1px solid #cfe0ff;border-radius:14px;padding:12px 14px;margin-bottom:12px"><div style="font-size:12px;font-weight:800;color:#2f6df0;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center"><span>📌 ${lang==='ko'?'모임 공지':'Notice'}</span>${isLeader?`<button data-noticeedit style="border:none;background:none;color:#2f6df0;font-size:12px;cursor:pointer;font-weight:700">${lang==='ko'?'수정':'Edit'}</button>`:''}</div><div style="font-size:13.5px;line-height:1.5;white-space:pre-wrap;color:#1f2937">${escT(c.notice)}</div></div>`;
-  } else if(isLeader){
+    notice=`<div style="display:block;background:#eef4ff;border:1px solid #cfe0ff;border-radius:14px;padding:12px 14px;margin-bottom:12px"><div style="font-size:12px;font-weight:800;color:#2f6df0;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center"><span>📌 ${lang==='ko'?'모임 공지':'Notice'}</span>${isStaff?`<button data-noticeedit style="border:none;background:none;color:#2f6df0;font-size:12px;cursor:pointer;font-weight:700">${lang==='ko'?'수정':'Edit'}</button>`:''}</div><div style="font-size:13.5px;line-height:1.5;white-space:pre-wrap;color:#1f2937">${escT(c.notice)}</div></div>`;
+  } else if(isStaff){
     notice=`<button class="gbtn line" data-noticeedit style="width:100%;margin-bottom:12px">📌 ${lang==='ko'?'모임 공지 작성':'Write a notice'}</button>`;
   }
-  return back+hero+notice+memberBar+approvals+newAct+`<h2 class="sech" style="margin:4px 0 10px">⚡ ${lang==='ko'?'활동':'Activities'}</h2>`+actList;
+  return back+hero+notice+memberBar+rosterBtn+approvals+newAct+`<h2 class="sech" style="margin:4px 0 10px">⚡ ${lang==='ko'?'활동':'Activities'}</h2>`+actList;
 }
 /* Golf Mate 연동 (독립 앱 — 느슨한 결합) */
 const GM_URL=BRAND.golfMateUrl;
@@ -1260,7 +1309,7 @@ info.forEach((x,i)=>x.id=x.id||('I'+i));
 let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gmFrameOpen=false, gmFrameSrc="", gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null,
     wStore={cat:0,delivery:false,pickup:false,menu:[]}, wStoreEditId=null, myStores=false,
     dbClubs=[], myClubMem={}, clubCounts={}, clubOpen=null, clubData=null, clubBusy=false, actFormOpen=false, clubCreateOpen=false,
-    myClubsOpen=false, noticeEditOpen=false, clubPending={};
+    myClubsOpen=false, noticeEditOpen=false, clubPending={}, rosterOpen=false;
 const L=()=>T[lang];
 const gm=()=>GM[lang];
 const tx=o=> o==null?"":(typeof o==="string"?o:(o[lang]||o.ko));
@@ -1868,11 +1917,11 @@ function clubsInner(){
   const gmCard=gm?`<div class="club" data-golf="1" style="cursor:pointer"><div class="banner" style="background:${gm.grad}">${gm.emo} ${tx(gm.nm)}</div><div class="cbody2"><div class="desc">${tx(gm.d)}</div><div class="cfoot"><span class="flag">★ ${L().flagship}</span><button class="join" data-golf="1">${enter}</button></div></div></div>`:'';
   const dbCards=dbClubs.map(c=>{
     const st=myClubMem[c.id]; let btn;
-    if(st==='leader'||st==='approved') btn=`<button class="join" data-clubenter="${c.id}">${lang==='ko'?'입장':enter}</button>`;
+    if(st==='leader'||st==='vice'||st==='member') btn=`<button class="join" data-clubenter="${c.id}">${lang==='ko'?'입장':enter}</button>`;
     else if(st==='pending') btn=`<button class="join" disabled style="background:#cbd5e1;cursor:default">${lang==='ko'?'승인 대기':'Pending'}</button>`;
     else if(st==='rejected') btn=`<button class="join" disabled style="background:#e5e7eb;color:#9ca3af;cursor:default">${lang==='ko'?'거절됨':'Rejected'}</button>`;
     else btn=`<button class="join" data-clubapply="${c.id}">${lang==='ko'?'가입 신청':lang==='en'?'Apply':'สมัคร'}</button>`;
-    const left=st==='leader'?`<span class="flag">👑 ${lang==='ko'?'개설자':'Leader'}</span>`:(c.region?`<span>📍 ${escT(c.region)}</span>`:`<span>👥 ${lang==='ko'?'모임':'Club'}</span>`);
+    const left=st==='leader'?`<span class="flag">👑 ${lang==='ko'?'방장':'Leader'}</span>`:(st==='vice'?`<span class="flag" style="color:#2f6df0;background:#eef4ff;border-color:#cfe0ff">⭐ ${lang==='ko'?'부방장':'Vice'}</span>`:(c.region?`<span>📍 ${escT(c.region)}</span>`:`<span>👥 ${lang==='ko'?'모임':'Club'}</span>`));
     return `<div class="club"><div class="banner" style="background:${c.grad||'linear-gradient(120deg,#64748b,#94a3b8)'}">${c.emoji||'👥'} ${escT(c.name||'')}</div><div class="cbody2"><div class="desc">${escT(c.intro||'')}</div><div class="cfoot">${left}${btn}</div></div></div>`;
   }).join('');
   const createUI = authed ? (clubCreateOpen ? clubCreateForm() : `<button class="gbtn primary" data-clnew style="width:100%;margin-bottom:14px">➕ ${lang==='ko'?'모임 개설':'Create a club'}</button>`) : '';
@@ -2106,6 +2155,11 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-noticeedit]')){noticeEditOpen=true;render();return;}
   if(e.target.closest('[data-noticecancel]')){noticeEditOpen=false;render();return;}
   const nsv=e.target.closest('[data-noticesave]'); if(nsv){saveNotice(nsv.dataset.noticesave);return;}
+  if(e.target.closest('[data-roster]')){rosterOpen=true;render();page.scrollTo(0,0);return;}
+  if(e.target.closest('[data-rosterback]')){rosterOpen=false;render();page.scrollTo(0,0);return;}
+  const mch=e.target.closest('[data-mchat]'); if(mch){openUserChat(mch.dataset.mchat);return;}
+  const mvc=e.target.closest('[data-mvice]'); if(mvc){const[cu,rl]=mvc.dataset.mvice.split(':');setMemberRole(clubOpen,cu,rl);return;}
+  const mkk=e.target.closest('[data-mkick]'); if(mkk){const c=dbClubs.find(x=>x.id===clubOpen);kickMember(clubOpen,mkk.dataset.mkick,(clubData&&clubData.names[mkk.dataset.mkick])||'');return;}
   const cap=e.target.closest('[data-clubapply]'); if(cap){applyClub(cap.dataset.clubapply);return;}
   const cen=e.target.closest('[data-clubenter]'); if(cen){openClub(cen.dataset.clubenter);return;}
   if(e.target.closest('[data-clubback]')){clubOpen=null;clubData=null;render();page.scrollTo(0,0);return;}
