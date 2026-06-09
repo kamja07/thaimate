@@ -566,8 +566,9 @@ async function applySession(session){
   try{ if(session.access_token) sb.realtime.setAuth(session.access_token); }catch(e){}
   screen='app';
   try{ await sb.from('profiles').upsert({id:u.id, username:acctId},{onConflict:'id'}); }catch(e){}
-  try{ const {data:p}=await sb.from('profiles').select('email_verified').eq('id',u.id).single();
-       emailVerified=!!(p && p.email_verified); }catch(e){}
+  try{ const {data:p}=await sb.from('profiles').select('email_verified,nickname').eq('id',u.id).single();
+       emailVerified=!!(p && p.email_verified);
+       if(p && p.nickname) acctId=p.nickname; }catch(e){}   // 표시이름: 저장된 닉네임(원래 한글 아이디) 우선
   try{ const {data:adm}=await sb.rpc('is_admin'); isAdmin=!!adm; if(screen==='app'&&tab==='me') render(); }catch(e){}
   loadChats();
 }
@@ -595,6 +596,8 @@ async function doAuth(mode){
   let sess=res.data&&res.data.session; if(!sess){sess=(await sb.auth.getSession()).data.session;}
   if(!sess){ toast(mode==='signup'?L().e_id_taken:(res.error&&res.error.message)||''); if(mode==='signup'){gateMode='login';render();} return; }
   await applySession(sess); acctId=id;
+  // 원래 입력한 아이디(한글 포함)를 닉네임으로 저장 → 새로고침/다른 세션에서도 그대로 표시
+  try{ if(uid) await sb.from('profiles').upsert({id:uid, nickname:id},{onConflict:'id'}); }catch(e){}
   const realEmail=(mode==='signup')?((document.getElementById('auEmail')||{}).value||'').trim():'';
   gateMode='home'; screen='app'; render();
   if(mode==='signup' && realEmail){
@@ -1059,20 +1062,7 @@ const GM_PARTNERS=[
  {emo:"⛳",nm:"타나시티 CC",cat:{ko:"골프장",en:"Course",th:"สนามกอล์ฟ"}},
  {emo:"✈️",nm:"K-여행사",cat:{ko:"골프패키지",en:"Tour pkg",th:"แพ็กเกจ"}}
 ];
-const NOTI=[
- {ic:"⚡",bg:"#fff1e8",unread:true,go:"market",tm:{ko:"5분 전",en:"5m",th:"5 นาที"},
-  t:{ko:"내 동네에 딱 맞는 '구해요'가 떴어요",en:"A 'wanted' near you just matched",th:"มีโพสต์ 'ต้องการ' ใกล้คุณ"},
-  b:{ko:"골프채 아이언 세트 · 통러 · 예산 ฿15,000",en:"Iron set · Thonglor · ฿15,000",th:"ชุดเหล็ก · ทองหล่อ · ฿15,000"}},
- {ic:"💬",bg:"#eaf2ff",unread:true,go:"chat",tm:{ko:"어제",en:"1d",th:"เมื่อวาน"},
-  t:{ko:"이지은님이 메시지를 보냈어요",en:"Jieun sent you a message",th:"จีอึนส่งข้อความ"},
-  b:{ko:"미즈노 아이언 세트 있어요! ฿13,000",en:"I have a Mizuno iron set! ฿13,000",th:"มีชุดเหล็ก Mizuno! ฿13,000"}},
- {ic:"🛒",bg:"#e7f7ee",unread:false,go:"shop",tm:{ko:"1시간 전",en:"1h",th:"1 ชม."},
-  t:{ko:"서울식당 주문이 접수되었어요",en:"Your Seoul Restaurant order is in",th:"ร้านโซลรับออเดอร์แล้ว"},
-  b:{ko:"김치찌개 외 · ฿690 · PromptPay 직거래",en:"Kimchi stew & more · ฿690",th:"กิมจิจิเก ฯลฯ · ฿690"}},
- {ic:"📢",bg:"#fdf3e0",unread:false,go:"community",tm:{ko:"1일 전",en:"1d",th:"1 วัน"},
-  t:{ko:"[공지] 5월 한인회 정기모임",en:"[Notice] May Korean Assoc. meetup",th:"[ประกาศ] นัดพบสมาคมเกาหลี"},
-  b:{ko:"5/18(일) 오후 2시 · 수쿰빗 한인타운",en:"Sun May 18, 2pm · Sukhumvit",th:"อา. 18 พ.ค. 14:00 · สุขุมวิท"}}
-];
+const NOTI=[];   // 실제 알림 연동 전까지 비움 — 하드코딩 데모(읽지않음 2개) 제거
 function searchAll(q){
   q=(q||"").trim().toLowerCase(); if(!q)return [];
   const r=[], hit=s=>tx(s).toLowerCase().includes(q);
