@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Thai Mate — 교민 실시간 1:1 매칭 & 주문</title>
+<title>Thai Mate — 동네 실시간 1:1 매칭 & 주문</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -365,7 +365,7 @@ const BRAND = {
   appName:    'ThaiMate',            // 앱 전체 이름 (텍스트 곳곳에 자동 반영됨)
   nameA:      'Thai', nameB: 'Mate', // 로고/게이트 분리표기 — 뒤쪽(nameB)이 강조색
   logoText:   'M',                   // 로고 안 글자 (이모지도 가능: '⛳','🍺' 등)
-  titleSuffix:'교민 실시간 1:1 매칭 & 주문',   // 브라우저 탭 제목 뒷부분
+  titleSuffix:'동네 실시간 1:1 매칭 & 주문',   // 브라우저 탭 제목 뒷부분
   primary:    '#ff7a33',             // 메인 테마 색
   primarySoft:'#fff1e8',             // 메인 연한 배경색
   // 백엔드 — 고객마다 새 Supabase 프로젝트 (Settings→API: Project URL + publishable/anon key)
@@ -651,12 +651,12 @@ async function confirmEmailCode(cd){
 /* ===================== i18n ===================== */
 const T = {
  ko:{
-  title:"교민 매칭·주문", nav_shop:"상점", nav_market:"장터·나눔", nav_jobs:"구인구직", nav_chat:"채팅", nav_community:"커뮤니티", nav_me:"내정보",
+  title:"동네 매칭·주문", nav_shop:"상점", nav_market:"장터·나눔", nav_jobs:"구인구직", nav_chat:"채팅", nav_community:"커뮤니티", nav_me:"내정보",
   city_all:"전체", city_bkk:"방콕", city_cm:"치앙마이", city_pty:"파타야", city_east:"동부", city_west:"서부", city_north:"북부", city_central:"중부", city_nisan:"북부 이산", city_eisan:"동부 이산", city_south:"남부",
   seg_sell:"팝니다", seg_buy:"삽니다", seg_give:"나눔터", seg_hire:"구인", seg_seek:"구직",
   comm_info:"소식", comm_clubs:"모임",
   banner_t:"단톡방 댓글싸움 없이, 1:1로 바로 매칭", banner_p:"공개 댓글 없음 · 모든 대화는 비공개 채팅",
-  shop_banner_t:"교민 업체 광고 · 앱에서 바로 주문", shop_banner_p:"식당·마트·서비스까지 한 곳에서 주문·예약",
+  shop_banner_t:"우리 동네 업체 광고 · 앱에서 바로 주문", shop_banner_p:"식당·마트·서비스까지 한 곳에서 주문·예약",
   info_banner_t:"정보·소식도 댓글싸움 없이 깔끔하게", info_banner_p:"공개 댓글 대신 도움돼요·저장 · 질문은 작성자에게 1:1로",
   info_cats:["공지","비자·행정","생활·꿀팁","맛집·플레이스","부동산","환전·송금"],
   shop_cats:["식당","카페·베이커리","마트·식자재","뷰티·헬스","생활서비스","기타업종","골프"],
@@ -669,13 +669,13 @@ const T = {
   chat_secure:"1:1 비공개 대화 · 단톡방처럼 공개되지 않아요", input_ph:"메시지 보내기…",
   r_help:"도움돼요", r_save:"저장", r_ask:"1:1 질문", official:"공지",
   sec_chats:"진행 중인 매칭", flagship:"대표 모임", join:"가입", members:"명",
-  me_name:"김교민", me_trust:"매너온도 36.5°C", me_sub:"거래 27회 · 재거래율 92%",
+  me_name:"김민수", me_trust:"매너온도 36.5°C", me_sub:"거래 27회 · 재거래율 92%",
   me_menu:["판매·구매내역","내 가게 관리","관심목록","받은 매너후기","관리자에게 문의"],
   lang_label:"한국어 / English / ไทย 동시 지원 — 태국인·외국인과도 매칭", logout:"로그아웃", do_login:"로그인하기", admin_console:"관리자 콘솔", soon:"곧 제공될 기능이에요 (준비 중)", lang_hint:"상단의 한 · EN · ไทย 에서 언어를 바꿀 수 있어요", inquiry_prompt:"관리자에게 보낼 문의 내용을 적어주세요", inquiry_sent:"문의가 접수됐어요. 빠르게 확인할게요 🙌",
   e_id_taken:"이미 있는 아이디예요. 로그인해 주세요", e_email_taken:"이미 사용 중인 이메일이에요", e_signup_ok_verify:"가입 완료! 인증 메일을 보냈어요 ✉️ (링크 클릭 시 활동 가능)", e_signup_ok:"가입 완료! 둘러보세요 🙂", e_login_ok:"로그인됐어요",
   fab_market:"글쓰기", fab_jobs:"채용·구직 등록", fab_info:"소식 올리기", fab_shop:"내 가게 등록",
   reply_demo:"상대방에게 1:1 채팅이 전송됩니다 (프로토타입)",
-  g_tag:"태국 한인 실시간 1:1 매칭\n내 동네에서 사고, 팔고, 만나요",
+  g_tag:"태국 실시간 1:1 매칭\n내 동네에서 사고, 팔고, 만나요",
   g_loc_title:"내 동네 설정", g_loc_empty:"동네를 선택하세요", g_loc_sub:"매칭의 기준이 되는 내 위치예요",
   g_loc_note:"실시간 매칭은 '내 동네'에서 시작돼요",
   g_login:"로그인", g_signup:"신규가입", g_browse:"로그인 없이 둘러보기",
@@ -729,7 +729,7 @@ const T = {
   e_id_taken:"That ID is already taken. Please log in.", e_email_taken:"That email is already in use.", e_signup_ok_verify:"Signed up! Verification email sent ✉️ (click the link to start activity)", e_signup_ok:"Signed up! Have a look around 🙂", e_login_ok:"Logged in",
   fab_market:"Post", fab_jobs:"Post a job", fab_info:"Share news", fab_shop:"List my store",
   reply_demo:"Sent as a private 1:1 chat (prototype)",
-  g_tag:"Real-time 1:1 matching for Koreans in Thailand\nBuy, sell & meet in your neighborhood",
+  g_tag:"Real-time 1:1 matching in Thailand\nBuy, sell & meet in your neighborhood",
   g_loc_title:"Set your neighborhood", g_loc_empty:"Choose your area", g_loc_sub:"This is your matching location",
   g_loc_note:"Real-time matching starts in your neighborhood",
   g_login:"Log in", g_signup:"Sign up", g_browse:"Browse without login",
@@ -764,7 +764,7 @@ const T = {
   seg_sell:"ขาย", seg_buy:"ต้องการซื้อ", seg_give:"แจกฟรี", seg_hire:"รับสมัคร", seg_seek:"หางาน",
   comm_info:"ข่าว", comm_clubs:"ชมรม",
   banner_t:"จับคู่ 1:1 ไม่มีดราม่าในกลุ่มแชท", banner_p:"ไม่มีคอมเมนต์สาธารณะ · ทุกแชทเป็นส่วนตัว",
-  shop_banner_t:"โฆษณาร้านเกาหลี · สั่งในแอป", shop_banner_p:"ร้านอาหาร มาร์ท บริการ สั่งหรือจองที่เดียว",
+  shop_banner_t:"โฆษณาร้านในย่าน · สั่งในแอป", shop_banner_p:"ร้านอาหาร มาร์ท บริการ สั่งหรือจองที่เดียว",
   info_banner_t:"ข่าวสารแบบสะอาด ไม่มีดราม่าคอมเมนต์", info_banner_p:"ใช้ 'มีประโยชน์' และบันทึก แทนคอมเมนต์ · ถามผู้โพสต์ 1:1",
   info_cats:["ประกาศ","วีซ่า","เคล็ดลับ","ร้าน·สถานที่","อสังหา","แลกเงิน"],
   shop_cats:["ร้านอาหาร","คาเฟ่·เบเกอรี่","มาร์ท·ของชำ","บิวตี้·สุขภาพ","บริการ","อื่นๆ","กอล์ฟ"],
@@ -783,7 +783,7 @@ const T = {
   e_id_taken:"มีไอดีนี้อยู่แล้ว กรุณาเข้าสู่ระบบ", e_email_taken:"อีเมลนี้ถูกใช้งานแล้ว", e_signup_ok_verify:"สมัครสำเร็จ! ส่งอีเมลยืนยันแล้ว ✉️ (คลิกลิงก์เพื่อเริ่มใช้งาน)", e_signup_ok:"สมัครสำเร็จ! ลองดูรอบ ๆ ได้เลย 🙂", e_login_ok:"เข้าสู่ระบบแล้ว",
   fab_market:"โพสต์", fab_jobs:"ลงประกาศงาน", fab_info:"แชร์ข่าว", fab_shop:"ลงร้านค้า",
   reply_demo:"ส่งเป็นแชทส่วนตัว 1:1 (ต้นแบบ)",
-  g_tag:"จับคู่ 1:1 เรียลไทม์ สำหรับคนเกาหลีในไทย\nซื้อ ขาย และพบกันในย่านของคุณ",
+  g_tag:"จับคู่ 1:1 เรียลไทม์ ในไทย\nซื้อ ขาย และพบกันในย่านของคุณ",
   g_loc_title:"ตั้งย่านของคุณ", g_loc_empty:"เลือกย่านของคุณ", g_loc_sub:"นี่คือตำแหน่งสำหรับจับคู่",
   g_loc_note:"การจับคู่เรียลไทม์เริ่มที่ย่านของคุณ",
   g_login:"เข้าสู่ระบบ", g_signup:"สมัครสมาชิก", g_browse:"ดูแบบไม่ล็อกอิน",
@@ -1005,13 +1005,13 @@ const stores = [
    {id:'d4',emo:'🌶️',pr:280,nm:{ko:'고추장 1kg',en:'Gochujang 1kg',th:'โกชูจัง 1kg'}}
   ]},
  {id:'s5',cat:3,ad:false,emo:'💇',city:'bkk',hoodId:'thonglor',rating:4.8,reviews:96,service:true,
-  nm:{ko:'한인 헤어샵',en:'K Hair Salon',th:'ร้านทำผมเกาหลี'},
+  nm:{ko:'K 헤어샵',en:'K Hair Salon',th:'ร้านทำผม K'},
   desc:{ko:'한국식 커트·펌·염색. 예약제로 운영하며 한국인 디자이너가 상주합니다. 예약·문의는 1:1 채팅으로 받습니다.',en:'Korean-style cut/perm/color. By appointment, Korean stylist on site. Book via 1:1 chat.',th:'ตัด/ดัด/ทำสีสไตล์เกาหลี ต้องจองล่วงหน้า มีช่างเกาหลี จองผ่านแชท 1:1'}},
  {id:'s6',cat:4,ad:false,emo:'🧹',city:'pty',hoodId:'jomtien',rating:4.5,reviews:48,service:true,
   nm:{ko:'사바이 청소·이사',en:'Sabai Clean & Move',th:'สบาย ทำความสะอาด·ย้ายบ้าน'},
   desc:{ko:'이사·입주청소·정기청소. 한국어 소통 가능, 견적 무료. 1:1 채팅으로 일정·견적 문의주세요.',en:'Moving & cleaning, Korean-speaking, free quote. Ask schedule/quote via 1:1 chat.',th:'ย้ายบ้าน/ทำความสะอาด คุยเกาหลีได้ ประเมินฟรี สอบถามผ่านแชท 1:1'}},
  {id:'s7',cat:5,ad:true,emo:'✈️',city:'bkk',hoodId:'asok',rating:4.7,reviews:163,service:true,
-  nm:{ko:'한인 여행사',en:'K Travel Agency',th:'บริษัททัวร์เกาหลี'},
+  nm:{ko:'K 여행사',en:'K Travel Agency',th:'บริษัททัวร์ K'},
   desc:{ko:'항공권·골프투어·비자대행·픽업 서비스. 한국어 상담. 일정·견적은 1:1 채팅으로 문의주세요.',en:'Flights, golf tours, visa runs & pickup. Korean consultation. Ask via 1:1 chat.',th:'ตั๋วเครื่องบิน ทัวร์กอล์ฟ ทำวีซ่า รับส่ง ปรึกษาภาษาเกาหลี สอบถามผ่านแชท 1:1'}}
 ];
 const PAY={
@@ -1026,8 +1026,8 @@ const PAY={
 const chats = [];   // 실제 채팅은 loadChats(DB)로 채움 — 데모 데이터 제거
 const info=[
  {official:true,cat:0,city:"all",help:212,save:140,view:1820,
-  t:{ko:"[공지] 5월 한인회 정기모임 + 무료 법률·세무 상담",en:"[Notice] May Korean Assoc. meetup + free consult",th:"[ประกาศ] นัดพบสมาคมเกาหลี พ.ค."},
-  e:{ko:"5/18(일) 오후 2시 수쿰빗 한인타운. 비자·세무 무료상담 부스 운영, 사전신청 받습니다.",en:"Sun May 18, 2pm, Sukhumvit Koreatown. Free visa & tax consult booths — pre-register.",th:"อา. 18 พ.ค. 14:00 ย่านเกาหลีสุขุมวิท มีบูธปรึกษาฟรี"},
+  t:{ko:"[공지] 5월 커뮤니티 정기모임 + 무료 법률·세무 상담",en:"[Notice] May community meetup + free consult",th:"[ประกาศ] นัดพบคอมมูนิตี้ พ.ค."},
+  e:{ko:"5/18(일) 오후 2시 수쿰빗. 비자·세무 무료상담 부스 운영, 사전신청 받습니다.",en:"Sun May 18, 2pm, Sukhumvit. Free visa & tax consult booths — pre-register.",th:"อา. 18 พ.ค. 14:00 ย่านสุขุมวิท มีบูธปรึกษาฟรี"},
   loc:{ko:"방콕",en:"Bangkok",th:"กรุงเทพ"},ago:{ko:"1일 전",en:"1d ago",th:"1 วัน"}},
  {official:false,cat:1,city:"bkk",help:142,save:88,view:980,
   t:{ko:"리타이어먼트 비자 갱신 후기 (2026 최신)",en:"Retirement visa renewal report (2026)",th:"รีวิวต่อวีซ่าเกษียณ (2026)"},
@@ -1044,7 +1044,7 @@ const info=[
 ];
 const clubs = [
  {flag:true,grad:"linear-gradient(120deg,#0b7a3b,#16a34a)",emo:"⛳",city:"all",nm:"Golf Mate",members:1240,
-  d:{ko:"태국 한인 골퍼 매칭. 같이 칠 사람 1:1 번개 매칭 · 중고채 거래. 골프존 방나점 파트너.",en:"Match Korean golfers in Thailand — 1:1 round matching & used-club trades. Partner: Golfzone Bangna.",th:"จับคู่นักกอล์ฟเกาหลีในไทย ออกรอบ 1:1 ซื้อขายไม้กอล์ฟ"}},
+  d:{ko:"태국 골퍼 매칭. 같이 칠 사람 1:1 번개 매칭 · 중고채 거래. 골프존 방나점 파트너.",en:"Match golfers in Thailand — 1:1 round matching & used-club trades. Partner: Golfzone Bangna.",th:"จับคู่นักกอล์ฟในไทย ออกรอบ 1:1 ซื้อขายไม้กอล์ฟ"}},
  {flag:false,grad:"linear-gradient(120deg,#2f6df0,#6f9bff)",emo:"🏃",city:"bkk",nm:{ko:"방콕 러닝메이트",en:"Bangkok Run Mate",th:"วิ่งกรุงเทพ"},members:312,
   d:{ko:"러닝 파트너 1:1 매칭. 페이스·지역 맞춰드려요.",en:"1:1 running-partner matching by pace & area.",th:"จับคู่เพื่อนวิ่งตามเพซและพื้นที่"}},
  {flag:false,grad:"linear-gradient(120deg,#b45309,#f5a524)",emo:"🗣️",city:"north",nm:{ko:"치앙마이 언어교환",en:"Chiang Mai Lang Exchange",th:"แลกเปลี่ยนภาษาเชียงใหม่"},members:178,
@@ -1364,15 +1364,15 @@ const GM_URL=BRAND.golfMateUrl;
 // 임베드용 골프(같은 도메인 /golf/ — ThaiMate Supabase 공유, 한 로그인). 독립 golfdong-v2와 다름.
 const GM_EMBED=(BRAND.golfEmbedUrl||'/golf/')+'?embed=thaimate';
 const GM={
- ko:{partner:"ThaiMate 공식 골프 파트너",sub:"태국 한인 골퍼 1:1 매칭 · 골프투어",linked:"골프 전용 별도 앱 — 골프메이트에서 로그인해 이용",
+ ko:{partner:"ThaiMate 공식 골프 파트너",sub:"태국 골퍼 1:1 매칭 · 골프투어",linked:"골프 전용 별도 앱 — 골프메이트에서 로그인해 이용",
   acts:["티타임 부킹","번개 라운딩","중고채 장터","라운드·시상","동호회","핸디캡"],
   today:"오늘의 번개 라운딩",join:"참여",seats:"자리",partners:"파트너 (후원사)",sponsor:"후원",
   openFull:"Golf Mate 풀버전 열기",ssTitle:"스마트스코어 연동 (예정)",ssDesc:"스코어카드·핸디캡 자동 동기화. 플랫폼 안정화 후 연동 — 지금은 핸디캡 입력만.",handi:"핸디캡"},
- en:{partner:"Official golf partner of ThaiMate",sub:"1:1 matching for Korean golfers · tours",linked:"Separate golf app — sign in within Golf Mate",
+ en:{partner:"Official golf partner of ThaiMate",sub:"1:1 golfer matching · tours",linked:"Separate golf app — sign in within Golf Mate",
   acts:["Tee booking","Casual round","Used clubs","Awards","Clubs","Handicap"],
   today:"Today's casual rounds",join:"Join",seats:"left",partners:"Partners (sponsors)",sponsor:"Sponsor",
   openFull:"Open full Golf Mate",ssTitle:"SmartScore integration (planned)",ssDesc:"Auto-sync scorecard & handicap. After the platform stabilizes.",handi:"Handicap"},
- th:{partner:"พาร์ทเนอร์กอล์ฟอย่างเป็นทางการ",sub:"จับคู่กอล์ฟเกาหลี 1:1 · ทัวร์",linked:"แอปกอล์ฟแยก — ล็อกอินใน Golf Mate",
+ th:{partner:"พาร์ทเนอร์กอล์ฟอย่างเป็นทางการ",sub:"จับคู่กอล์ฟ 1:1 · ทัวร์",linked:"แอปกอล์ฟแยก — ล็อกอินใน Golf Mate",
   acts:["จองที","ออกรอบ","ขายไม้มือสอง","รางวัล","ชมรม","แฮนดิแคป"],
   today:"ออกรอบวันนี้",join:"เข้าร่วม",seats:"ที่ว่าง",partners:"พาร์ทเนอร์ (สปอนเซอร์)",sponsor:"สปอนเซอร์",
   openFull:"เปิด Golf Mate เต็ม",ssTitle:"เชื่อม SmartScore (เร็วๆ นี้)",ssDesc:"ซิงค์สกอร์การ์ด·แฮนดิแคปอัตโนมัติ หลังแพลตฟอร์มเสถียร",handi:"แฮนดิแคป"}
@@ -1732,15 +1732,6 @@ function renderPay(){
 /* ===================== top ===================== */
 function renderTop(){
   if((tab==='chat'&&chatOpen!==null)||(tab==='shop'&&storeOpen)||(tab==='market'&&listingOpen)){topEl.innerHTML='';return;}
-  if(tab==='community'&&commSeg==='clubs'&&golfOpen){
-    topEl.innerHTML=`
-   <div class="top-row">
-     <div class="locpill" style="font-weight:800;cursor:default;background:linear-gradient(120deg,#0b7a3b,#16a34a);color:#fff;border-color:transparent"><span class="lpin">⛳</span>${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</div>
-     <div class="spacer"></div>
-     ${langToggle()}
-   </div>`;
-    return;
-  }
   topEl.innerHTML=`
    <div class="top-row">
      <button class="locpill" id="locpill"><span class="lpin">📍</span>${locShort()}${verified?'<span style="color:var(--green);font-size:13px">✓</span>':''}<span class="lcv">▾</span></button>
@@ -2137,7 +2128,7 @@ function golfCoursesView(){
     }).join('');
     return `<h2 class="sech" style="margin:14px 0 4px;font-size:14px">${escT(r)} <span style="font-size:12px;color:var(--sub);font-weight:600">${byRegion[r].length}</span></h2><div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 14px;box-shadow:var(--shadow)">${cards}</div>`;
   }).join('')||`<div class="empty" style="padding:26px 0;text-align:center;color:var(--sub)">${lang==='ko'?'골프장이 없어요':'No courses'}</div>`;
-  const intro=`<div style="font-size:12px;color:#1d4ed8;background:#eff5ff;border:1px solid #d4e3ff;border-radius:10px;padding:10px 11px;margin-bottom:10px;line-height:1.5">🤝 ${lang==='ko'?'한인 골퍼들이 <b>함께 만들어가는 공용 골프장 정보</b>예요. 빠진 골프장이나 Par 정보를 발견하면 직접 추가·보강해 주세요!':lang==='th'?'ฐานข้อมูลสนามกอล์ฟที่ทุกคนช่วยกันสร้าง — เพิ่มสนามหรือ Par ที่ขาดได้เลย!':'A <b>community-built</b> course database — please add missing courses or par info!'}</div>`;
+  const intro=`<div style="font-size:12px;color:#1d4ed8;background:#eff5ff;border:1px solid #d4e3ff;border-radius:10px;padding:10px 11px;margin-bottom:10px;line-height:1.5">🤝 ${lang==='ko'?'골퍼들이 <b>함께 만들어가는 공용 골프장 정보</b>예요. 빠진 골프장이나 Par 정보를 발견하면 직접 추가·보강해 주세요!':lang==='th'?'ฐานข้อมูลสนามกอล์ฟที่ทุกคนช่วยกันสร้าง — เพิ่มสนามหรือ Par ที่ขาดได้เลย!':'A <b>community-built</b> course database — please add missing courses or par info!'}</div>`;
   return back+`<h2 class="sech" style="margin:6px 0 10px">📋 ${lang==='ko'?'골프장 정보':'Golf courses'} <span style="font-size:12px;color:var(--sub);font-weight:600">${golfCourses.length}</span></h2>`+intro+(verified?form:`<div style="font-size:12px;color:var(--sub);background:#f7f8fa;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px">${lang==='ko'?'골프장 등록·수정은 이메일 인증 회원만 가능해요.':'Email-verified members can add/edit.'}</div>`)+chips+list;
 }
 /* ===== 개인 활동 (내 라운드 기록 — rounds, event_id=null이 개인) ===== */
@@ -2418,14 +2409,14 @@ function viewGolfHub(){
   if(golfSub==='rounds') return golfRoundsView();
   if(golfSub==='clubs') return golfClubsView();
   const back=`<button class="gmback" data-golfback>‹ ${L().comm_clubs}</button>`;
-  const hero=`<div class="club" style="margin-bottom:14px"><div class="banner" style="background:linear-gradient(120deg,#0b7a3b,#16a34a);height:58px">⛳ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</div><div class="cbody2"><div class="desc">${lang==='ko'?'태국 한인 골퍼 — 동호회 · 동반자 모집 · 개인 기록 · 골프장 정보':lang==='th'?'นักกอล์ฟเกาหลีในไทย':'Korean golfers in Thailand'}</div></div></div>`;
+  const hero=`<div class="club" style="margin-bottom:14px"><div class="banner" style="background:linear-gradient(120deg,#0b7a3b,#16a34a);height:58px">⛳ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</div><div class="cbody2"><div class="desc">${lang==='ko'?'태국 골퍼 — 동호회 · 동반자 모집 · 개인 기록 · 골프장 정보':lang==='th'?'นักกอล์ฟในไทย':'Golfers in Thailand'}</div></div></div>`;
   const golfCnt=dbClubs.filter(c=>c.category==='golf').length;
   const card=(sub,emo,title,desc,badge)=>`<div class="club" style="margin-bottom:11px;cursor:pointer" data-golfsub="${sub}"><div class="cbody2" style="padding:16px 15px"><div style="font-weight:800;font-size:15.5px">${emo} ${title}${badge||''} <span class="ar" style="float:right;color:var(--sub);font-size:18px">›</span></div><div style="font-size:12px;color:var(--sub);margin-top:5px">${desc}</div></div></div>`;
   return back+hero
     +card('clubs','⛳',lang==='ko'?'동호회':lang==='th'?'ชมรม':'Clubs',lang==='ko'?'골프 동호회 가입 · 정기 라운드 · 시상':lang==='th'?'เข้าร่วมชมรม · ออกรอบ · รางวัล':'Join clubs · rounds · awards',golfCnt?` <span style="font-size:11px;color:#0b7a3b;background:#e7f6ee;border-radius:8px;padding:1px 8px;font-weight:800;vertical-align:middle">${golfCnt}</span>`:'')
     +card('match','🤝',lang==='ko'?'동반자 모집':lang==='th'?'หาเพื่อนออกรอบ':'Find partners',lang==='ko'?'골프장·티타임·핸디 맞춰 같이 칠 사람 찾기':lang==='th'?'หาเพื่อนเล่นกอล์ฟ':'Find golf partners')
     +card('rounds','🏌️',lang==='ko'?'개인 활동':lang==='th'?'กิจกรรมของฉัน':'My golf',lang==='ko'?'내 라운드 기록 · 핸디캡 통계':lang==='th'?'สถิติรอบของฉัน':'My rounds & stats')
-    +card('course','📋',lang==='ko'?'골프장 정보':lang==='th'?'ข้อมูลสนามกอล์ฟ':'Courses',lang==='ko'?'한인 골퍼들이 함께 만드는 공용 골프장 DB':lang==='th'?'ฐานข้อมูลสนามที่ทุกคนช่วยกันสร้าง':'Community-built course database');
+    +card('course','📋',lang==='ko'?'골프장 정보':lang==='th'?'ข้อมูลสนามกอล์ฟ':'Courses',lang==='ko'?'골퍼들이 함께 만드는 공용 골프장 DB':lang==='th'?'ฐานข้อมูลสนามที่ทุกคนช่วยกันสร้าง':'Community-built course database');
 }
 function golfClubsView(){
   const back=`<button class="gmback" data-golfsubback>‹ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</button>`;
