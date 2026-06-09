@@ -1104,6 +1104,47 @@ async function joinActivity(clubId,actId){
     toast(lang==='ko'?'참가 신청!':'Joined!'); openClub(clubId);
   }catch(e){ toast(String(e.message||e)); }
 }
+const CLUB_CATS=[{k:'running',l:{ko:'러닝/운동',en:'Sports',th:'กีฬา'}},{k:'language',l:{ko:'언어교환',en:'Language',th:'ภาษา'}},{k:'food',l:{ko:'맛집/모임',en:'Food',th:'อาหาร'}},{k:'study',l:{ko:'스터디',en:'Study',th:'สตั๊ดดี้'}},{k:'parenting',l:{ko:'육아',en:'Parenting',th:'เลี้ยงลูก'}},{k:'hobby',l:{ko:'취미',en:'Hobby',th:'งานอดิเรก'}},{k:'etc',l:{ko:'기타',en:'Etc',th:'อื่นๆ'}}];
+const CLUB_GRADS=['linear-gradient(120deg,#2f6df0,#6f9bff)','linear-gradient(120deg,#16a34a,#4ade80)','linear-gradient(120deg,#b45309,#f5a524)','linear-gradient(120deg,#7c3aed,#a78bfa)','linear-gradient(120deg,#db2777,#f472b6)','linear-gradient(120deg,#0891b2,#22d3ee)'];
+let wClub={emoji:'👥',grad:CLUB_GRADS[0],cat:'etc'};
+function clubCreateForm(){
+  return `<div class="card" style="border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px">
+    <b style="font-size:15px">➕ ${lang==='ko'?'모임 개설':'New club'}</b>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <input id="clName" placeholder="${lang==='ko'?'모임 이름 *':'Club name *'}" style="flex:1;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px">
+      <input id="clEmoji" value="${escA(wClub.emoji)}" maxlength="2" style="width:54px;box-sizing:border-box;text-align:center;font-size:18px;padding:9px;border:1px solid var(--line);border-radius:9px">
+    </div>
+    <input id="clIntro" placeholder="${lang==='ko'?'한 줄 소개':'One-line intro'}" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-top:8px">
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <select id="clCat" style="flex:1;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px">${CLUB_CATS.map(c=>`<option value="${c.k}" ${wClub.cat===c.k?'selected':''}>${tx(c.l)}</option>`).join('')}</select>
+      <input id="clRegion" placeholder="${lang==='ko'?'지역(예: 방콕)':'Region'}" style="flex:1;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px">
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:var(--sub)">${lang==='ko'?'배너 색':'Banner color'}</div>
+    <div style="display:flex;gap:7px;margin-top:6px">${CLUB_GRADS.map(g=>`<button type="button" data-clgrad="${g}" style="flex:1;height:30px;border-radius:8px;border:${wClub.grad===g?'3px solid #111':'1px solid #ddd'};background:${g};cursor:pointer"></button>`).join('')}</div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="gbtn line" data-clcancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button>
+      <button class="gbtn primary" data-clcreate style="flex:2">${lang==='ko'?'개설하기':'Create'}</button>
+    </div>
+  </div>`;
+}
+async function createClub(){
+  if(!canAct()) return; if(clubBusy) return;
+  const name=((document.getElementById('clName')||{}).value||'').trim();
+  if(!name){ toast(lang==='ko'?'모임 이름을 입력하세요':'Enter a club name'); return; }
+  const emoji=(((document.getElementById('clEmoji')||{}).value||'').trim())||'👥';
+  const intro=((document.getElementById('clIntro')||{}).value||'').trim();
+  const cat=(document.getElementById('clCat')||{}).value||'etc';
+  const region=((document.getElementById('clRegion')||{}).value||'').trim();
+  clubBusy=true;
+  try{
+    const {data,error}=await sb.from('clubs').insert({name,emoji,intro:intro||null,category:cat,region:region||null,grad:wClub.grad,leader_id:uid}).select().single();
+    if(error){ toast(error.message); clubBusy=false; return; }
+    clubCreateOpen=false; wClub={emoji:'👥',grad:CLUB_GRADS[0],cat:'etc'};
+    toast(lang==='ko'?'모임 개설 완료! 당신이 개설자예요':'Club created — you are the leader');
+    await loadClubs(); clubBusy=false;
+    if(data&&data.id) openClub(data.id);
+  }catch(e){ toast(String(e.message||e)); clubBusy=false; }
+}
 function viewClubHub(){
   const c=dbClubs.find(x=>x.id===clubOpen);
   if(!c){ clubOpen=null; return clubsInner(); }
@@ -1171,7 +1212,7 @@ info.forEach((x,i)=>x.id=x.id||('I'+i));
 /* ===================== state ===================== */
 let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gmFrameOpen=false, gmFrameSrc="", gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null,
     wStore={cat:0,delivery:false,pickup:false,menu:[]}, wStoreEditId=null, myStores=false,
-    dbClubs=[], myClubMem={}, clubCounts={}, clubOpen=null, clubData=null, clubBusy=false, actFormOpen=false;
+    dbClubs=[], myClubMem={}, clubCounts={}, clubOpen=null, clubData=null, clubBusy=false, actFormOpen=false, clubCreateOpen=false;
 const L=()=>T[lang];
 const gm=()=>GM[lang];
 const tx=o=> o==null?"":(typeof o==="string"?o:(o[lang]||o.ko));
@@ -1786,7 +1827,8 @@ function clubsInner(){
     const left=st==='leader'?`<span class="flag">👑 ${lang==='ko'?'개설자':'Leader'}</span>`:(c.region?`<span>📍 ${escT(c.region)}</span>`:`<span>👥 ${lang==='ko'?'모임':'Club'}</span>`);
     return `<div class="club"><div class="banner" style="background:${c.grad||'linear-gradient(120deg,#64748b,#94a3b8)'}">${c.emoji||'👥'} ${escT(c.name||'')}</div><div class="cbody2"><div class="desc">${escT(c.intro||'')}</div><div class="cfoot">${left}${btn}</div></div></div>`;
   }).join('');
-  return gmCard+dbCards;
+  const createUI = authed ? (clubCreateOpen ? clubCreateForm() : `<button class="gbtn primary" data-clnew style="width:100%;margin-bottom:14px">➕ ${lang==='ko'?'모임 개설':'Create a club'}</button>`) : '';
+  return createUI+gmCard+dbCards;
 }
 function viewGolfHub(){
   const g=gm();
@@ -2003,6 +2045,10 @@ document.addEventListener('click',e=>{
   const nv=e.target.closest('[data-tab]'); if(nv){tab=nv.dataset.tab;chatOpen=null;storeOpen=null;cart={};golfOpen=false;listingOpen=null;myStores=false;render();page.scrollTo(0,0);return;}
   /* Golf Mate 연동 — 입장하기 → 공유계정 핸드오프 시트 */
   if(e.target.closest('[data-golf]')){gmGateOpen=true;render();return;}
+  if(e.target.closest('[data-clnew]')){clubCreateOpen=true;render();return;}
+  if(e.target.closest('[data-clcancel]')){clubCreateOpen=false;render();return;}
+  const clg=e.target.closest('[data-clgrad]'); if(clg){ wClub.emoji=((document.getElementById('clEmoji')||{}).value||wClub.emoji); wClub.grad=clg.dataset.clgrad; const par=clg.parentElement; par.querySelectorAll('[data-clgrad]').forEach(b=>b.style.border='1px solid #ddd'); clg.style.border='3px solid #111'; return; }
+  if(e.target.closest('[data-clcreate]')){createClub();return;}
   const cap=e.target.closest('[data-clubapply]'); if(cap){applyClub(cap.dataset.clubapply);return;}
   const cen=e.target.closest('[data-clubenter]'); if(cen){openClub(cen.dataset.clubenter);return;}
   if(e.target.closest('[data-clubback]')){clubOpen=null;clubData=null;render();page.scrollTo(0,0);return;}
