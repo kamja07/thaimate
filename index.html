@@ -385,7 +385,18 @@ const SB_URL=BRAND.supabaseUrl;
 const SB_KEY=BRAND.supabaseKey;
 const sb = window.supabase.createClient(SB_URL, SB_KEY);
 let uid=null;
-function uname2email(u){return (u||'').toLowerCase().replace(/[^a-z0-9._-]/g,'')+'@thaimate.app';}
+// 아이디 → 내부 이메일. 한글 등 비ASCII는 코드포인트로 인코딩해 고유성 보장(충돌 불가).
+// 순수 영문/숫자 아이디는 예전과 동일(기존 계정 무영향).
+function uname2email(u){
+  const s=(u||'').trim().toLowerCase(); if(!s) return '@thaimate.app';
+  const ascii=s.replace(/[^a-z0-9._-]/g,'');
+  if(ascii===s) return s+'@thaimate.app';
+  let enc='u'+Array.from(s).map(c=>c.codePointAt(0).toString(16)).join('');
+  if(enc.length>60){ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))>>>0; enc='u'+ascii+h.toString(36); }
+  return enc+'@thaimate.app';
+}
+// 레거시(한글 제거) 방식 — 예전에 만든 계정 로그인 호환용
+function legacyEmail(u){return (u||'').trim().toLowerCase().replace(/[^a-z0-9._-]/g,'')+'@thaimate.app';}
 let _hoodsFlat=null;
 function hoodsFlat(){ if(!_hoodsFlat){ _hoodsFlat=[]; Object.keys(REGIONS).forEach(r=>REGIONS[r].hoods.forEach(h=>_hoodsFlat.push(Object.assign({region:r},h)))); } return _hoodsFlat; }
 function hoodByDbId(n){ return hoodsFlat().find(h=>h.dbId===n)||null; }
@@ -579,6 +590,11 @@ async function doAuth(mode){
   if(mode==='signup' && pw!==((document.getElementById('auPw2')||{}).value||'')){toast(lang==='ko'?'비밀번호가 일치하지 않아요':'Passwords do not match');return;}
   const email=uname2email(id);
   let res = (mode==='signup') ? await sb.auth.signUp({email,password:pw}) : await sb.auth.signInWithPassword({email,password:pw});
+  // 레거시 호환: 예전(한글 제거) 방식으로 가입한 한글 아이디 계정은 새 이메일로 못 찾음 → 옛 이메일로 재시도
+  if(mode==='login' && res.error){
+    const legacy=legacyEmail(id);
+    if(legacy!==email){ const r2=await sb.auth.signInWithPassword({email:legacy,password:pw}); if(!r2.error) res=r2; }
+  }
   if(res.error){
     const m=(res.error.message||'').toLowerCase();
     if(mode==='signup' && (m.includes('already')||m.includes('registered')||m.includes('exists'))){
@@ -596,8 +612,8 @@ async function doAuth(mode){
   let sess=res.data&&res.data.session; if(!sess){sess=(await sb.auth.getSession()).data.session;}
   if(!sess){ toast(mode==='signup'?L().e_id_taken:(res.error&&res.error.message)||''); if(mode==='signup'){gateMode='login';render();} return; }
   await applySession(sess); acctId=id;
-  // 원래 입력한 아이디(한글 포함)를 닉네임으로 저장 → 새로고침/다른 세션에서도 그대로 표시
-  try{ if(uid) await sb.from('profiles').upsert({id:uid, nickname:id},{onConflict:'id'}); }catch(e){}
+  // 원래 입력한 아이디(한글 포함)를 닉네임/이름으로 저장 → 새로고침·골프메이트에서도 동일 신원 표시
+  try{ if(uid) await sb.from('profiles').upsert({id:uid, nickname:id, name:id},{onConflict:'id'}); }catch(e){}
   const realEmail=(mode==='signup')?((document.getElementById('auEmail')||{}).value||'').trim():'';
   gateMode='home'; screen='app'; render();
   if(mode==='signup' && realEmail){

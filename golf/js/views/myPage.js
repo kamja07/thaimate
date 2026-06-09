@@ -8,7 +8,8 @@ import { t, getLang } from '../core/i18n.js';
 export async function myPageView() {
   const session = getSession();
   if (!session) return `    <div class="card"><h2>로그인 필요</h2><button class="btn btn-primary" onclick="window._gd.goSignIn()">로그인</button></div>`;
-  
+  const EMBED = !!window.__embed;   // ThaiMate 임베드: 개인정보를 타이메이트 프로필과 일치
+
   const admin = await isAdmin();
   const { count: unreadCount } = await loadUnreadCount();
   const { data: profile, error } = await loadMyProfile();
@@ -40,7 +41,7 @@ export async function myPageView() {
       <h3 style="margin-top:0;font-size:15px;">내 정보 (수정 가능)</h3>
       
       <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:2px;">닉네임 (변경 불가)</label>
-      <input type="text" value="${escapeHtml(profile.name || '')}" disabled style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:12px;background:#f5f5f5;font-size:14px;">
+      <input type="text" value="${escapeHtml(profile.nickname || profile.name || profile.username || '')}" disabled style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:12px;background:#f5f5f5;font-size:14px;">
       
       <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:2px;">실명 (선택)</label>
       <input id="mp_realName" type="text" value="${escapeHtml(profile.real_name || '')}" placeholder="예: 김철수" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:12px;font-size:14px;">
@@ -51,9 +52,17 @@ export async function myPageView() {
       <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:2px;">핸디캡 (0~36)</label>
       <input id="mp_handicap" type="number" min="0" max="36" step="0.1" value="${profile.handicap ?? ''}" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:12px;font-size:14px;">
       
-      <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:2px;">이메일 (선택, 입력 시 자동 인증 메일 발송)</label>
-      <input id="mp_email" type="email" value="${(() => { const u = session.user; const em = (u.email || ''); const isFake = em.toLowerCase().endsWith('@golfdong.local'); return isFake ? escapeHtml(profile.contact_email || '') : escapeHtml(em); })()}" placeholder="예: you@example.com" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px;font-size:14px;">
-      <div id="email-verify-area" style="font-size:11px;color:var(--text-secondary);margin:0 0 12px;">${(() => {
+      <label style="display:block;font-size:12px;color:var(--text-secondary);margin-bottom:2px;">${EMBED ? '이메일 (타이메이트 인증 이메일)' : '이메일 (선택, 입력 시 자동 인증 메일 발송)'}</label>
+      <input id="mp_email" type="email" ${EMBED ? 'disabled' : ''} value="${EMBED ? escapeHtml(profile.email || '') : (() => { const u = session.user; const em = (u.email || ''); const isFake = em.toLowerCase().endsWith('@golfdong.local'); return isFake ? escapeHtml(profile.contact_email || '') : escapeHtml(em); })()}" placeholder="예: you@example.com" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px;font-size:14px;${EMBED ? 'background:#f5f5f5;' : ''}">
+      <div id="email-verify-area" style="font-size:11px;color:var(--text-secondary);margin:0 0 12px;">${EMBED ? (() => {
+          if (profile.email_verified) {
+            return `<span style="color:#2E7D32;font-weight:600;">✓ 타이메이트 인증 이메일</span>`;
+          }
+          if (profile.email) {
+            return `<span style="color:#e65100;font-weight:600;">⚠️ 미인증 — 타이메이트 내정보에서 이메일 인증을 완료하세요</span>`;
+          }
+          return `<span style="color:#888;">타이메이트 내정보에서 이메일을 인증하면 여기에 표시됩니다.</span>`;
+        })() : (() => {
           const u = session.user;
           const _em = (u.email || '').toLowerCase();
           const _isFake = _em.endsWith('@golfdong.local');

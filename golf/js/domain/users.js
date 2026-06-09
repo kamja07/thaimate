@@ -95,8 +95,13 @@ export async function loadAllProfiles() {
 export async function loadMyProfile() {
   const session = (await import('../core/auth.js')).getSession();
   if (!session) return { data: null, error: new Error('로그인 필요') };
+  // 임베드(ThaiMate 백엔드 공유): 인증 이메일·닉네임 등 타이메이트 프로필 컬럼도 함께 읽어
+  // 골프 개인정보를 타이메이트 프로필과 일치시킨다.
+  const cols = window.__embed
+    ? 'id, name, handicap, location, real_name, contact_email, phone, manner_score, created_at, email, email_verified, nickname, username, hood_id'
+    : 'id, name, handicap, location, real_name, contact_email, phone, manner_score, created_at';
   const { data, error } = await sb.from('profiles')
-    .select('id, name, handicap, location, real_name, contact_email, phone, manner_score, created_at')
+    .select(cols)
     .eq('id', session.user.id).maybeSingle();
   return { data, error };
 }

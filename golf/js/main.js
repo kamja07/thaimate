@@ -371,18 +371,20 @@ window._gd = {
   goMemberList() { pushView({ type: 'memberList' }); },
   
   async doUpdateMyProfile() {
+    const EMBED = !!window.__embed;   // 임베드: 이메일은 타이메이트가 관리 → 골프에서 auth 이메일 변경 금지
     const realName = document.getElementById('mp_realName')?.value;
     const location = document.getElementById('mp_location')?.value;
     const handicap = document.getElementById('mp_handicap')?.value;
-    const contactEmail = (document.getElementById('mp_email')?.value || '').trim();
+    // 임베드에선 이메일 칸이 읽기전용(타이메이트 인증값) → contactEmail 미전달로 contact_email/auth 이메일 건드리지 않음
+    const contactEmail = EMBED ? undefined : (document.getElementById('mp_email')?.value || '').trim();
     const phone = document.getElementById('mp_phone')?.value;
     showLoading();
     const r = await updateMyProfile({ realName, location, handicap, contactEmail, phone });
     if (r.error) { hideLoading(); showError(r.error, '프로필 저장'); return; }
 
-    // 이메일 입력 + auth.users.email이 placeholder이거나 다른 이메일이면 자동 인증 메일 발송
+    // 이메일 입력 + auth.users.email이 placeholder이거나 다른 이메일이면 자동 인증 메일 발송 (독립판 전용)
     let emailMsg = '';
-    if (contactEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    if (!EMBED && contactEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
       try {
         const { sb: sbDb } = await import('./core/db.js');
         const { getSession: getSes2 } = await import('./core/auth.js');
