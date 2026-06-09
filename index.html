@@ -1146,7 +1146,7 @@ function viewMyClubs(){
 }
 async function openClub(id){
   clubOpen=id; clubData=null; actFormOpen=false; noticeEditOpen=false; rosterOpen=false; actEditId=null; evOpen=null; evData=null; evCreateOpen=false; clubChatStop(); render(); page.scrollTo(0,0);
-  const cd={activities:[],members:[],pending:[],names:{},joined:new Set(),notices:[],partCounts:{},cmsgs:[],events:[]};
+  const cd={activities:[],members:[],pending:[],names:{},hcps:{},joined:new Set(),notices:[],partCounts:{},cmsgs:[],events:[]};
   const cc=dbClubs.find(x=>x.id===id);
   if(cc&&cc.category==='golf'){
     try{ const ev=await sb.from('events').select('*').eq('club_id',id).eq('type','round').order('event_date',{ascending:false}); cd.events=ev.data||[]; }catch(e){}
@@ -1157,7 +1157,7 @@ async function openClub(id){
   try{ const m=await sb.from('club_members').select('user_id,status,role,created_at').eq('club_id',id).order('created_at');
     const ms=m.data||[]; cd.members=ms.filter(x=>x.status==='approved'); cd.pending=ms.filter(x=>x.status==='pending');
     const ids=[...new Set([...ms.map(x=>x.user_id), ...cd.activities.map(a=>a.creator_id), ...cd.notices.map(n=>n.author_id)].filter(Boolean))];
-    if(ids.length){ try{ const p=await sb.from('profiles').select('id,nickname').in('id',ids); (p.data||[]).forEach(r=>cd.names[r.id]=r.nickname); }catch(e){} }
+    if(ids.length){ try{ const p=await sb.from('profiles').select('id,nickname,handicap').in('id',ids); (p.data||[]).forEach(r=>{cd.names[r.id]=r.nickname;cd.hcps[r.id]=r.handicap;}); }catch(e){} }
   }catch(e){}
   const actIds=cd.activities.map(a=>a.id);
   if(actIds.length){ try{ const ap=await sb.from('activity_participants').select('activity_id,user_id').in('activity_id',actIds);
@@ -1324,14 +1324,15 @@ function viewClubHub(){
         if(isStaff||rowStaff) acts+=chatBtn(m.user_id);   // 운영진↔회원, 회원→운영진 채팅
         if(isLeader && m.role!=='leader') acts+=`<button class="join" style="padding:5px 10px;background:#eef4ff;color:#2f6df0" data-mvice="${m.user_id}:${m.role==='vice'?'member':'vice'}">${m.role==='vice'?(lang==='ko'?'부방장 해제':'Unvice'):(lang==='ko'?'부방장':'Vice')}</button><button class="join" style="padding:5px 10px;background:#fdecec;color:#d33" data-mkick="${m.user_id}">${lang==='ko'?'강퇴':'Kick'}</button>`;
       }
-      return `<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)"><div style="width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:#eef0f3;display:grid;place-items:center;font-size:16px">🧑</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escT(nm(m.user_id))}</div><div style="margin-top:3px">${roleBadge(m.role)}</div></div><div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;align-items:center">${acts}</div></div>`;
+      const hc=clubData.hcps[m.user_id]!=null?` <span style="font-size:11px;color:var(--sub)">${lang==='ko'?'핸디':'h'} ${clubData.hcps[m.user_id]}</span>`:'';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)"><div style="width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:#eef0f3;display:grid;place-items:center;font-size:16px">🧑</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escT(nm(m.user_id))}${hc}</div><div style="margin-top:3px">${roleBadge(m.role)}</div></div><div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;align-items:center">${acts}</div></div>`;
     }).join('');
     return rback+`<h2 class="sech" style="margin:8px 0 8px">👥 ${lang==='ko'?'회원명부':'Members'} (${clubData.members.length})</h2><div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2px 14px 0;box-shadow:var(--shadow)">${rows}</div>`;
   }
   let approvals='';
   if(isLeader&&clubData.pending.length){
     approvals=`<div style="display:block;background:#fff7e8;border:1px solid #ffe6b3;border-radius:14px;padding:12px;margin-bottom:12px"><b style="font-size:14px">🛎️ ${lang==='ko'?'가입 신청':'Join requests'} (${clubData.pending.length})</b>`+
-      clubData.pending.map(p=>`<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><span style="flex:1;font-size:13px">${escT(nm(p.user_id))}</span><button class="join" style="background:#16a34a;padding:6px 12px" data-clubapprove="${c.id}:${p.user_id}">${lang==='ko'?'승인':'OK'}</button><button class="join" style="background:#e5e7eb;color:#374151;padding:6px 12px" data-clubreject="${c.id}:${p.user_id}">${lang==='ko'?'거절':'No'}</button></div>`).join('')+`</div>`;
+      clubData.pending.map(p=>`<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><span style="flex:1;font-size:13px">${escT(nm(p.user_id))}${clubData.hcps[p.user_id]!=null?` <span style="font-size:11px;color:var(--sub)">${lang==='ko'?'핸디':'h'} ${clubData.hcps[p.user_id]}</span>`:''}</span><button class="join" style="background:#16a34a;padding:6px 12px" data-clubapprove="${c.id}:${p.user_id}">${lang==='ko'?'승인':'OK'}</button><button class="join" style="background:#e5e7eb;color:#374151;padding:6px 12px" data-clubreject="${c.id}:${p.user_id}">${lang==='ko'?'거절':'No'}</button></div>`).join('')+`</div>`;
   }
   const actFmt=a=>{ if(!a.when_at) return ''; try{ return new Date(a.when_at).toLocaleString(lang==='ko'?'ko-KR':'en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } };
   const actList=clubData.activities.length?clubData.activities.map(a=>{
@@ -2658,7 +2659,8 @@ function eventDetailView(){
     const inBtn=(isStaff&&!locked)?`<button class="join" style="background:#eef4ff;color:#2f6df0;padding:3px 8px;font-size:11px" data-evscorefor="${p.user_id}">✏️</button>`:'';
     const kBtn=(isStaff&&!finalized&&p.user_id!==uid)?`<button class="join" style="background:#fdecec;color:#d33;padding:3px 8px;font-size:11px" data-evpkick="${p.user_id}">✕</button>`:'';
     const expanded=(evPartOpen===p.user_id&&hasCard)?scorecardView(parOk?evData.hole_pars:null, p.holes):'';
-    return `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13.5px">${escT(p.name)}${me} ${badge}</div>${adj}</div><div style="font-weight:800;font-size:17px;flex-shrink:0">${p.gross!=null?p.gross:'<span style="font-size:12px;color:var(--sub);font-weight:600">'+(lang==='ko'?'미입력':'-')+'</span>'}</div><div style="display:flex;gap:4px;flex-shrink:0">${vBtn}${inBtn}${kBtn}</div></div>${expanded}</div>`;
+    const hcpTag=p.handicap!=null?` <span style="font-size:10.5px;color:var(--sub)">${lang==='ko'?'핸디':'h'} ${p.handicap}</span>`:'';
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13.5px">${escT(p.name)}${hcpTag}${me} ${badge}</div>${adj}</div><div style="font-weight:800;font-size:17px;flex-shrink:0">${p.gross!=null?p.gross:'<span style="font-size:12px;color:var(--sub);font-weight:600">'+(lang==='ko'?'미입력':'-')+'</span>'}</div><div style="display:flex;gap:4px;flex-shrink:0">${vBtn}${inBtn}${kBtn}</div></div>${expanded}</div>`;
   }).join(''):`<div class="empty" style="padding:22px 0;text-align:center;color:var(--sub)">${lang==='ko'?'아직 참가자가 없어요':'No participants yet'}</div>`;
   // 운영진: 동호회 멤버 참가시키기
   let addMemSec='';
