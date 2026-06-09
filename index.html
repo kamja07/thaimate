@@ -2092,23 +2092,33 @@ async function loadGolfCourses(){
   try{ const {data}=await sb.from('golf_courses').select('id,name,name_en,region,district,holes,course_names,pars').order('region',{nullsFirst:false}).order('name'); golfCourses=data||[]; if(golfSub==='course') render(); }catch(e){}
 }
 function parTotal(pars){ if(!pars)return null; let arr=Array.isArray(pars)?pars:(typeof pars==='object'?Object.values(pars).flat():null); if(!arr||!arr.length)return null; const n=arr.reduce((s,p)=>s+(+p||0),0); return n||null; }
-// 코스 pars를 18홀 배열로 정규화 (평면배열 / {main:[18]} / 9홀코스 2개 결합 지원)
-function coursePars18(co){
+// 코스 pars를 18홀 배열로 정규화 (평면배열 / {main:[18]} / 나인 2개 결합)
+// key: 27·36홀 코스에서 'A+B' 처럼 칠 두 나인 지정
+function coursePars18(co, key){
   if(!co||!co.pars) return null; const p=co.pars;
   if(Array.isArray(p)) return p.length===18?p.map(x=>+x):null;
   if(typeof p==='object'){
+    if(key){ const ks=String(key).split('+').map(s=>s.trim()); if(ks.length===2 && Array.isArray(p[ks[0]]) && Array.isArray(p[ks[1]]) && p[ks[0]].length===9 && p[ks[1]].length===9) return [...p[ks[0]],...p[ks[1]]].map(x=>+x); }
     if(Array.isArray(p.main)&&p.main.length===18) return p.main.map(x=>+x);
-    const nines=Object.values(p).filter(v=>Array.isArray(v)&&v.length===9);
-    if(nines.length>=2) return [...nines[0],...nines[1]].map(x=>+x);
+    const keys9=Object.keys(p).filter(k=>Array.isArray(p[k])&&p[k].length===9);
+    if(keys9.length>=2) return [...p[keys9[0]],...p[keys9[1]]].map(x=>+x);
     const any18=Object.values(p).find(v=>Array.isArray(v)&&v.length===18);
     if(any18) return any18.map(x=>+x);
   }
   return null;
 }
+// 27·36홀: 칠 수 있는 나인 조합 목록 (나인 3개 이상일 때만 선택 필요)
+function courseCombos(co){
+  if(!co||!co.pars||typeof co.pars!=='object'||Array.isArray(co.pars)) return [];
+  const keys=Object.keys(co.pars).filter(k=>Array.isArray(co.pars[k])&&co.pars[k].length===9);
+  if(keys.length<3) return [];
+  const out=[]; for(let i=0;i<keys.length;i++)for(let j=i+1;j<keys.length;j++) out.push({key:keys[i]+'+'+keys[j], label:keys[i]+' + '+keys[j]});
+  return out;
+}
 function courseName(co){ if(!co) return ''; return (lang==='ko')?(co.name||co.name_en||''):(co.name_en||co.name||''); }
 const GOLF_REGION_LABELS={'방콕권':{en:'Bangkok',th:'กรุงเทพฯ'},'파타야권':{en:'Pattaya',th:'พัทยา'},'라차부리·칸차나부리권':{en:'Ratchaburi·Kanchanaburi',th:'ราชบุรี·กาญจนบุรี'},'후아힌권':{en:'Hua Hin',th:'หัวหิน'},'카오야이권':{en:'Khao Yai',th:'เขาใหญ่'},'콘깬권':{en:'Khon Kaen',th:'ขอนแก่น'},'치앙마이권':{en:'Chiang Mai',th:'เชียงใหม่'},'치앙라이권':{en:'Chiang Rai',th:'เชียงราย'},'푸켓권':{en:'Phuket',th:'ภูเก็ต'},'기타':{en:'Other',th:'อื่นๆ'}};
 function regionLabel(r){ if(!r) return (lang==='ko')?'기타':(lang==='th'?'อื่นๆ':'Other'); const m=GOLF_REGION_LABELS[r]; if(lang==='ko'||!m) return r; return m[lang]||m.en||r; }
-function evCourseLabel(ev){ if(!ev) return ''; if(ev.course_id){ const co=golfCourses.find(c=>c.id===ev.course_id); if(co) return courseName(co); } return ev.course||''; }
+function evCourseLabel(ev){ if(!ev) return ''; let nm=''; if(ev.course_id){ const co=golfCourses.find(c=>c.id===ev.course_id); if(co) nm=courseName(co); } if(!nm) nm=ev.course||''; if(ev.course_key) nm+=' ('+ev.course_key+')'; return nm; }
 async function saveCourse(){
   if(!canAct()) return;
   const v=id=>((document.getElementById(id)||{}).value||'').trim();
@@ -2251,7 +2261,7 @@ async function openEvent(eventId){
     // par 보강: 이벤트에 18홀 par 없으면 코스에서 채움(표시 + DB 영구반영, 권한 있으면)
     if(evData && (!Array.isArray(evData.hole_pars)||evData.hole_pars.length!==18) && evData.course_id){
       if(!golfCourses.length){ try{ const gc=await sb.from('golf_courses').select('id,name,name_en,region,district,holes,course_names,pars').order('name'); golfCourses=gc.data||[]; }catch(e){} }
-      const co=golfCourses.find(c=>c.id===evData.course_id); const p18=co?coursePars18(co):null;
+      const co=golfCourses.find(c=>c.id===evData.course_id); const p18=co?coursePars18(co, evData.course_key):null;
       if(p18){ evData.hole_pars=p18; try{ await sb.from('events').update({hole_pars:p18}).eq('id',eventId); }catch(e){} }
     }
     if(evOpen===eventId) render();
@@ -2264,8 +2274,9 @@ async function createEvent(clubId){
   if(!name){ toast(lang==='ko'?'이벤트 이름을 입력하세요':'Enter name'); return; }
   if(!date){ toast(lang==='ko'?'라운드 날짜를 선택하세요':'Pick a date'); return; }
   const co=golfCourses.find(c=>c.id===courseSel);
+  const comboKey=((document.getElementById('evCombo')||{}).value||'').trim();
   const row={club_id:clubId,name,type:'round',event_date:date,status:'scheduled',created_by:uid};
-  if(co){ row.course=co.name; row.course_id=co.id; const p18=coursePars18(co); if(p18) row.hole_pars=p18; }
+  if(co){ row.course=co.name; row.course_id=co.id; if(comboKey) row.course_key=comboKey; const p18=coursePars18(co, comboKey); if(p18) row.hole_pars=p18; }
   try{ const {error}=await sb.from('events').insert(row); if(error){toast(error.message);return;} toast(lang==='ko'?'라운드 이벤트 개설!':'Created'); evCreateOpen=false; openClub(clubId); }catch(e){toast(String(e.message||e));}
 }
 async function deleteEvent(eventId){ if(!confirm(lang==='ko'?'이 라운드 이벤트를 삭제할까요?':'Delete this event?'))return; const cid=clubOpen; try{ const {error}=await sb.from('events').delete().eq('id',eventId); if(error){toast(error.message);return;} toast(lang==='ko'?'삭제됨':'Deleted'); evOpen=null; evData=null; openClub(cid); }catch(e){toast(String(e.message||e));} }
@@ -2353,16 +2364,25 @@ function evCompute(){
 function golfEventForm(c){
   const inp='width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:14px;margin-bottom:8px';
   const phCourse=lang==='ko'?'골프장 선택 (Par 자동)':lang==='th'?'เลือกสนาม':'Select course';
+  const phCombo=lang==='ko'?'칠 코스 조합 선택 (예: A+B)':lang==='th'?'เลือกคอร์ส (เช่น A+B)':'Select 9s (e.g. A+B)';
+  // 골프장 선택 시 27·36홀이면 코스 조합 선택 노출/채우기
+  window.__gmComboSel=function(cid){
+    const wrap=document.getElementById('evComboWrap'), sel=document.getElementById('evCombo'); if(!wrap||!sel) return;
+    const co=golfCourses.find(x=>x.id===cid); const combos=courseCombos(co);
+    if(!combos.length){ wrap.style.display='none'; sel.innerHTML=''; return; }
+    wrap.style.display=''; sel.innerHTML=`<option value="">${phCombo}</option>`+combos.map(c=>`<option value="${escA(c.key)}">${escT(c.label)}</option>`).join('');
+  };
   // 지역 선택 시 해당 지역 골프장만 채우기 (전역 핸들러 — 다른 입력값 보존)
   window.__gmCourseSel=function(region){
     const sel=document.getElementById('evCourse'); if(!sel) return;
     const list=(region?golfCourses.filter(x=>x.region===region):golfCourses).slice().sort((a,b)=>courseName(a).localeCompare(courseName(b)));
     sel.innerHTML=`<option value="">${phCourse}</option>`+list.map(co=>`<option value="${co.id}">${escA(courseName(co))}</option>`).join('');
+    window.__gmComboSel('');
   };
   const regions=[...new Set(golfCourses.map(co=>co.region).filter(Boolean))];
   const regOpts=`<option value="">${lang==='ko'?'지역 선택':lang==='th'?'เลือกภูมิภาค':'Select region'}</option>`+regions.map(r=>`<option value="${escA(r)}">${escT(regionLabel(r))}</option>`).join('');
   const courseOpts=`<option value="">${phCourse}</option>`+golfCourses.slice().sort((a,b)=>courseName(a).localeCompare(courseName(b))).map(co=>`<option value="${co.id}">${escA(courseName(co))}</option>`).join('');
-  return `<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;box-shadow:var(--shadow);margin-bottom:10px"><div style="font-weight:800;margin-bottom:8px">${lang==='ko'?'라운드 이벤트 개설':lang==='th'?'สร้างอีเวนต์ออกรอบ':'New round event'}</div><input id="evName" placeholder="${lang==='ko'?'이벤트 이름 (예: 6월 정기 라운드)':lang==='th'?'ชื่ออีเวนต์':'Event name'}" style="${inp}"><input id="evDate" type="date" style="${inp}"><div style="display:flex;gap:8px"><select id="evRegion" onchange="window.__gmCourseSel(this.value)" style="${inp};flex:0 0 40%">${regOpts}</select><select id="evCourse" style="${inp};flex:1">${courseOpts}</select></div><div style="display:flex;gap:8px"><button class="gbtn line" data-evcreatecancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-evcreatesave="${c.id}" style="flex:2">${lang==='ko'?'개설':'Create'}</button></div></div>`;
+  return `<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;box-shadow:var(--shadow);margin-bottom:10px"><div style="font-weight:800;margin-bottom:8px">${lang==='ko'?'라운드 이벤트 개설':lang==='th'?'สร้างอีเวนต์ออกรอบ':'New round event'}</div><input id="evName" placeholder="${lang==='ko'?'이벤트 이름 (예: 6월 정기 라운드)':lang==='th'?'ชื่ออีเวนต์':'Event name'}" style="${inp}"><input id="evDate" type="date" style="${inp}"><div style="display:flex;gap:8px"><select id="evRegion" onchange="window.__gmCourseSel(this.value)" style="${inp};flex:0 0 40%">${regOpts}</select><select id="evCourse" onchange="window.__gmComboSel(this.value)" style="${inp};flex:1">${courseOpts}</select></div><div id="evComboWrap" style="display:none"><select id="evCombo" style="${inp}"></select></div><div style="display:flex;gap:8px"><button class="gbtn line" data-evcreatecancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-evcreatesave="${c.id}" style="flex:2">${lang==='ko'?'개설':'Create'}</button></div></div>`;
 }
 function golfEventsSecHtml(c,isStaff){
   if(!c||c.category!=='golf') return '';
