@@ -2092,6 +2092,19 @@ async function loadGolfCourses(){
   try{ const {data}=await sb.from('golf_courses').select('id,name,name_en,region,district,holes,course_names,pars').order('region',{nullsFirst:false}).order('name'); golfCourses=data||[]; if(golfSub==='course') render(); }catch(e){}
 }
 function parTotal(pars){ if(!pars)return null; let arr=Array.isArray(pars)?pars:(typeof pars==='object'?Object.values(pars).flat():null); if(!arr||!arr.length)return null; const n=arr.reduce((s,p)=>s+(+p||0),0); return n||null; }
+// 코스 pars를 18홀 배열로 정규화 (평면배열 / {main:[18]} / 9홀코스 2개 결합 지원)
+function coursePars18(co){
+  if(!co||!co.pars) return null; const p=co.pars;
+  if(Array.isArray(p)) return p.length===18?p.map(x=>+x):null;
+  if(typeof p==='object'){
+    if(Array.isArray(p.main)&&p.main.length===18) return p.main.map(x=>+x);
+    const nines=Object.values(p).filter(v=>Array.isArray(v)&&v.length===9);
+    if(nines.length>=2) return [...nines[0],...nines[1]].map(x=>+x);
+    const any18=Object.values(p).find(v=>Array.isArray(v)&&v.length===18);
+    if(any18) return any18.map(x=>+x);
+  }
+  return null;
+}
 function courseName(co){ if(!co) return ''; return (lang==='ko')?(co.name||co.name_en||''):(co.name_en||co.name||''); }
 const GOLF_REGION_LABELS={'방콕권':{en:'Bangkok',th:'กรุงเทพฯ'},'파타야권':{en:'Pattaya',th:'พัทยา'},'라차부리·칸차나부리권':{en:'Ratchaburi·Kanchanaburi',th:'ราชบุรี·กาญจนบุรี'},'후아힌권':{en:'Hua Hin',th:'หัวหิน'},'카오야이권':{en:'Khao Yai',th:'เขาใหญ่'},'콘깬권':{en:'Khon Kaen',th:'ขอนแก่น'},'치앙마이권':{en:'Chiang Mai',th:'เชียงใหม่'},'치앙라이권':{en:'Chiang Rai',th:'เชียงราย'},'푸켓권':{en:'Phuket',th:'ภูเก็ต'},'기타':{en:'Other',th:'อื่นๆ'}};
 function regionLabel(r){ if(!r) return (lang==='ko')?'기타':(lang==='th'?'อื่นๆ':'Other'); const m=GOLF_REGION_LABELS[r]; if(lang==='ko'||!m) return r; return m[lang]||m.en||r; }
@@ -2235,6 +2248,12 @@ async function openEvent(eventId){
     if(ids.length){ try{ const p=await sb.from('profiles').select('id,nickname,handicap').in('id',ids); (p.data||[]).forEach(r=>{names[r.id]=r.nickname;hcps[r.id]=r.handicap;}); }catch(e){} }
     evParts=parts.map(p=>({user_id:p.user_id,name:names[p.user_id]||(lang==='ko'?'회원':'Member'),handicap:hcps[p.user_id]??null,status:p.status,total:rby[p.user_id]?.total??null,holes:rby[p.user_id]?.holes??null}));
     const aw=await sb.from('event_awards').select('*').eq('event_id',eventId).maybeSingle(); evAwards=aw.data||null;
+    // par 보강: 이벤트에 18홀 par 없으면 코스에서 채움(표시 + DB 영구반영, 권한 있으면)
+    if(evData && (!Array.isArray(evData.hole_pars)||evData.hole_pars.length!==18) && evData.course_id){
+      if(!golfCourses.length){ try{ const gc=await sb.from('golf_courses').select('id,name,name_en,region,district,holes,course_names,pars').order('name'); golfCourses=gc.data||[]; }catch(e){} }
+      const co=golfCourses.find(c=>c.id===evData.course_id); const p18=co?coursePars18(co):null;
+      if(p18){ evData.hole_pars=p18; try{ await sb.from('events').update({hole_pars:p18}).eq('id',eventId); }catch(e){} }
+    }
     if(evOpen===eventId) render();
   }catch(e){}
 }
@@ -2246,7 +2265,7 @@ async function createEvent(clubId){
   if(!date){ toast(lang==='ko'?'라운드 날짜를 선택하세요':'Pick a date'); return; }
   const co=golfCourses.find(c=>c.id===courseSel);
   const row={club_id:clubId,name,type:'round',event_date:date,status:'scheduled',created_by:uid};
-  if(co){ row.course=co.name; row.course_id=co.id; if(Array.isArray(co.pars)&&co.pars.length===18) row.hole_pars=co.pars; }
+  if(co){ row.course=co.name; row.course_id=co.id; const p18=coursePars18(co); if(p18) row.hole_pars=p18; }
   try{ const {error}=await sb.from('events').insert(row); if(error){toast(error.message);return;} toast(lang==='ko'?'라운드 이벤트 개설!':'Created'); evCreateOpen=false; openClub(clubId); }catch(e){toast(String(e.message||e));}
 }
 async function deleteEvent(eventId){ if(!confirm(lang==='ko'?'이 라운드 이벤트를 삭제할까요?':'Delete this event?'))return; const cid=clubOpen; try{ const {error}=await sb.from('events').delete().eq('id',eventId); if(error){toast(error.message);return;} toast(lang==='ko'?'삭제됨':'Deleted'); evOpen=null; evData=null; openClub(cid); }catch(e){toast(String(e.message||e));} }
