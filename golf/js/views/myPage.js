@@ -19,7 +19,7 @@ export async function myPageView() {
       <p style="color:#888;font-size:12px;margin:0 0 16px;">관리자에 의해 계정이 삭제되었거나 세션이 만료되었을 수 있습니다. 강제 로그아웃 후 다시 로그인해주세요.</p>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-secondary" style="flex:1;" onclick="window._gd.goBack()">뒤로</button>
-        <button class="btn btn-primary" style="flex:2;background:#d32f2f;color:white;border:none;font-weight:700;" onclick="if(confirm('정말 로그아웃하시겠습니까?')){try{localStorage.clear();sessionStorage.clear();}catch(e){}location.href='/';}">🚪 강제 로그아웃</button>
+        ${EMBED ? `<button class="btn btn-primary" style="flex:2;font-weight:700;" onclick="location.reload()">🔄 새로고침</button>` : `<button class="btn btn-primary" style="flex:2;background:#d32f2f;color:white;border:none;font-weight:700;" onclick="if(confirm('정말 로그아웃하시겠습니까?')){try{localStorage.clear();sessionStorage.clear();}catch(e){}location.href='/';}">🚪 강제 로그아웃</button>`}
       </div>
     </div>`;
   
@@ -96,7 +96,7 @@ export async function myPageView() {
         <div style="font-weight:700;font-size:16px;">⛳ 내 라운드 기록</div>
         <div style="font-size:12px;opacity:0.9;margin-top:4px;">개인 라운드 + 동호회 라운드 통계</div>
       </div>
-      <button class="btn btn-secondary" style="font-size:13px;color:#d32f2f;border-color:#ffcdd2;" onclick="window._gd.doSignOut()">로그아웃</button>
+      ${EMBED ? `<div style="font-size:12px;color:var(--text-secondary);text-align:center;padding:8px 0;">로그아웃은 타이메이트에서 하실 수 있어요</div>` : `<button class="btn btn-secondary" style="font-size:13px;color:#d32f2f;border-color:#ffcdd2;" onclick="window._gd.doSignOut()">로그아웃</button>`}
     </div>
     
     ${admin ? `
