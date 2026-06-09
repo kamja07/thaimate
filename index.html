@@ -2116,6 +2116,37 @@ function courseCombos(co){
   return out;
 }
 function courseName(co){ if(!co) return ''; return (lang==='ko')?(co.name||co.name_en||''):(co.name_en||co.name||''); }
+// 골프장 추가/수정 Par 입력 스코어카드 (18→main 18홀, 27/36→나인별 9홀 라벨)
+function parGridHTML(holes, pars, names){
+  holes=+holes||18;
+  const th='padding:2px 0;font-size:9px;color:#475569;font-weight:700;background:#eef2f7;border:1px solid var(--line);text-align:center';
+  const row9=(startGi, startHole, vals, voff)=>{
+    let hr='',pr='';
+    for(let k=0;k<9;k++){ const gi=startGi+k, hn=startHole+k;
+      hr+=`<td style="${th}">${hn}</td>`;
+      const val=(vals&&vals[voff+k]!=null&&vals[voff+k]!=='')?vals[voff+k]:'';
+      pr+=`<td style="padding:0;border:1px solid var(--line)"><input id="gcp${gi}" type="number" inputmode="numeric" min="3" max="6" value="${val}" style="width:100%;box-sizing:border-box;padding:6px 0;border:none;text-align:center;font-size:13px;outline:none;background:transparent"></td>`;
+    }
+    return `<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:4px"><tr>${hr}</tr><tr>${pr}</tr></table>`;
+  };
+  const p=(pars&&typeof pars==='object'&&!Array.isArray(pars))?pars:null;
+  const flat=Array.isArray(pars)?pars:null;
+  if(holes===18){
+    let vals=null; if(p&&Array.isArray(p.main))vals=p.main; else if(flat&&flat.length>=18)vals=flat;
+    else if(p){const ks=Object.keys(p).filter(k=>Array.isArray(p[k])&&p[k].length===9); if(ks.length>=2)vals=[...p[ks[0]],...p[ks[1]]];}
+    return `<div style="font-size:11px;color:var(--sub);font-weight:700;margin:6px 0 4px">${lang==='ko'?'홀별 Par (1-18)':'Hole pars (1-18)'}</div>`+row9(0,1,vals,0)+row9(9,10,vals,9);
+  }
+  const nn=Math.round(holes/9); const objKeys=p?Object.keys(p).filter(k=>Array.isArray(p[k])&&p[k].length===9):[]; const nm=Array.isArray(names)?names:[];
+  let html='';
+  for(let n=0;n<nn;n++){
+    const key=(nm[n]&&p&&Array.isArray(p[nm[n]]))?nm[n]:objKeys[n];
+    const vals=(p&&key&&Array.isArray(p[key]))?p[key]:null;
+    const label=nm[n]||objKeys[n]||String.fromCharCode(65+n);
+    html+=`<div style="display:flex;align-items:center;gap:6px;margin:9px 0 4px"><span style="font-size:11px;color:var(--sub);font-weight:700">${lang==='ko'?'코스':'Nine'} ${n+1}</span><input id="gcnl${n}" value="${escA(label)}" placeholder="A" style="flex:0 0 90px;padding:5px 8px;border:1px solid var(--line);border-radius:7px;font-size:13px"></div>`;
+    html+=row9(n*9, n*9+1, vals, 0);
+  }
+  return html;
+}
 const GOLF_REGION_LABELS={'방콕권':{en:'Bangkok',th:'กรุงเทพฯ'},'파타야권':{en:'Pattaya',th:'พัทยา'},'라차부리·칸차나부리권':{en:'Ratchaburi·Kanchanaburi',th:'ราชบุรี·กาญจนบุรี'},'후아힌권':{en:'Hua Hin',th:'หัวหิน'},'카오야이권':{en:'Khao Yai',th:'เขาใหญ่'},'콘깬권':{en:'Khon Kaen',th:'ขอนแก่น'},'치앙마이권':{en:'Chiang Mai',th:'เชียงใหม่'},'치앙라이권':{en:'Chiang Rai',th:'เชียงราย'},'푸켓권':{en:'Phuket',th:'ภูเก็ต'},'기타':{en:'Other',th:'อื่นๆ'}};
 function regionLabel(r){ if(!r) return (lang==='ko')?'기타':(lang==='th'?'อื่นๆ':'Other'); const m=GOLF_REGION_LABELS[r]; if(lang==='ko'||!m) return r; return m[lang]||m.en||r; }
 function evCourseLabel(ev){ if(!ev) return ''; let nm=''; if(ev.course_id){ const co=golfCourses.find(c=>c.id===ev.course_id); if(co) nm=courseName(co); } if(!nm) nm=ev.course||''; if(ev.course_key) nm+=' ('+ev.course_key+')'; return nm; }
@@ -2125,10 +2156,20 @@ async function saveCourse(){
   const name=v('gcName'); if(!name){ toast(lang==='ko'?'골프장 이름을 입력하세요':'Enter name'); return; }
   const holes=+(v('gcHoles')||18);
   const row={name, name_en:v('gcNameEn')||null, region:v('gcRegion')||null, district:v('gcDistrict')||null, holes};
-  const cn=v('gcCourseNames'); row.course_names=cn?cn.split(',').map(s=>s.trim()).filter(Boolean):null;
-  const ps=v('gcPars');
-  if(ps){ const arr=ps.split(/[ ,]+/).map(x=>parseInt(x,10)).filter(x=>!isNaN(x)); if(arr.length){ if(!arr.every(p=>p>=3&&p<=6)){ toast(lang==='ko'?'Par는 3~6 사이여야 해요':'Par 3-6 only'); return; } row.pars=arr; } else row.pars=null; }
-  else row.pars=null;
+  const getp=i=>{ const el=document.getElementById('gcp'+i); const s=el?el.value.trim():''; if(s==='')return null; const n=parseInt(s,10); return isNaN(n)?null:n; };
+  let parErr=false;
+  if(holes===18){
+    const arr=[]; let any=false; for(let i=0;i<18;i++){ const x=getp(i); if(x!=null){ any=true; if(x<3||x>6)parErr=true; } arr.push(x); }
+    if(parErr){ toast(lang==='ko'?'Par는 3~6 사이여야 해요':'Par 3-6 only'); return; }
+    row.pars=(any&&arr.every(x=>x!=null))?{main:arr.map(Number)}:null; row.course_names=null;
+  } else {
+    const nn=holes/9, obj={}, names=[];
+    for(let n=0;n<nn;n++){ const lbl=((document.getElementById('gcnl'+n)||{}).value||'').trim()||String.fromCharCode(65+n);
+      const seg=[]; let segOk=true; for(let k=0;k<9;k++){ const x=getp(n*9+k); if(x==null)segOk=false; else if(x<3||x>6)parErr=true; seg.push(x); }
+      names.push(lbl); if(segOk) obj[lbl]=seg.map(Number); }
+    if(parErr){ toast(lang==='ko'?'Par는 3~6 사이여야 해요':'Par 3-6 only'); return; }
+    row.pars=Object.keys(obj).length?obj:null; row.course_names=names.length?names:null;
+  }
   try{
     if(golfCourseEdit){ const {error}=await sb.from('golf_courses').update(row).eq('id',golfCourseEdit); if(error){toast(error.message);return;} golfCourseEdit=null; toast(lang==='ko'?'수정됨':'Updated'); }
     else { const {error}=await sb.from('golf_courses').insert(row); if(error){toast(error.message);return;} toast(lang==='ko'?'골프장 추가됨':'Added'); }
@@ -2141,14 +2182,14 @@ function golfCoursesView(){
   const inp='width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:14px;margin-bottom:8px';
   const verified=authed&&emailVerified;
   const ec=golfCourseEdit?golfCourses.find(c=>c.id===golfCourseEdit):null;
+  window.__gmParGrid=function(holes){ const a=document.getElementById('gcParArea'); if(a) a.innerHTML=parGridHTML(holes, null, null); };
   const opt=(arr,sel)=>arr.map(o=>`<option ${String(sel)===String(o)?'selected':''}>${o}</option>`).join('');
   const form=(golfCourseForm||ec)?`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px"><div style="font-weight:800;margin-bottom:10px">${ec?(lang==='ko'?'골프장 수정':'Edit course'):(lang==='ko'?'골프장 추가':'Add course')}</div>`
     +`<input id="gcName" value="${ec?escA(ec.name||''):''}" placeholder="${lang==='ko'?'골프장 이름 *':'Name *'}" style="${inp}">`
     +`<input id="gcNameEn" value="${ec?escA(ec.name_en||''):''}" placeholder="${lang==='ko'?'영문명 (선택)':'English name'}" style="${inp}">`
-    +`<div style="display:flex;gap:8px"><select id="gcRegion" style="${inp};flex:1">${opt(GOLF_REGIONS, ec&&ec.region?ec.region:'방콕권')}</select><select id="gcHoles" style="${inp};flex:0 0 92px">${opt([18,27,36], ec&&ec.holes?ec.holes:18)}</select></div>`
+    +`<div style="display:flex;gap:8px"><select id="gcRegion" style="${inp};flex:1">${opt(GOLF_REGIONS, ec&&ec.region?ec.region:'방콕권')}</select><select id="gcHoles" onchange="window.__gmParGrid(this.value)" style="${inp};flex:0 0 92px">${opt([18,27,36], ec&&ec.holes?ec.holes:18)}</select></div>`
     +`<input id="gcDistrict" value="${ec?escA(ec.district||''):''}" placeholder="${lang==='ko'?'세부 지역/도시 (선택)':'District'}" style="${inp}">`
-    +`<input id="gcCourseNames" value="${ec&&Array.isArray(ec.course_names)?escA(ec.course_names.join(', ')):''}" placeholder="${lang==='ko'?'코스명 쉼표구분 (예: A, B, C)':'Course names (A, B, C)'}" style="${inp}">`
-    +`<input id="gcPars" value="${ec&&Array.isArray(ec.pars)?escA(ec.pars.join(',')):''}" placeholder="${lang==='ko'?'홀별 Par 쉼표구분 (예: 4,5,4,3...)':'Pars e.g. 4,5,4,3'}" style="${inp}">`
+    +`<div id="gcParArea">${parGridHTML(ec?ec.holes:18, ec?ec.pars:null, ec?ec.course_names:null)}</div>`
     +`<div style="display:flex;gap:8px"><button class="gbtn line" data-gccancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-gcsave style="flex:2">${ec?(lang==='ko'?'수정 완료':'Update'):(lang==='ko'?'추가':'Add')}</button></div></div>`
     :`<button class="gbtn primary" data-gcnew style="width:100%;margin-bottom:10px">➕ ${lang==='ko'?'골프장 추가':'Add course'}</button>`;
   const regions=[...new Set(golfCourses.map(c=>c.region).filter(Boolean))];
@@ -2395,6 +2436,41 @@ function golfEventsSecHtml(c,isStaff){
   }).join(''):`<div class="empty" style="padding:16px 0;text-align:center;color:var(--sub);font-size:13px">${lang==='ko'?'아직 라운드 이벤트가 없어요':'No round events yet'}</div>`;
   return `<h2 class="sech" style="margin:14px 0 8px">🏆 ${lang==='ko'?'정기 라운드 · 시상':'Rounds & awards'}</h2>`+createUI+list;
 }
+// 통상 스코어카드 포맷: Par행(읽기) + 스코어행(입력) + OUT/IN/Total, 입력 id=evh0..17
+function scorecardHTML(pars, vals){
+  const P=(Array.isArray(pars)&&pars.length===18)?pars:null;
+  window.__gmParTot=P?P.reduce((a,b)=>a+(+b||0),0):0;
+  const V=Array.isArray(vals)?vals:[];
+  window.__gmSC=function(){
+    const g=i=>{const e=document.getElementById('evh'+i);const v=e?parseInt(e.value,10):NaN;return isNaN(v)?0:v;};
+    let out=0,inn=0;for(let i=0;i<9;i++)out+=g(i);for(let i=9;i<18;i++)inn+=g(i);
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('evOut',out||'');set('evIn',inn||'');const tot=out+inn;set('evTot',tot||0);
+    const pt=window.__gmParTot||0;const el=document.getElementById('evToPar');
+    if(el){ if(tot&&pt){const d=tot-pt;el.textContent='('+(d>=0?'+':'')+d+')';} else el.textContent=''; }
+  };
+  const th='padding:3px 0;font-size:10px;color:#475569;font-weight:700;background:#eef2f7;border:1px solid var(--line)';
+  const pd='padding:3px 0;font-size:11.5px;border:1px solid var(--line);text-align:center';
+  const lab='padding:3px 5px;font-size:10px;font-weight:800;border:1px solid var(--line);background:#f8fafc;white-space:nowrap';
+  const sumc=(from,to)=>{let s=0;for(let i=from;i<to;i++){const v=parseInt(V[i],10);if(!isNaN(v))s+=v;}return s;};
+  const outInit=sumc(0,9),inInit=sumc(9,18),totInit=outInit+inInit;
+  function nine(s,lbl,sumId){
+    let hRow=`<td style="${lab}">${lang==='ko'?'홀':'Hole'}</td>`,pRow=`<td style="${lab}">Par</td>`,scRow=`<td style="${lab}">${lang==='ko'?'스코어':'Score'}</td>`;let psum=0;
+    for(let k=0;k<9;k++){const i=s+k;const par=P?P[i]:null;if(par)psum+=par;
+      hRow+=`<td style="${th}">${i+1}</td>`;
+      pRow+=`<td style="${pd};color:var(--sub)">${par||'-'}</td>`;
+      const v=(V[i]!=null&&V[i]!=='')?V[i]:'';
+      scRow+=`<td style="padding:0;border:1px solid var(--line)"><input id="evh${i}" type="number" inputmode="numeric" min="1" max="15" value="${v}" oninput="window.__gmSC()" style="width:100%;box-sizing:border-box;padding:8px 0;border:none;text-align:center;font-size:14px;outline:none;background:transparent"></td>`;
+    }
+    hRow+=`<td style="${th}">${lbl}</td>`;
+    pRow+=`<td style="${pd};font-weight:800;background:#eef2f7">${psum||'-'}</td>`;
+    scRow+=`<td style="${pd};font-weight:800;background:#eef2f7;color:#0b7a3b" id="${sumId}">${(s===0?outInit:inInit)||''}</td>`;
+    return `<tr>${hRow}</tr><tr>${pRow}</tr><tr>${scRow}</tr>`;
+  }
+  const toParInit=(totInit&&P)?('('+((totInit-window.__gmParTot)>=0?'+':'')+(totInit-window.__gmParTot)+')'):'';
+  return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed">${nine(0,'OUT','evOut')}<tr><td colspan="11" style="height:5px;border:none"></td></tr>${nine(9,'IN','evIn')}</table></div>`
+   +`<div style="display:flex;justify-content:flex-end;align-items:baseline;gap:6px;margin-top:9px;font-size:14px;font-weight:800">${lang==='ko'?'합계':'Total'} <span id="evTot" style="color:#0b7a3b;font-size:17px">${totInit||0}</span>${P?` <span style="color:var(--sub);font-weight:600;font-size:12px">/ Par ${window.__gmParTot}</span> <span id="evToPar" style="color:var(--sub);font-weight:700">${toParInit}</span>`:''}</div>`;
+}
 function eventDetailView(){
   const c=dbClubs.find(x=>x.id===clubOpen);
   const back=`<button class="gmback" data-evback>‹ ${escT((c&&c.name)||(lang==='ko'?'동호회':'Club'))}</button>`;
@@ -2416,9 +2492,7 @@ function eventDetailView(){
   if(joined&&!locked){
     const me=evParts.find(p=>p.user_id===uid);
     if(evScoreOpen){
-      const cell=i=>{ const v=(me&&Array.isArray(me.holes)&&me.holes[i]!=null)?me.holes[i]:''; const par=parOk?evData.hole_pars[i]:''; return `<div style="flex:0 0 11.11%;box-sizing:border-box;padding:1px;text-align:center"><div style="font-size:9px;color:var(--sub)">${i+1}${par?'·'+par:''}</div><input id="evh${i}" type="number" min="1" max="15" value="${v}" style="width:100%;box-sizing:border-box;padding:5px 1px;border:1px solid var(--line);border-radius:6px;text-align:center;font-size:13px"></div>`; };
-      let g1='',g2=''; for(let i=0;i<9;i++)g1+=cell(i); for(let i=9;i<18;i++)g2+=cell(i);
-      scoreBar=`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow);margin-bottom:12px"><div style="font-weight:800;margin-bottom:8px">⛳ ${lang==='ko'?'내 스코어 (18홀)':'My score (18)'}</div><div style="display:flex;flex-wrap:wrap">${g1}</div><div style="display:flex;flex-wrap:wrap;margin-top:4px">${g2}</div><div style="display:flex;gap:8px;margin-top:10px"><button class="gbtn line" data-evscorecancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-evscoresave="${evData.id}" style="flex:2">${lang==='ko'?'저장':'Save'}</button></div></div>`;
+      scoreBar=`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow);margin-bottom:12px"><div style="font-weight:800;margin-bottom:10px">⛳ ${lang==='ko'?'내 스코어카드':'My scorecard'}</div>${scorecardHTML(parOk?evData.hole_pars:null, me&&me.holes)}<div style="display:flex;gap:8px;margin-top:12px"><button class="gbtn line" data-evscorecancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-evscoresave="${evData.id}" style="flex:2">${lang==='ko'?'저장':'Save'}</button></div></div>`;
     } else {
       const has=me&&me.total!=null;
       scoreBar=`<button class="gbtn ${has?'line':'primary'}" data-evscoreopen style="width:100%;margin-bottom:12px">${has?`✏️ ${lang==='ko'?'내 스코어 수정':'Edit my score'} (${me.total})`:`✏️ ${lang==='ko'?'내 스코어 입력':'Enter my score'}`}</button>`;
