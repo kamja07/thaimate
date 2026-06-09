@@ -1421,7 +1421,8 @@ let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk
     golfSub=null, golfMatches=[], golfMatchForm=false, golfMatchEdit=null,
     golfCourses=[], golfCourseForm=false, golfCourseEdit=null, golfCourseRegion='',
     golfRounds=[], golfRoundForm=false, golfRoundOpen=null, myHcp=null, hcpEditOpen=false,
-    evOpen=null, evData=null, evParts=[], evAwards=null, evScoreOpen=false, evCreateOpen=false;
+    evOpen=null, evData=null, evParts=[], evAwards=null, evScoreOpen=false, evCreateOpen=false,
+    evScoreTarget=null, evPartOpen=null, evAddMemOpen=false;
 const L=()=>T[lang];
 const gm=()=>GM[lang];
 const tx=o=> o==null?"":(typeof o==="string"?o:(o[lang]||o.ko));
@@ -2334,7 +2335,7 @@ function cmpCountback(aScore,bScore,aH,bH){
 }
 function methodLabel(m){ return {none:lang==='ko'?'보정 없음':'None',peoria:lang==='ko'?'신페리오':'Peoria',stableford:lang==='ko'?'스테이블포드':'Stableford',stableford_net:lang==='ko'?'스테이블포드(넷)':'Stableford(net)',gross:lang==='ko'?'그로스':'Gross',net:lang==='ko'?'넷':'Net'}[m]||m; }
 async function openEvent(eventId){
-  evOpen=eventId; evScoreOpen=false; render(); page.scrollTo(0,0);
+  evOpen=eventId; evScoreOpen=false; evScoreTarget=null; evPartOpen=null; evAddMemOpen=false; render(); page.scrollTo(0,0);
   try{
     const ev=await sb.from('events').select('*').eq('id',eventId).maybeSingle(); evData=ev.data||null;
     const pr=await sb.from('event_participants').select('user_id,status').eq('event_id',eventId); const parts=pr.data||[];
@@ -2369,15 +2370,18 @@ async function joinEvent(eventId){ if(!canAct())return; try{ const {error}=await
 async function leaveEvent(eventId){ try{ const {error}=await sb.from('event_participants').delete().eq('event_id',eventId).eq('user_id',uid); if(error){toast(error.message);return;} openEvent(eventId); }catch(e){toast(String(e.message||e));} }
 async function saveMyScore(eventId){
   if(!canAct())return;
+  const target=evScoreTarget||uid;
   const holes=[]; for(let i=0;i<18;i++){ const el=document.getElementById('evh'+i); const vv=el?el.value.trim():''; if(vv===''){ toast(lang==='ko'?'18홀 점수를 모두 입력하세요':'Enter all 18 holes'); return; } const n=parseInt(vv,10); if(isNaN(n)||n<1){ toast(lang==='ko'?'점수가 올바르지 않아요':'Invalid score'); return; } holes.push(n); }
   const total=holes.reduce((a,b)=>a+b,0);
   if(evAwards&&evAwards.locked_at){ toast(lang==='ko'?'시상 잠금됨 — 점수 수정 불가':'Locked'); return; }
-  const ev=evData; const row={event_id:eventId,user_id:uid,course:ev.course||ev.name||'미지정',played_at:ev.event_date||new Date().toISOString().split('T')[0],total,holes};
-  try{ const ex=await sb.from('rounds').select('id').eq('event_id',eventId).eq('user_id',uid).maybeSingle(); let error;
-    if(ex.data){ ({error}=await sb.from('rounds').update(row).eq('id',ex.data.id)); } else { ({error}=await sb.from('rounds').insert(row)); }
-    if(error){toast(error.message);return;} toast(lang==='ko'?'점수 저장됨':'Saved'); evScoreOpen=false; openEvent(eventId);
+  try{ const {error}=await sb.rpc('event_save_round',{p_event:eventId,p_user:target,p_total:total,p_holes:holes}); if(error){toast(error.message);return;}
+    toast(lang==='ko'?'점수 저장됨':'Saved'); evScoreOpen=false; evScoreTarget=null; openEvent(eventId);
   }catch(e){toast(String(e.message||e));}
 }
+function openScoreFor(userId){ evScoreTarget=userId; evScoreOpen=true; render(); page.scrollTo(0,0); }
+async function kickEventPart(eventId,userId){ if(!confirm(lang==='ko'?'이 참가자를 명단에서 제외할까요?':'Remove this participant?'))return; try{ const {error}=await sb.rpc('event_set_participant',{p_event:eventId,p_user:userId,p_add:false}); if(error){toast(error.message);return;} toast(lang==='ko'?'제외됨':'Removed'); openEvent(eventId); }catch(e){toast(String(e.message||e));} }
+async function addEventPart(eventId,userId){ try{ const {error}=await sb.rpc('event_set_participant',{p_event:eventId,p_user:userId,p_add:true}); if(error){toast(error.message);return;} openEvent(eventId); }catch(e){toast(String(e.message||e));} }
+function countbackLabel(by){ return {back9:lang==='ko'?'후반9 CB':'CB9',back6:lang==='ko'?'후반6 CB':'CB6',back3:lang==='ko'?'후반3 CB':'CB3',hole18:lang==='ko'?'18홀 CB':'CB18'}[by]||''; }
 async function lockEvent(eventId){ try{ const {error}=await sb.from('event_awards').insert({event_id:eventId,locked_at:new Date().toISOString(),created_by:uid}); if(error){toast(error.message);return;} toast(lang==='ko'?'결과 잠금':'Locked'); openEvent(eventId); }catch(e){toast(String(e.message||e));} }
 async function unlockEvent(eventId){ if(!confirm(lang==='ko'?'잠금 해제하고 시상을 초기화할까요?':'Unlock & reset awards?'))return; try{ const {error}=await sb.from('event_awards').delete().eq('event_id',eventId); if(error){toast(error.message);return;} openEvent(eventId); }catch(e){toast(String(e.message||e));} }
 async function applyMethod(eventId){
@@ -2429,6 +2433,7 @@ function evCompute(){
     return e;
   });
   const byGross=[...enhanced].sort((a,b)=>cmpCountback(a.gross,b.gross,a.holes,b.holes).diff);
+  for(let i=1;i<byGross.length;i++){ if(byGross[i].gross!=null&&byGross[i].gross===byGross[i-1].gross){ const r=cmpCountback(byGross[i-1].gross,byGross[i].gross,byGross[i-1].holes,byGross[i].holes); if(r.by&&r.by!=='tied')byGross[i]._cb=r.by; } }
   const grossOrder=(finalized&&grossRanks>0)?byGross.slice(0,grossRanks).map(p=>p.user_id):[];
   const grossSet=new Set(grossOrder);
   let methodOrder=[];
@@ -2563,12 +2568,12 @@ function eventDetailView(){
   let joinBar='';
   if(amMember&&!finalized&&!locked){ joinBar=joined?`<button class="gbtn line" data-evleave="${evData.id}" style="width:100%;margin-bottom:10px;color:var(--red);border-color:#f6c9c4">${lang==='ko'?'참가 취소':'Leave'}</button>`:`<button class="gbtn primary" data-evjoin="${evData.id}" style="width:100%;margin-bottom:10px">${lang==='ko'?'이 라운드 참가':'Join this round'}</button>`; }
   let scoreBar='';
-  if(joined&&!locked){
-    const me=evParts.find(p=>p.user_id===uid);
+  if(!locked){
     if(evScoreOpen){
-      scoreBar=`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow);margin-bottom:12px"><div style="font-weight:800;margin-bottom:10px">⛳ ${lang==='ko'?'내 스코어카드':'My scorecard'}</div>${scorecardHTML(parOk?evData.hole_pars:null, me&&me.holes)}<div style="display:flex;gap:8px;margin-top:12px"><button class="gbtn line" data-evscorecancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-evscoresave="${evData.id}" style="flex:2">${lang==='ko'?'저장':'Save'}</button></div></div>`;
-    } else {
-      const has=me&&me.total!=null;
+      const tgt=evScoreTarget||uid; const tgtP=evParts.find(p=>p.user_id===tgt); const isProxy=evScoreTarget&&evScoreTarget!==uid;
+      scoreBar=`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow);margin-bottom:12px"><div style="font-weight:800;margin-bottom:10px">${isProxy?`✍️ ${escT(tgtP?tgtP.name:'')} ${lang==='ko'?'스코어 대행 입력':'(proxy entry)'}`:`⛳ ${lang==='ko'?'내 스코어카드':'My scorecard'}`}</div>${scorecardHTML(parOk?evData.hole_pars:null, tgtP&&tgtP.holes)}<div style="display:flex;gap:8px;margin-top:12px"><button class="gbtn line" data-evscorecancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-evscoresave="${evData.id}" style="flex:2">${lang==='ko'?'저장':'Save'}</button></div></div>`;
+    } else if(joined){
+      const me=evParts.find(p=>p.user_id===uid); const has=me&&me.total!=null;
       scoreBar=`<button class="gbtn ${has?'line':'primary'}" data-evscoreopen style="width:100%;margin-bottom:12px">${has?`✏️ ${lang==='ko'?'내 스코어 수정':'Edit my score'} (${me.total})`:`✏️ ${lang==='ko'?'내 스코어 입력':'Enter my score'}`}</button>`;
     }
   }
@@ -2609,13 +2614,31 @@ function eventDetailView(){
     if(R.finalized&&longSet.has(p.user_id)) badge+=`<span class="flag" style="color:#b45309;background:#fff7e8;border-color:#ffe6b3">🏌️ ${lang==='ko'?'롱기스트':'Longest'}</span>`;
     if(R.finalized&&nearSet.has(p.user_id)) badge+=`<span class="flag" style="color:#2f6df0;background:#eef4ff;border-color:#cfe0ff">🎯 ${lang==='ko'?'니어리스트':'Nearest'}</span>`;
     const me=p.user_id===uid?`<span style="font-size:10px;color:var(--sub)"> (${lang==='ko'?'나':'me'})</span>`:'';
+    if(p._cb&&gi>=0) badge+=`<span class="flag" style="color:#92722a;background:#fdf6e3;border-color:#eaddb0">⚖️ ${countbackLabel(p._cb)}</span>`;
     const adj=(R.finalized&&p.adjLabel)?`<div style="font-size:11px;color:var(--sub);margin-top:2px">${escT(p.adjLabel)}</div>`:'';
-    return `<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13.5px">${escT(p.name)}${me} ${badge}</div>${adj}</div><div style="font-weight:800;font-size:17px;flex-shrink:0">${p.gross!=null?p.gross:'<span style="font-size:12px;color:var(--sub);font-weight:600">'+(lang==='ko'?'미입력':'-')+'</span>'}</div></div>`;
+    const hasCard=Array.isArray(p.holes)&&p.holes.length>=18;
+    const vBtn=hasCard?`<button class="join" style="background:#eef0f3;color:#333;padding:3px 8px;font-size:11px" data-evpview="${p.user_id}">${evPartOpen===p.user_id?'▲':'▦'}</button>`:'';
+    const inBtn=(isStaff&&!locked)?`<button class="join" style="background:#eef4ff;color:#2f6df0;padding:3px 8px;font-size:11px" data-evscorefor="${p.user_id}">✏️</button>`:'';
+    const kBtn=(isStaff&&!finalized&&p.user_id!==uid)?`<button class="join" style="background:#fdecec;color:#d33;padding:3px 8px;font-size:11px" data-evpkick="${p.user_id}">✕</button>`:'';
+    const expanded=(evPartOpen===p.user_id&&hasCard)?scorecardView(parOk?evData.hole_pars:null, p.holes):'';
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13.5px">${escT(p.name)}${me} ${badge}</div>${adj}</div><div style="font-weight:800;font-size:17px;flex-shrink:0">${p.gross!=null?p.gross:'<span style="font-size:12px;color:var(--sub);font-weight:600">'+(lang==='ko'?'미입력':'-')+'</span>'}</div><div style="display:flex;gap:4px;flex-shrink:0">${vBtn}${inBtn}${kBtn}</div></div>${expanded}</div>`;
   }).join(''):`<div class="empty" style="padding:22px 0;text-align:center;color:var(--sub)">${lang==='ko'?'아직 참가자가 없어요':'No participants yet'}</div>`;
+  // 운영진: 동호회 멤버 참가시키기
+  let addMemSec='';
+  if(isStaff&&!locked){
+    const partIds=new Set(evParts.map(p=>p.user_id));
+    const cand=((clubData&&clubData.members)||[]).filter(m=>!partIds.has(m.user_id));
+    if(evAddMemOpen){
+      const list=cand.length?cand.map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)"><span style="flex:1;font-size:13px">${escT((clubData.names&&clubData.names[m.user_id])||(lang==='ko'?'회원':'Member'))}</span><button class="join" style="background:#16a34a;padding:5px 12px" data-evpadd="${m.user_id}">${lang==='ko'?'참가':'Add'}</button></div>`).join(''):`<div style="font-size:12px;color:var(--sub);padding:8px 0">${lang==='ko'?'추가할 멤버가 없어요':'No members to add'}</div>`;
+      addMemSec=`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow);margin-top:10px"><div style="font-weight:800;font-size:13px;margin-bottom:6px">➕ ${lang==='ko'?'멤버 참가시키기':'Add members'}</div>${list}<button class="gbtn line" data-evaddmemclose style="width:100%;margin-top:8px">${lang==='ko'?'닫기':'Close'}</button></div>`;
+    } else {
+      addMemSec=`<button class="gbtn line" data-evaddmem style="width:100%;margin-top:10px">➕ ${lang==='ko'?'동호회 멤버 참가시키기':'Add club members'}</button>`;
+    }
+  }
   const peoriaInfo=(finalized&&evAwards.award_method==='peoria'&&Array.isArray(evAwards.peoria_holes)&&evAwards.peoria_holes.length)?`<div style="font-size:11.5px;color:var(--sub);text-align:center;margin-top:8px">🎲 ${lang==='ko'?'신페리오 선정 12홀':'Peoria holes'}: ${evAwards.peoria_holes.join(', ')}</div>`:'';
   const rfWin=(finalized&&Array.isArray(evAwards.raffle_winners)&&evAwards.raffle_winners.length)?`<div style="background:#fff7e8;border:1px solid #ffe6b3;border-radius:12px;padding:12px;margin-top:10px"><div style="font-weight:800;font-size:13px;margin-bottom:5px">🎁 ${lang==='ko'?'럭키 드로우 당첨':'Raffle winners'} (${evAwards.raffle_winners.length})</div><div style="font-size:13.5px;line-height:1.6">${evAwards.raffle_winners.map(u=>'🎉 '+escT(evN(u))).join('<br>')}</div></div>`:'';
   const title=finalized?(lang==='ko'?'최종 결과':'Final results'):(lang==='ko'?'참가자 · 현재 스코어':'Participants');
-  return back+head+joinBar+scoreBar+wiz+`<h2 class="sech" style="margin:6px 0 8px">📊 ${title} (${evParts.length})</h2><div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 14px;box-shadow:var(--shadow)">${rows}</div>`+peoriaInfo+rfWin;
+  return back+head+joinBar+scoreBar+wiz+`<h2 class="sech" style="margin:6px 0 8px">📊 ${title} (${evParts.length})</h2><div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 14px;box-shadow:var(--shadow)">${rows}</div>`+addMemSec+peoriaInfo+rfWin;
 }
 /* ⛳ 네이티브 골프 허브 — 동호회(모임)·동반자·개인·골프장 4구획 (임베드 앱 폐기) */
 function viewGolfHub(){
@@ -2919,9 +2942,15 @@ document.addEventListener('click',e=>{
   const evdl=e.target.closest('[data-evdel]'); if(evdl){deleteEvent(evdl.dataset.evdel);return;}
   const evj=e.target.closest('[data-evjoin]'); if(evj){joinEvent(evj.dataset.evjoin);return;}
   const evl=e.target.closest('[data-evleave]'); if(evl){leaveEvent(evl.dataset.evleave);return;}
-  if(e.target.closest('[data-evscoreopen]')){evScoreOpen=true;render();return;}
-  if(e.target.closest('[data-evscorecancel]')){evScoreOpen=false;render();return;}
+  if(e.target.closest('[data-evscoreopen]')){evScoreTarget=null;evScoreOpen=true;render();return;}
+  if(e.target.closest('[data-evscorecancel]')){evScoreOpen=false;evScoreTarget=null;render();return;}
   const evss=e.target.closest('[data-evscoresave]'); if(evss){saveMyScore(evss.dataset.evscoresave);return;}
+  const evsf=e.target.closest('[data-evscorefor]'); if(evsf){openScoreFor(evsf.dataset.evscorefor);return;}
+  const evpv=e.target.closest('[data-evpview]'); if(evpv){const u=evpv.dataset.evpview;evPartOpen=(evPartOpen===u?null:u);render();return;}
+  const evpk=e.target.closest('[data-evpkick]'); if(evpk){kickEventPart(evOpen,evpk.dataset.evpkick);return;}
+  if(e.target.closest('[data-evaddmem]')){evAddMemOpen=true;render();return;}
+  if(e.target.closest('[data-evaddmemclose]')){evAddMemOpen=false;render();return;}
+  const evpa=e.target.closest('[data-evpadd]'); if(evpa){addEventPart(evOpen,evpa.dataset.evpadd);return;}
   const evlk=e.target.closest('[data-evlock]'); if(evlk){lockEvent(evlk.dataset.evlock);return;}
   const evul=e.target.closest('[data-evunlock]'); if(evul){unlockEvent(evul.dataset.evunlock);return;}
   const evm=e.target.closest('[data-evmethod]'); if(evm){applyMethod(evm.dataset.evmethod);return;}
