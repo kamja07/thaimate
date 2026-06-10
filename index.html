@@ -2628,9 +2628,13 @@ function raffleWheelSVG(pool){
   const n=Math.max(1,pool.length), cx=100,cy=100,r=94, seg=360/n;
   const pt=(ang,rr)=>[cx+rr*Math.sin(ang*Math.PI/180), cy-rr*Math.cos(ang*Math.PI/180)];
   let out='';
+  const fs = n<=10?9.5 : n<=16?7.6 : n<=24?6.2 : 5.2;
+  const maxch = n<=10?7 : n<=18?6 : 5;
   for(let i=0;i<n;i++){ const a0=i*seg,a1=(i+1)*seg; const [x0,y0]=pt(a0,r),[x1,y1]=pt(a1,r); const large=seg>180?1:0; const col=RAFFLE_PAL[i%RAFFLE_PAL.length];
     out+=`<path d="M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)} Z" fill="${col}" stroke="#fff" stroke-width="1"/>`;
-    if(n<=14){ const am=a0+seg/2; const [tx,ty]=pt(am,r*0.62); const nm=(evParts.find(p=>p.user_id===pool[i])||{}).name||''; out+=`<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" fill="#fff" font-size="8" font-weight="700" text-anchor="middle" dominant-baseline="middle" transform="rotate(${am.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)})">${escT(nm.slice(0,6))}</text>`; }
+    const am=a0+seg/2; const nm=(evParts.find(p=>p.user_id===pool[i])||{}).name||'';
+    const [tx,ty]=pt(am,r*0.58); let rot=am-90; if(am>180) rot=am+90;  // 방사형, 좌측 반원은 뒤집어 정방향 유지
+    out+=`<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" fill="#fff" font-size="${fs}" font-weight="800" text-anchor="middle" dominant-baseline="middle" transform="rotate(${rot.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)})" style="paint-order:stroke;stroke:rgba(0,0,0,.45);stroke-width:.7px">${escT(nm.slice(0,maxch))}</text>`;
   }
   return out;
 }
@@ -2644,8 +2648,16 @@ function raffleSound(){
     const tick=(t)=>{ const o=ctx.createOscillator(),g=ctx.createGain(); o.type='square'; o.frequency.setValueAtTime(1050,t); o.frequency.exponentialRampToValueAtTime(640,t+0.04); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.18,t+0.004); g.gain.exponentialRampToValueAtTime(0.0001,t+0.05); o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.06); };
     let t=t0+0.02, dt=0.034; const end=t0+4.7;
     while(t<end){ tick(t); t+=dt; dt*=1.05; if(dt>0.34)dt=0.34; }
-    // 당첨 팡파레(상승 아르페지오)
-    [523.25,659.25,783.99,1046.5].forEach((f,i)=>{ const s=t0+4.78+i*0.11; const o=ctx.createOscillator(),g=ctx.createGain(); o.type='triangle'; o.frequency.value=f; g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(0.3,s+0.02); g.gain.exponentialRampToValueAtTime(0.0001,s+0.55); o.connect(g); g.connect(ctx.destination); o.start(s); o.stop(s+0.6); });
+    // 당첨 팡파레: "빠방~~~" 강렬한 브라스 스탭 (코드 + 임팩트 노이즈)
+    const master=ctx.createGain(); master.gain.value=1; master.connect(ctx.destination);
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=4200; lp.connect(master);
+    const chord=(freqs,t,dur,vol)=>{ freqs.forEach(f=>{ [0,1].forEach(k=>{ const o=ctx.createOscillator(),g=ctx.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(f*(k?1.006:0.994),t); o.frequency.exponentialRampToValueAtTime(f,t+0.06); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol/2,t+0.015); g.gain.setValueAtTime(vol/2,t+dur*0.55); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(lp); o.start(t); o.stop(t+dur+0.05); }); }); };
+    const boom=(t,vol)=>{ const len=Math.floor(ctx.sampleRate*0.22); const buf=ctx.createBuffer(1,len,ctx.sampleRate); const d=buf.getChannelData(0); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.2); const src=ctx.createBufferSource(); src.buffer=buf; const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1800; bp.Q.value=0.7; const g=ctx.createGain(); g.gain.value=vol; src.connect(bp); bp.connect(g); g.connect(master); src.start(t); };
+    const C=261.63,E=329.63,G=392.00,C5=523.25,G5=783.99,C3=130.81,C6=1046.5;
+    // 빠 (짧은 강세)
+    chord([C,E,G,C5], t0+4.78, 0.18, 0.34); boom(t0+4.78,0.32);
+    // 방~~~ (크고 길게 지속, 옥타브 보강)
+    chord([C3,C,E,G,C5,G5,C6], t0+5.0, 1.15, 0.5); boom(t0+5.0,0.45);
   }catch(e){}
 }
 window.__raffleSpin=async function(eventId){
