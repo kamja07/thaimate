@@ -2593,7 +2593,7 @@ function scorecardView(pars, holes){
   return `<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;table-layout:fixed">${nine(0)}<tr><td colspan="11" style="height:3px;border:none"></td></tr>${nine(9)}</table></div>${foot}`;
 }
 function methodExplain(method){ const ko=lang==='ko'; return ({
-  peoria: ko?'추첨된 12홀의 타수 합 × 1.5 − 코스 Par, 다시 × 0.8 = 핸디(0~36). 그로스 − 핸디 = 넷. 낮을수록 우승. (정석 신페리오: par 그룹별 2홀씩 제외)':'Σ(12 holes)×1.5 − coursePar, ×0.8 = handicap(0–36). net = gross − handicap. Lower wins.',
+  peoria: ko?'파3·파4·파5에서 각 4홀씩 무작위로 12홀 선정(숨긴홀 Par 합=48). 12홀 타수 합 × 1.5 − 코스 Par, 다시 × 0.8 = 핸디(0~36). 그로스 − 핸디 = 넷. 낮을수록 우승.':'Pick 4 holes from each of par3/4/5 = 12 holes (hidden par sum 48). Σ(12 holes)×1.5 − coursePar, ×0.8 = handicap(0–36). net = gross − handicap. Lower wins.',
   net: ko?'그로스 − 개인 핸디캡 = 넷. 낮을수록 우승.':'gross − personal handicap. Lower wins.',
   stableford: ko?'홀당 점수 합 — 이글 이상 5, 이글 4, 버디 3, 파 2, 보기 1, 더블 이상 0. 높을수록 우승.':'Per-hole points. Higher wins.',
   stableford_net: ko?'핸디캡을 18홀에 보너스로 분배한 뒤 스테이블포드 점수. 높을수록 우승 (핸디 높은 약자도 시상 가능).':'Stableford with handicap bonus distributed. Higher wins.',
@@ -2634,6 +2634,20 @@ function raffleWheelSVG(pool){
   }
   return out;
 }
+function raffleSound(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    let ctx=window.__raffleAC; if(!ctx){ ctx=window.__raffleAC=new AC(); }
+    if(ctx.state==='suspended') ctx.resume();
+    const t0=ctx.currentTime;
+    // 룰렛 핀 틱 소리: 빠르게 시작해 점점 느려짐(감속)
+    const tick=(t)=>{ const o=ctx.createOscillator(),g=ctx.createGain(); o.type='square'; o.frequency.setValueAtTime(1050,t); o.frequency.exponentialRampToValueAtTime(640,t+0.04); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.18,t+0.004); g.gain.exponentialRampToValueAtTime(0.0001,t+0.05); o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.06); };
+    let t=t0+0.02, dt=0.034; const end=t0+4.7;
+    while(t<end){ tick(t); t+=dt; dt*=1.05; if(dt>0.34)dt=0.34; }
+    // 당첨 팡파레(상승 아르페지오)
+    [523.25,659.25,783.99,1046.5].forEach((f,i)=>{ const s=t0+4.78+i*0.11; const o=ctx.createOscillator(),g=ctx.createGain(); o.type='triangle'; o.frequency.value=f; g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(0.3,s+0.02); g.gain.exponentialRampToValueAtTime(0.0001,s+0.55); o.connect(g); g.connect(ctx.destination); o.start(s); o.stop(s+0.6); });
+  }catch(e){}
+}
 window.__raffleSpin=async function(eventId){
   if(window.__raffleSpinning) return;
   const pool=rafflePool();
@@ -2646,6 +2660,7 @@ window.__raffleSpin=async function(eventId){
   const btn=document.getElementById('raffleSpinBtn'); if(btn){btn.disabled=true;btn.style.opacity='.6';}
   const rev=document.getElementById('raffleReveal'); if(rev) rev.textContent='';
   void g.getBoundingClientRect(); g.style.transition='transform 4.8s cubic-bezier(.12,.7,.18,1)'; g.style.transform='rotate('+rot+'deg)';
+  raffleSound();
   setTimeout(async ()=>{
     const winners=[...((evAwards&&evAwards.raffle_winners)||[]), winner];
     try{ await sb.from('event_awards').update({raffle_winners:winners,raffle_count:winners.length,raffle_completed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('event_id',eventId); }catch(e){}
@@ -2671,7 +2686,7 @@ function raffleSectionHTML(){
     <label style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;margin-top:12px;cursor:pointer"><input type="checkbox" data-raffleincl ${incl?'checked':''}>${lang==='ko'?'정규 수상자도 포함':'Include winners'}</label>
     <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
       <button id="raffleSpinBtn" class="gbtn" style="background:linear-gradient(135deg,#FFB300,#FF6F00);color:#fff;border:none;flex:1;max-width:220px;${pool.length?'':'opacity:.5;pointer-events:none'}" onclick="window.__raffleSpin('${evData.id}')">🎰 ${pool.length?(lang==='ko'?'돌리기':'Spin'):(lang==='ko'?'대상 없음':'None')}</button>
-      <button class="gbtn line" data-raffleclose style="flex:0 0 auto;color:#fff;border-color:#556">${lang==='ko'?'종료':'Done'}</button>
+      <button class="gbtn" data-raffleclose style="flex:0 0 auto;background:transparent;color:#fff;border:1.5px solid #8089a0">${lang==='ko'?'종료':'Done'}</button>
     </div>${wlist}</div>`;
 }
 function eventDetailView(){
