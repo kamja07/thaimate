@@ -1423,7 +1423,7 @@ let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk
     golfCourses=[], golfCourseForm=false, golfCourseEdit=null, golfCourseRegion='',
     golfRounds=[], golfRoundForm=false, golfRoundOpen=null, myHcp=null, hcpEditOpen=false,
     evOpen=null, evData=null, evParts=[], evAwards=null, evScoreOpen=false, evCreateOpen=false,
-    evScoreTarget=null, evPartOpen=null, evAddMemOpen=false, raffleOpen=false;
+    evScoreTarget=null, evPartOpen=null, evAddMemOpen=false, raffleOpen=false, evSpecialOpen=false;
 const L=()=>T[lang];
 const gm=()=>GM[lang];
 const tx=o=> o==null?"":(typeof o==="string"?o:(o[lang]||o.ko));
@@ -2374,6 +2374,7 @@ function cmpCountback(aScore,bScore,aH,bH){
 function methodLabel(m){ return {none:lang==='ko'?'보정 없음':'None',peoria:lang==='ko'?'신페리오':'Peoria',stableford:lang==='ko'?'스테이블포드':'Stableford',stableford_net:lang==='ko'?'스테이블포드(넷)':'Stableford(net)',gross:lang==='ko'?'그로스':'Gross',net:lang==='ko'?'넷':'Net'}[m]||m; }
 async function openEvent(eventId){
   evOpen=eventId; evScoreOpen=false; evScoreTarget=null; evPartOpen=null; evAddMemOpen=false; render(); page.scrollTo(0,0);
+  /* evSpecialOpen 유지: 저장 후 재오픈 시 펼침 상태 보존 */
   try{
     const ev=await sb.from('events').select('*').eq('id',eventId).maybeSingle(); evData=ev.data||null;
     const pr=await sb.from('event_participants').select('user_id,status').eq('event_id',eventId); const parts=pr.data||[];
@@ -2440,10 +2441,15 @@ async function publishEvent(eventId){
   if(evAwards&&evAwards.award_method==='peoria'&&!(Array.isArray(evAwards.peoria_holes)&&evAwards.peoria_holes.length)){ toast(lang==='ko'?'신페리오는 먼저 12홀을 추첨하세요':'Draw peoria holes first'); return; }
   try{ const {error}=await sb.from('event_awards').update({awarded_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('event_id',eventId); if(error){toast(error.message);return;} toast(lang==='ko'?'시상 발표!':'Published'); openEvent(eventId); }catch(e){toast(String(e.message||e));}
 }
-async function saveSpecial(eventId){
+async function saveSpecial(eventId, type){
   const longs=[...document.querySelectorAll('input[data-spl]:checked')].map(el=>el.dataset.spl).slice(0,4);
   const nears=[...document.querySelectorAll('input[data-spn]:checked')].map(el=>el.dataset.spn).slice(0,4);
-  try{ const {error}=await sb.from('event_awards').update({longest_drive_user_ids:longs.length?longs:null,nearest_pin_user_ids:nears.length?nears:null,longest_drive_user_id:longs[0]||null,nearest_pin_user_id:nears[0]||null,updated_at:new Date().toISOString()}).eq('event_id',eventId); if(error){toast(error.message);return;} toast(lang==='ko'?'특별상 저장':'Saved'); openEvent(eventId); }catch(e){toast(String(e.message||e));}
+  const upd={updated_at:new Date().toISOString()}; let msg;
+  if(type==='long'){ upd.longest_drive_user_ids=longs.length?longs:null; upd.longest_drive_user_id=longs[0]||null; msg=lang==='ko'?'🏌️ 롱기스트 저장됨':'Longest saved'; }
+  else if(type==='near'){ upd.nearest_pin_user_ids=nears.length?nears:null; upd.nearest_pin_user_id=nears[0]||null; msg=lang==='ko'?'🎯 니어리스트 저장됨':'Nearest saved'; }
+  else { upd.longest_drive_user_ids=longs.length?longs:null; upd.nearest_pin_user_ids=nears.length?nears:null; upd.longest_drive_user_id=longs[0]||null; upd.nearest_pin_user_id=nears[0]||null; msg=lang==='ko'?'특별상 저장':'Saved'; }
+  evSpecialOpen=true;
+  try{ const {error}=await sb.from('event_awards').update(upd).eq('event_id',eventId); if(error){toast(error.message);return;} toast(msg); openEvent(eventId); }catch(e){toast(String(e.message||e));}
 }
 async function drawRaffle(eventId){
   const n=parseInt((document.getElementById('rfCount')||{}).value||'1',10)||1;
@@ -2740,7 +2746,17 @@ function eventDetailView(){
       const mrSel=`<select id="awRanks" style="${inp}">${[0,1,2,3,4].map(n=>`<option ${mr===n?'selected':''}>${n}</option>`).join('')}</select>`;
       const curLong=new Set(evAwards.longest_drive_user_ids||[]), curNear=new Set(evAwards.nearest_pin_user_ids||[]);
       const spRows=evParts.length?evParts.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="flex:1;font-size:13px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escT(p.name)}</span><label style="font-size:11px;display:inline-flex;align-items:center;gap:3px;color:#b45309"><input type="checkbox" data-spl="${p.user_id}" ${curLong.has(p.user_id)?'checked':''}>🏌️${lang==='ko'?'롱':'L'}</label><label style="font-size:11px;display:inline-flex;align-items:center;gap:3px;color:#2f6df0"><input type="checkbox" data-spn="${p.user_id}" ${curNear.has(p.user_id)?'checked':''}>🎯${lang==='ko'?'니어':'N'}</label></div>`).join(''):`<div style="font-size:12px;color:var(--sub)">${lang==='ko'?'참가자 없음':'No participants'}</div>`;
-      const spBlock=`<div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:8px"><div style="font-size:11.5px;color:var(--sub);margin-bottom:4px">🏌️ ${lang==='ko'?'롱기스트 / 니어리스트 (각 최대 4명)':'Longest / Nearest (max 4 each)'}</div>${spRows}<button class="gbtn line" data-evspecial="${evData.id}" style="width:100%;margin-top:6px">${lang==='ko'?'특별상 저장':'Save special'}</button></div>`;
+      const spCount=curLong.size+curNear.size;
+      const spBlock=`<div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:10px">
+        <div data-evsptoggle style="display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+          <div style="font-size:14px;font-weight:800">🏌️ ${lang==='ko'?'롱기스트 / 니어리스트':'Longest / Nearest'} <span style="font-size:11px;color:var(--sub);font-weight:600">${lang==='ko'?'각 최대 4명':'max 4 each'}</span>${spCount?` <span class="flag" style="color:#16a34a;background:#eaf7ef;border-color:#bbf0cf">${lang==='ko'?'선정':'set'} ${spCount}</span>`:''}</div>
+          <span style="font-size:12.5px;color:var(--sub);white-space:nowrap">${evSpecialOpen?'▲ '+(lang==='ko'?'접기':'Hide'):'▼ '+(lang==='ko'?'펼치기':'Show')}</span>
+        </div>
+        ${evSpecialOpen?`<div style="margin-top:8px">${spRows}<div style="display:flex;gap:8px;margin-top:8px">
+          <button class="gbtn line" data-evspecial="${evData.id}" data-sptype="long" style="flex:1;color:#b45309;border-color:#ffe0a8">🏌️ ${lang==='ko'?'롱기 저장':'Save L'}</button>
+          <button class="gbtn line" data-evspecial="${evData.id}" data-sptype="near" style="flex:1;color:#2f6df0;border-color:#cfe0ff">🎯 ${lang==='ko'?'니어 저장':'Save N'}</button>
+        </div></div>`:''}
+      </div>`;
       const rfDone=Array.isArray(evAwards.raffle_winners)&&evAwards.raffle_winners.length;
       const rfBlock=finalized?`<div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:8px"><button class="gbtn" data-raffleopen style="width:100%;background:linear-gradient(135deg,#FFB300,#FF6F00);color:#fff;border:none">🎁 ${lang==='ko'?'럭키 드로우 룰렛 돌리기':'Lucky draw'}${rfDone?` (${lang==='ko'?'당첨':'won'} ${evAwards.raffle_count})`:''}</button></div>`:'';
       wiz=`<div style="background:#f7f8fa;border:1px solid var(--line);border-radius:14px;padding:13px;margin:6px 0 12px"><div style="font-weight:800;margin-bottom:8px">🏆 ${lang==='ko'?'시상 설정':'Awards setup'} ${finalized?`<span class="flag" style="color:#16a34a;background:#eaf7ef;border-color:#bbf0cf">${lang==='ko'?'발표 완료':'Published'}</span>`:`<span class="flag" style="color:#b45309;background:#fef3c7;border-color:#fcd34d">🔒 ${lang==='ko'?'잠금':'Locked'}</span>`}</div>
@@ -2792,7 +2808,7 @@ function eventDetailView(){
   const rfWin=(finalized&&Array.isArray(evAwards.raffle_winners)&&evAwards.raffle_winners.length)?`<div style="background:#fff7e8;border:1px solid #ffe6b3;border-radius:12px;padding:12px;margin-top:10px"><div style="font-weight:800;font-size:13px;margin-bottom:5px">🎁 ${lang==='ko'?'럭키 드로우 당첨':'Raffle winners'} (${evAwards.raffle_winners.length})</div><div style="font-size:13.5px;line-height:1.6">${evAwards.raffle_winners.map(u=>'🎉 '+escT(evN(u))).join('<br>')}</div></div>`:'';
   const title=finalized?(lang==='ko'?'최종 결과':'Final results'):(lang==='ko'?'참가자 · 현재 스코어':'Participants');
   const raffleSec=(isStaff&&finalized&&raffleOpen)?raffleSectionHTML():'';
-  return back+head+joinBar+scoreBar+wiz+raffleSec+`<h2 class="sech" style="margin:6px 0 8px">📊 ${title} (${evParts.length})</h2>`+methodBox+`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 14px;box-shadow:var(--shadow);margin-top:6px">${rows}</div>`+addMemSec+peoriaInfo+rfWin;
+  return back+head+joinBar+scoreBar+wiz+raffleSec+`<h2 class="sech" style="margin:6px 0 8px">📊 ${title} (${evParts.length})</h2>`+peoriaInfo+methodBox+`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 14px;box-shadow:var(--shadow);margin-top:6px">${rows}</div>`+addMemSec+rfWin;
 }
 /* ⛳ 네이티브 골프 허브 — 동호회(모임)·동반자·개인·골프장 4구획 (임베드 앱 폐기) */
 function viewGolfHub(){
@@ -3093,7 +3109,7 @@ document.addEventListener('click',e=>{
   const ajn=e.target.closest('[data-actjoin]'); if(ajn){if(!canAct())return;const[cid,aid]=ajn.dataset.actjoin.split(':');joinActivity(cid,aid);return;}
   const alv=e.target.closest('[data-actleave]'); if(alv){const[cid,aid]=alv.dataset.actleave.split(':');leaveActivity(cid,aid);return;}
   // ── 시상(라운드 이벤트) ──
-  const evo=e.target.closest('[data-evopen]'); if(evo){raffleOpen=false;openEvent(evo.dataset.evopen);return;}
+  const evo=e.target.closest('[data-evopen]'); if(evo){raffleOpen=false;evSpecialOpen=false;openEvent(evo.dataset.evopen);return;}
   if(e.target.closest('[data-evback]')){evOpen=null;evData=null;evScoreOpen=false;raffleOpen=false;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-evcreate]')){evCreateOpen=true;render();return;}
   if(e.target.closest('[data-evcreatecancel]')){evCreateOpen=false;render();return;}
@@ -3115,7 +3131,8 @@ document.addEventListener('click',e=>{
   const evm=e.target.closest('[data-evmethod]'); if(evm){applyMethod(evm.dataset.evmethod);return;}
   const evp=e.target.closest('[data-evpeoria]'); if(evp){drawPeoria(evp.dataset.evpeoria);return;}
   const evpb=e.target.closest('[data-evpublish]'); if(evpb){publishEvent(evpb.dataset.evpublish);return;}
-  const evsp=e.target.closest('[data-evspecial]'); if(evsp){saveSpecial(evsp.dataset.evspecial);return;}
+  if(e.target.closest('[data-evsptoggle]')){evSpecialOpen=!evSpecialOpen;render();return;}
+  const evsp=e.target.closest('[data-evspecial]'); if(evsp){saveSpecial(evsp.dataset.evspecial, evsp.dataset.sptype);return;}
   if(e.target.closest('[data-raffleopen]')){raffleOpen=true;window.__raffleRot=0;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-raffleclose]')){raffleOpen=false;render();return;}
   const rfin=e.target.closest('[data-raffleincl]'); if(rfin){toggleRaffleIncl(evOpen);return;}
