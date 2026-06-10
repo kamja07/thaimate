@@ -1150,6 +1150,12 @@ async function openClub(id){
   const cc=dbClubs.find(x=>x.id===id);
   if(cc&&cc.category==='golf'){
     try{ const ev=await sb.from('events').select('*').eq('club_id',id).eq('type','round').order('event_date',{ascending:false}); cd.events=ev.data||[]; }catch(e){}
+    // 이벤트별 상태(잠금/발표) + 참가 인원 — 카드에 표시
+    cd.evMeta={}; const evIds=cd.events.map(e=>e.id); evIds.forEach(eid=>cd.evMeta[eid]={count:0});
+    if(evIds.length){
+      try{ const aw=await sb.from('event_awards').select('event_id,locked_at,awarded_at,award_method').in('event_id',evIds); (aw.data||[]).forEach(a=>{ const m=cd.evMeta[a.event_id]; if(m){m.locked_at=a.locked_at;m.awarded_at=a.awarded_at;m.award_method=a.award_method;} }); }catch(e){}
+      try{ const ep=await sb.from('event_participants').select('event_id').in('event_id',evIds); (ep.data||[]).forEach(r=>{ if(cd.evMeta[r.event_id]) cd.evMeta[r.event_id].count++; }); }catch(e){}
+    }
     if(!golfCourses.length){ try{ const gc=await sb.from('golf_courses').select('id,name,name_en,region,district,holes,course_names,pars').order('name'); golfCourses=gc.data||[]; }catch(e){} }
   }
   try{ const a=await sb.from('club_activities').select('*').eq('club_id',id).order('when_at',{ascending:true,nullsFirst:false}); cd.activities=a.data||[]; }catch(e){}
@@ -1352,10 +1358,11 @@ function viewClubHub(){
   }).join(''):`<div class="empty" style="padding:24px 0;text-align:center;color:var(--sub)">${lang==='ko'?'아직 활동이 없어요':'No activities yet'}</div>`;
   const editAct=actEditId?clubData.activities.find(a=>a.id===actEditId):null;
   const aIn='width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px';
-  const newAct=(actFormOpen||editAct)?`<div style="display:block;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px"><div style="font-weight:800;font-size:13px;margin-bottom:8px">${editAct?(lang==='ko'?'활동 수정':'Edit activity'):(lang==='ko'?'활동 번개 모집':'New activity')}</div><input id="actTitle" value="${editAct?escA(editAct.title||''):''}" placeholder="${lang==='ko'?'활동 제목 (예: 토요일 룸피니 5km)':'Title'}" style="${aIn}"><input id="actWhen" type="datetime-local" value="${editAct?isoToLocalInput(editAct.when_at):''}" style="${aIn}"><input id="actPlace" value="${editAct?escA(editAct.place||''):''}" placeholder="${lang==='ko'?'장소':'Place'}" style="${aIn}"><input id="actCap" type="number" min="2" value="${editAct&&editAct.capacity?editAct.capacity:''}" placeholder="${lang==='ko'?'정원(선택)':'Capacity'}" style="${aIn};margin-bottom:9px"><div style="display:flex;gap:8px"><button class="gbtn line" data-actcancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-actcreate="${c.id}" style="flex:2">${editAct?(lang==='ko'?'수정 완료':'Update'):(lang==='ko'?'활동 등록':'Create')}</button></div></div>`:`<button class="gbtn line" data-actnew style="width:100%;margin-bottom:12px">+ ${lang==='ko'?'활동 번개 모집':'New activity'}</button>`;
+  const newActForm=(actFormOpen||editAct)?`<div style="display:block;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px"><div style="font-weight:800;font-size:13px;margin-bottom:8px">${editAct?(lang==='ko'?'활동 수정':'Edit activity'):(lang==='ko'?'활동 번개 모집':'New activity')}</div><input id="actTitle" value="${editAct?escA(editAct.title||''):''}" placeholder="${lang==='ko'?'활동 제목 (예: 토요일 룸피니 5km)':'Title'}" style="${aIn}"><input id="actWhen" type="datetime-local" value="${editAct?isoToLocalInput(editAct.when_at):''}" style="${aIn}"><input id="actPlace" value="${editAct?escA(editAct.place||''):''}" placeholder="${lang==='ko'?'장소':'Place'}" style="${aIn}"><input id="actCap" type="number" min="2" value="${editAct&&editAct.capacity?editAct.capacity:''}" placeholder="${lang==='ko'?'정원(선택)':'Capacity'}" style="${aIn};margin-bottom:9px"><div style="display:flex;gap:8px"><button class="gbtn line" data-actcancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-actcreate="${c.id}" style="flex:2">${editAct?(lang==='ko'?'수정 완료':'Update'):(lang==='ko'?'활동 등록':'Create')}</button></div></div>`:'';
+  const newActBtn=(!actFormOpen&&!editAct)?`<button class="gbtn line" data-actnew style="padding:7px 13px;font-size:12.5px;border-radius:9px;flex:0 0 auto">+ ${lang==='ko'?'모집':'New'}</button>`:'';
   const myTag=isLeader?' · 👑 '+(lang==='ko'?'방장':'Leader'):(myRole==='vice'?' · ⭐ '+(lang==='ko'?'부방장':'Vice'):'');
-  const memberBar=`<div style="font-size:12px;color:var(--sub);margin:4px 0 10px">👥 ${lang==='ko'?'멤버':'Members'} ${clubData.members.length}${myTag}</div>`;
-  const rosterBtn=`<button class="gbtn line" data-roster style="width:100%;margin-bottom:12px">👥 ${lang==='ko'?'회원명부':'Members'} ${clubData.members.length}${lang==='ko'?'명':''}</button>`;
+  const memberBar=`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 12px"><div style="font-size:12.5px;color:var(--sub)">👥 ${lang==='ko'?'멤버':'Members'} ${clubData.members.length}${myTag}</div><button class="gbtn line" data-roster style="padding:6px 12px;font-size:12px;border-radius:9px;flex:0 0 auto">${lang==='ko'?'회원명부':'Roster'}</button></div>`;
+  const rosterBtn='';
   // 공지사항 리스트 (운영진 작성 · 새 공지 위로 · 고정 핀은 맨 위)
   const noticeItems=(clubData.notices||[]).map(n=>{
     const pin=n.pinned;
@@ -1364,13 +1371,14 @@ function viewClubHub(){
     return `<div style="display:block;background:${pin?'#fff7e8':'#fff'};border:1px solid ${pin?'#ffe6b3':'var(--line)'};border-radius:12px;padding:11px 13px;margin-bottom:8px">${head}<div style="font-size:13.5px;line-height:1.5;white-space:pre-wrap;color:#1f2937">${escT(n.body)}</div></div>`;
   }).join('');
   const noticeForm=(noticeEditOpen&&isStaff)?`<div style="display:block;border:1px solid var(--line);border-radius:12px;padding:11px;margin-bottom:8px"><textarea id="clubNotice" rows="3" placeholder="${lang==='ko'?'공지 내용을 적어주세요':'Write a notice'}" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px;resize:vertical;font-family:inherit"></textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="gbtn line" data-noticecancel style="flex:1">${lang==='ko'?'취소':'Cancel'}</button><button class="gbtn primary" data-noticesubmit="${c.id}" style="flex:2">${lang==='ko'?'공지 등록':'Post'}</button></div></div>`:'';
-  const noticeAdd=(isStaff&&!noticeEditOpen)?`<button class="gbtn line" data-noticeadd style="width:100%;margin-bottom:8px">📌 ${lang==='ko'?'공지 작성':'Write a notice'}</button>`:'';
+  const noticeAddBtn=(isStaff&&!noticeEditOpen)?`<button class="gbtn line" data-noticeadd style="padding:7px 13px;font-size:12.5px;border-radius:9px;flex:0 0 auto">📌 ${lang==='ko'?'작성':'New'}</button>`:'';
   const noticeEmpty=(!noticeItems&&!isStaff)?`<div class="empty" style="padding:14px 0;text-align:center;color:var(--sub);font-size:13px">${lang==='ko'?'공지가 없어요':'No notices'}</div>`:'';
-  const noticeSec=(noticeItems||noticeAdd||noticeForm||noticeEmpty)?`<h2 class="sech" style="margin:4px 0 8px">📢 ${lang==='ko'?'공지사항':'Notices'}</h2>`+noticeAdd+noticeForm+noticeItems+noticeEmpty:'';
+  const noticeSec=(noticeItems||noticeAddBtn||noticeForm||noticeEmpty)?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 8px"><h2 class="sech" style="margin:0">📢 ${lang==='ko'?'공지사항':'Notices'}</h2>${noticeAddBtn}</div>`+noticeForm+noticeItems+noticeEmpty:'';
   // 단체대화방 — 허브 인라인 (승인 멤버만, 지난 대화 기록 포함)
   const amMember=['leader','vice','member'].includes(myRole);
   const chatSec=amMember?`<h2 class="sech" style="margin:16px 0 8px">💬 ${lang==='ko'?'대화방':'Chat'} · 👥 ${clubData.members.length}</h2><div id="clubChatBox" class="msgs" style="border:1px solid var(--line);border-radius:12px;max-height:46vh;overflow-y:auto">${clubMsgsHtml()}</div><div style="display:flex;gap:8px;padding:8px 0 2px"><input id="clubcin" placeholder="${L().input_ph}" autocomplete="off" style="flex:1;border:1px solid var(--line);border-radius:999px;padding:11px 14px;font-size:13px;outline:none"><button id="clubcsend" style="border:none;background:var(--pri);color:#fff;border-radius:999px;width:42px;font-size:18px;cursor:pointer">↑</button></div>`:'';
-  return back+hero+noticeSec+memberBar+rosterBtn+approvals+golfEventsSecHtml(c,isStaff)+newAct+`<h2 class="sech" style="margin:4px 0 10px">⚡ ${lang==='ko'?'활동':'Activities'}</h2>`+actList+chatSec;
+  const actHeader=`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0 8px"><h2 class="sech" style="margin:0">⚡ ${lang==='ko'?'활동':'Activities'}</h2>${newActBtn}</div>`;
+  return back+hero+noticeSec+memberBar+rosterBtn+approvals+golfEventsSecHtml(c,isStaff)+actHeader+newActForm+actList+chatSec;
 }
 /* Golf Mate 연동 (독립 앱 — 느슨한 결합) */
 const GM_URL=BRAND.golfMateUrl;
@@ -2525,13 +2533,24 @@ function golfEventForm(c){
 function golfEventsSecHtml(c,isStaff){
   if(!c||c.category!=='golf') return '';
   const evs=(clubData&&clubData.events)||[];
-  const createUI=isStaff?(evCreateOpen?golfEventForm(c):`<button class="gbtn primary" data-evcreate style="width:100%;margin-bottom:10px">➕ ${lang==='ko'?'라운드 이벤트 개설':'New round event'}</button>`):'';
+  const headBtn=(isStaff&&!evCreateOpen)?`<button class="gbtn primary" data-evcreate style="padding:7px 13px;font-size:12.5px;border-radius:9px;flex:0 0 auto;box-shadow:none">➕ ${lang==='ko'?'개설':'New'}</button>`:'';
+  const createUI=(isStaff&&evCreateOpen)?golfEventForm(c):'';
   const list=evs.length?evs.map(ev=>{
-    const fin=ev._fin; // not loaded here
     const evc=evCourseLabel(ev);
-    return `<div class="club" style="margin-bottom:10px;cursor:pointer" data-evopen="${ev.id}"><div class="cbody2" style="padding:12px 14px"><div style="font-weight:800;font-size:14px">🏆 ${escT(ev.name||'')} <span class="ar" style="float:right;color:var(--sub)">›</span></div><div style="font-size:12px;color:var(--sub);margin-top:4px">📅 ${ev.event_date||''}${evc?(' · ⛳ '+escT(evc)):''}</div></div></div>`;
+    const meta=(clubData&&clubData.evMeta&&clubData.evMeta[ev.id])||{count:0};
+    const parOk=Array.isArray(ev.hole_pars)&&ev.hole_pars.length===18;
+    const parTxt=parOk?(' · Par '+ev.hole_pars.reduce((a,b)=>a+b,0)):'';
+    let status,scol,sbg,sbd;
+    if(meta.awarded_at){ status=lang==='ko'?'🏆 시상 발표':'Published'; scol='#16a34a';sbg='#eaf7ef';sbd='#bbf0cf'; }
+    else if(meta.locked_at){ status=lang==='ko'?'🔒 시상 진행중':'Awarding'; scol='#b45309';sbg='#fef3c7';sbd='#fcd34d'; }
+    else { status=lang==='ko'?'🟢 모집중':'Open'; scol='#2563eb';sbg='#eaf1ff';sbd='#cfe0ff'; }
+    return `<div class="club" style="margin-bottom:11px;cursor:pointer;border-left:5px solid ${scol}" data-evopen="${ev.id}"><div class="cbody2" style="padding:15px 16px">
+      <div style="display:flex;align-items:center;gap:8px"><div style="font-weight:800;font-size:17px;flex:1;min-width:0;line-height:1.25">🏆 ${escT(ev.name||'')}</div><span class="flag" style="color:${scol};background:${sbg};border-color:${sbd};flex-shrink:0;font-weight:800">${status}</span><span class="ar" style="color:var(--sub);font-size:19px;flex-shrink:0">›</span></div>
+      <div style="font-size:13px;color:var(--sub);margin-top:7px">📅 ${ev.event_date||''}${evc?(' · ⛳ '+escT(evc)):''}${parTxt}</div>
+      <div style="margin-top:9px"><span style="display:inline-flex;align-items:center;font-size:12.5px;font-weight:800;color:#0b7a3b;background:#e7f6ee;border-radius:8px;padding:4px 11px">👥 ${lang==='ko'?'참가':'Joined'} ${meta.count}${lang==='ko'?'명':''}</span></div>
+    </div></div>`;
   }).join(''):`<div class="empty" style="padding:16px 0;text-align:center;color:var(--sub);font-size:13px">${lang==='ko'?'아직 라운드 이벤트가 없어요':'No round events yet'}</div>`;
-  return `<h2 class="sech" style="margin:14px 0 8px">🏆 ${lang==='ko'?'정기 라운드 · 시상':'Rounds & awards'}</h2>`+createUI+list;
+  return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0 8px"><h2 class="sech" style="margin:0">🏆 ${lang==='ko'?'정기 라운드 · 시상':'Rounds & awards'}</h2>${headBtn}</div>`+createUI+list;
 }
 // 통상 스코어카드 포맷: Par행(읽기) + 스코어행(입력) + OUT/IN/Total, 입력 id=evh0..17
 function scoreColor(s,par){ if(s==null||!par)return ''; const d=s-par; if(d<=-2)return '#1565c0'; if(d===-1)return '#2E7D32'; if(d===0)return '#111'; if(d===1)return '#e67514'; return '#d32f2f'; }
