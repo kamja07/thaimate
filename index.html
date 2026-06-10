@@ -1145,7 +1145,7 @@ function viewMyClubs(){
   return back+head+cards;
 }
 async function openClub(id){
-  clubOpen=id; clubData=null; actFormOpen=false; noticeEditOpen=false; rosterOpen=false; actEditId=null; evOpen=null; evData=null; evCreateOpen=false; clubChatStop(); render(); page.scrollTo(0,0);
+  clubOpen=id; clubData=null; actFormOpen=false; noticeEditOpen=false; rosterOpen=false; actEditId=null; evOpen=null; evData=null; evCreateOpen=false; raffleOpen=false; clubChatStop(); render(); page.scrollTo(0,0);
   const cd={activities:[],members:[],pending:[],names:{},hcps:{},joined:new Set(),notices:[],partCounts:{},cmsgs:[],events:[]};
   const cc=dbClubs.find(x=>x.id===id);
   if(cc&&cc.category==='golf'){
@@ -1423,7 +1423,7 @@ let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk
     golfCourses=[], golfCourseForm=false, golfCourseEdit=null, golfCourseRegion='',
     golfRounds=[], golfRoundForm=false, golfRoundOpen=null, myHcp=null, hcpEditOpen=false,
     evOpen=null, evData=null, evParts=[], evAwards=null, evScoreOpen=false, evCreateOpen=false,
-    evScoreTarget=null, evPartOpen=null, evAddMemOpen=false;
+    evScoreTarget=null, evPartOpen=null, evAddMemOpen=false, raffleOpen=false;
 const L=()=>T[lang];
 const gm=()=>GM[lang];
 const tx=o=> o==null?"":(typeof o==="string"?o:(o[lang]||o.ko));
@@ -2339,9 +2339,9 @@ function calcPeoria(holes, peoriaHoles, holePars){
   if(!Array.isArray(holes)||holes.length<18||!Array.isArray(peoriaHoles)) return null;
   let s=0; for(const h of peoriaHoles) s+=holes[h-1]||0;
   const coursePar=(Array.isArray(holePars)&&holePars.length===18)?holePars.reduce((a,b)=>a+(b||0),0):72;
-  let hcp=(s*1.5-coursePar)*0.8; if(hcp<0)hcp=0; if(hcp>36)hcp=36;
+  const raw=(s*1.5-coursePar)*0.8; let hcp=raw; if(hcp<0)hcp=0; if(hcp>36)hcp=36;
   const gross=holes.reduce((a,b)=>a+b,0);
-  return { handicap:Math.round(hcp*10)/10, net:Math.round((gross-hcp)*10)/10 };
+  return { handicap:Math.round(hcp*10)/10, net:Math.round((gross-hcp)*10)/10, hidden:s, coursePar, gross, capped:(raw!==hcp) };
 }
 function calcStableford(holes, parsArr){
   const P=(Array.isArray(parsArr)&&parsArr.length===18)?parsArr:GOLF_DEFAULT_PAR;
@@ -2462,12 +2462,15 @@ function evCompute(){
   const methodRanks=evAwards?(evAwards.award_ranks??0):0;
   const finalized=!!(evAwards&&evAwards.awarded_at);
   const holePars=(evData&&Array.isArray(evData.hole_pars)&&evData.hole_pars.length===18)?evData.hole_pars:null;
+  const ko=lang==='ko';
   const enhanced=evParts.map(p=>{
-    const e={...p,gross:p.total??null,adjusted:null,adjLabel:''};
-    if(method==='peoria'&&peoriaHoles&&p.holes){ const r=calcPeoria(p.holes,peoriaHoles,holePars); if(r){e.adjusted=r.net;e.adjLabel=(lang==='ko'?`넷 ${r.net} (핸디 ${r.handicap})`:`net ${r.net} (h ${r.handicap})`);} }
-    else if(method==='stableford'&&p.holes){ const pts=calcStableford(p.holes,holePars); if(pts!=null){e.adjusted=-pts;e.adjLabel=`${pts}${lang==='ko'?'점':'pt'}`;} }
-    else if(method==='stableford_net'&&p.holes){ const pts=calcStablefordNet(p.holes,holePars,p.handicap); if(pts!=null){e.adjusted=-pts;e.adjLabel=`${pts}${lang==='ko'?'점(넷)':'pt(net)'}`;} }
-    else if(method==='net'&&p.total!=null&&p.handicap!=null){ const n=calcNet(p.total,p.handicap); e.adjusted=n;e.adjLabel=(lang==='ko'?`넷 ${n} (핸디 ${p.handicap})`:`net ${n}`); }
+    const e={...p,gross:p.total??null,adjusted:null,adjLabel:'',adjCalc:''};
+    if(method==='peoria'&&peoriaHoles&&p.holes){ const r=calcPeoria(p.holes,peoriaHoles,holePars); if(r){e.adjusted=r.net;
+      e.adjLabel=ko?`넷 ${r.net} · 핸디 ${r.handicap}`:`net ${r.net} · h ${r.handicap}`;
+      e.adjCalc=ko?`숨긴 12홀 합 ${r.hidden} × 1.5 − Par ${r.coursePar} = ${Math.round((r.hidden*1.5-r.coursePar)*10)/10}, ×0.8 = 핸디 ${r.handicap}${r.capped?'(상한)':''} → 넷 ${r.gross}−${r.handicap}=${r.net}`:`(Σ12 ${r.hidden}×1.5−${r.coursePar})×0.8=h${r.handicap} → net ${r.gross}−${r.handicap}=${r.net}`; } }
+    else if(method==='stableford'&&p.holes){ const pts=calcStableford(p.holes,holePars); if(pts!=null){e.adjusted=-pts;e.adjLabel=`${pts}${ko?'점':'pt'}`; e.adjCalc=ko?`홀당 점수 합산(이글↑5·이글4·버디3·파2·보기1·더블↓0) = ${pts}점`:`Stableford points = ${pts}`;} }
+    else if(method==='stableford_net'&&p.holes){ const pts=calcStablefordNet(p.holes,holePars,p.handicap); if(pts!=null){e.adjusted=-pts;e.adjLabel=`${pts}${ko?'점(넷)':'pt(net)'}`; e.adjCalc=ko?`핸디 ${p.handicap??0} 보너스를 홀별 배분 후 스테이블포드 = ${pts}점`:`Stableford net (h ${p.handicap??0}) = ${pts}`;} }
+    else if(method==='net'&&p.total!=null&&p.handicap!=null){ const n=calcNet(p.total,p.handicap); e.adjusted=n;e.adjLabel=ko?`넷 ${n} · 핸디 ${p.handicap}`:`net ${n}`; e.adjCalc=ko?`그로스 ${p.total} − 핸디 ${p.handicap} = 넷 ${n}`:`${p.total} − ${p.handicap} = ${n}`; }
     return e;
   });
   const byGross=[...enhanced].sort((a,b)=>cmpCountback(a.gross,b.gross,a.holes,b.holes).diff);
@@ -2588,6 +2591,88 @@ function scorecardView(pars, holes){
   const foot=P?`<div style="font-size:10.5px;color:var(--sub);margin-top:4px;text-align:right">${lang==='ko'?'전반':'Out'} ${fs} (${dd(fs-fp)}) · ${lang==='ko'?'후반':'In'} ${bs} (${dd(bs-bp)})</div>`:'';
   return `<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;table-layout:fixed">${nine(0)}<tr><td colspan="11" style="height:3px;border:none"></td></tr>${nine(9)}</table></div>${foot}`;
 }
+function methodExplain(method){ const ko=lang==='ko'; return ({
+  peoria: ko?'추첨된 12홀의 타수 합 × 1.5 − 코스 Par, 다시 × 0.8 = 핸디(0~36). 그로스 − 핸디 = 넷. 낮을수록 우승. (정석 신페리오: par 그룹별 2홀씩 제외)':'Σ(12 holes)×1.5 − coursePar, ×0.8 = handicap(0–36). net = gross − handicap. Lower wins.',
+  net: ko?'그로스 − 개인 핸디캡 = 넷. 낮을수록 우승.':'gross − personal handicap. Lower wins.',
+  stableford: ko?'홀당 점수 합 — 이글 이상 5, 이글 4, 버디 3, 파 2, 보기 1, 더블 이상 0. 높을수록 우승.':'Per-hole points. Higher wins.',
+  stableford_net: ko?'핸디캡을 18홀에 보너스로 분배한 뒤 스테이블포드 점수. 높을수록 우승 (핸디 높은 약자도 시상 가능).':'Stableford with handicap bonus distributed. Higher wins.',
+  gross: ko?'18홀 총타수 그대로 비교. 낮을수록 우승.':'Raw 18-hole total. Lower wins.'
+})[method]||''; }
+// 신페리오 선정 12홀 스코어카드 (선정홀 노란칸 하이라이트)
+function peoriaScorecardView(pars, peoriaHoles){
+  const P=(Array.isArray(pars)&&pars.length===18)?pars:GOLF_DEFAULT_PAR;
+  const sel=new Set((peoriaHoles||[]).map(h=>+h));
+  const th='padding:2px 0;font-size:9px;color:#475569;font-weight:700;background:#eef2f7;border:1px solid var(--line);text-align:center';
+  const lab='padding:2px 4px;font-size:9px;font-weight:800;border:1px solid var(--line);background:#f8fafc;white-space:nowrap';
+  function nine(s){
+    let hRow=`<td style="${lab}">홀</td>`,pRow=`<td style="${lab}">Par</td>`;
+    for(let k=0;k<9;k++){const i=s+k;const on=sel.has(i+1);
+      hRow+=`<td style="${th}${on?';background:#fff59d;color:#e65100':''}">${i+1}</td>`;
+      pRow+=`<td style="padding:2px 0;font-size:10.5px;border:1px solid var(--line);text-align:center;font-weight:${on?'800':'400'};${on?'background:#fff59d;color:#e65100':'color:var(--sub)'}">${P[i]||'-'}</td>`;
+    }
+    return `<tr>${hRow}</tr><tr>${pRow}</tr>`;
+  }
+  return `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed">${nine(0)}<tr><td colspan="10" style="height:3px;border:none"></td></tr>${nine(9)}</table></div><div style="font-size:10.5px;color:var(--sub);margin-top:4px">${lang==='ko'?'선정홀':'Selected'}: ${[...sel].sort((a,b)=>a-b).join(', ')}</div>`;
+}
+// ===== 럭키 드로우 룰렛 =====
+const RAFFLE_PAL=['#FB8C00','#43A047','#1E88E5','#8E24AA','#E53935','#00897B','#6D4C41','#3949AB','#7CB342','#F4511E','#039BE5','#C0CA33','#D81B60','#00ACC1','#5E35B1','#FB8C00','#546E7A','#26A69A','#EF5350','#AB47BC'];
+function rafflePool(){
+  const won=new Set((evAwards&&evAwards.raffle_winners)||[]);
+  const incl=!!(evAwards&&evAwards.raffle_include_winners);
+  let pool=evParts.map(p=>p.user_id).filter(u=>!won.has(u));
+  if(!incl){ const R=evCompute(); const w=new Set([...R.grossOrder,...R.methodOrder,...((evAwards&&evAwards.longest_drive_user_ids)||[]),...((evAwards&&evAwards.nearest_pin_user_ids)||[])]); pool=pool.filter(u=>!w.has(u)); }
+  return pool;
+}
+function raffleWheelSVG(pool){
+  const n=Math.max(1,pool.length), cx=100,cy=100,r=94, seg=360/n;
+  const pt=(ang,rr)=>[cx+rr*Math.sin(ang*Math.PI/180), cy-rr*Math.cos(ang*Math.PI/180)];
+  let out='';
+  for(let i=0;i<n;i++){ const a0=i*seg,a1=(i+1)*seg; const [x0,y0]=pt(a0,r),[x1,y1]=pt(a1,r); const large=seg>180?1:0; const col=RAFFLE_PAL[i%RAFFLE_PAL.length];
+    out+=`<path d="M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)} Z" fill="${col}" stroke="#fff" stroke-width="1"/>`;
+    if(n<=14){ const am=a0+seg/2; const [tx,ty]=pt(am,r*0.62); const nm=(evParts.find(p=>p.user_id===pool[i])||{}).name||''; out+=`<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" fill="#fff" font-size="8" font-weight="700" text-anchor="middle" dominant-baseline="middle" transform="rotate(${am.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)})">${escT(nm.slice(0,6))}</text>`; }
+  }
+  return out;
+}
+window.__raffleSpin=async function(eventId){
+  if(window.__raffleSpinning) return;
+  const pool=rafflePool();
+  if(!pool.length){ toast(lang==='ko'?'추첨 대상이 없어요':'No eligible pool'); return; }
+  const g=document.getElementById('raffleWheelG'); if(!g) return;
+  const idx=Math.floor(Math.random()*pool.length); const winner=pool[idx];
+  const seg=360/pool.length, a_i=idx*seg+seg/2;
+  const base=Math.ceil((window.__raffleRot||0)/360)*360; const rot=base+360*6+((360-a_i)%360); window.__raffleRot=rot;
+  window.__raffleSpinning=true;
+  const btn=document.getElementById('raffleSpinBtn'); if(btn){btn.disabled=true;btn.style.opacity='.6';}
+  const rev=document.getElementById('raffleReveal'); if(rev) rev.textContent='';
+  void g.getBoundingClientRect(); g.style.transition='transform 4.8s cubic-bezier(.12,.7,.18,1)'; g.style.transform='rotate('+rot+'deg)';
+  setTimeout(async ()=>{
+    const winners=[...((evAwards&&evAwards.raffle_winners)||[]), winner];
+    try{ await sb.from('event_awards').update({raffle_winners:winners,raffle_count:winners.length,raffle_completed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('event_id',eventId); }catch(e){}
+    if(rev){ const nm=(evParts.find(p=>p.user_id===winner)||{}).name||''; rev.innerHTML=`<div style="background:rgba(255,255,255,.94);border-radius:12px;padding:8px 14px;font-size:16px;color:#111">🎉 ${escT(nm)}</div>`; }
+    window.__raffleSpinning=false;
+    setTimeout(()=>{ if(evOpen===eventId&&raffleOpen) openEvent(eventId); }, 1300);
+  }, 4900);
+};
+async function toggleRaffleIncl(eventId){ try{ const cur=!!(evAwards&&evAwards.raffle_include_winners); const {error}=await sb.from('event_awards').update({raffle_include_winners:!cur,updated_at:new Date().toISOString()}).eq('event_id',eventId); if(error){toast(error.message);return;} openEvent(eventId); }catch(e){toast(String(e.message||e));} }
+function raffleSectionHTML(){
+  const pool=rafflePool(); const incl=!!(evAwards&&evAwards.raffle_include_winners);
+  const winners=(evAwards&&evAwards.raffle_winners)||[];
+  const medals=['🥇','🥈','🥉','🏅','🏅','🎉','🎉','🎉','🎉','🎉'];
+  const wlist=winners.length?`<div style="background:rgba(255,255,255,.1);border-radius:10px;padding:8px 10px;margin-top:10px;text-align:left;max-height:150px;overflow-y:auto">${winners.map((u,i)=>`<div style="font-size:13px;padding:2px 0">${medals[i]||'🎁'} ${escT((evParts.find(p=>p.user_id===u)||{}).name||'')}</div>`).join('')}</div>`:'';
+  return `<div style="background:linear-gradient(160deg,#1a1a2e,#16213e);border-radius:16px;padding:16px;margin-top:10px;text-align:center;color:#fff">
+    <div style="font-weight:800;margin-bottom:4px">🎁 ${lang==='ko'?'럭키 드로우':'Lucky draw'}</div>
+    <div style="font-size:11.5px;opacity:.85;margin-bottom:10px">${lang==='ko'?'남은 대상':'Remaining'} ${pool.length}${lang==='ko'?'명 · 한 명씩 추첨':' · one at a time'}</div>
+    <div style="position:relative;width:230px;max-width:78%;margin:0 auto;aspect-ratio:1">
+      <div style="position:absolute;top:-3px;left:50%;transform:translateX(-50%);z-index:3;width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:20px solid #FF1744"></div>
+      <svg viewBox="0 0 200 200" style="width:100%;height:100%;display:block"><g id="raffleWheelG" style="transform-origin:100px 100px;transform:rotate(${window.__raffleRot||0}deg)">${raffleWheelSVG(pool)}</g><circle cx="100" cy="100" r="13" fill="#fff"/></svg>
+      <div id="raffleReveal" style="position:absolute;left:0;right:0;bottom:-6px;display:flex;justify-content:center;pointer-events:none;font-weight:900"></div>
+    </div>
+    <label style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;margin-top:12px;cursor:pointer"><input type="checkbox" data-raffleincl ${incl?'checked':''}>${lang==='ko'?'정규 수상자도 포함':'Include winners'}</label>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
+      <button id="raffleSpinBtn" class="gbtn" style="background:linear-gradient(135deg,#FFB300,#FF6F00);color:#fff;border:none;flex:1;max-width:220px;${pool.length?'':'opacity:.5;pointer-events:none'}" onclick="window.__raffleSpin('${evData.id}')">🎰 ${pool.length?(lang==='ko'?'돌리기':'Spin'):(lang==='ko'?'대상 없음':'None')}</button>
+      <button class="gbtn line" data-raffleclose style="flex:0 0 auto;color:#fff;border-color:#556">${lang==='ko'?'종료':'Done'}</button>
+    </div>${wlist}</div>`;
+}
 function eventDetailView(){
   const c=dbClubs.find(x=>x.id===clubOpen);
   const back=`<button class="gmback" data-evback>‹ ${escT((c&&c.name)||(lang==='ko'?'동호회':'Club'))}</button>`;
@@ -2629,7 +2714,7 @@ function eventDetailView(){
       const spRows=evParts.length?evParts.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="flex:1;font-size:13px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escT(p.name)}</span><label style="font-size:11px;display:inline-flex;align-items:center;gap:3px;color:#b45309"><input type="checkbox" data-spl="${p.user_id}" ${curLong.has(p.user_id)?'checked':''}>🏌️${lang==='ko'?'롱':'L'}</label><label style="font-size:11px;display:inline-flex;align-items:center;gap:3px;color:#2f6df0"><input type="checkbox" data-spn="${p.user_id}" ${curNear.has(p.user_id)?'checked':''}>🎯${lang==='ko'?'니어':'N'}</label></div>`).join(''):`<div style="font-size:12px;color:var(--sub)">${lang==='ko'?'참가자 없음':'No participants'}</div>`;
       const spBlock=`<div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:8px"><div style="font-size:11.5px;color:var(--sub);margin-bottom:4px">🏌️ ${lang==='ko'?'롱기스트 / 니어리스트 (각 최대 4명)':'Longest / Nearest (max 4 each)'}</div>${spRows}<button class="gbtn line" data-evspecial="${evData.id}" style="width:100%;margin-top:6px">${lang==='ko'?'특별상 저장':'Save special'}</button></div>`;
       const rfDone=Array.isArray(evAwards.raffle_winners)&&evAwards.raffle_winners.length;
-      const rfBlock=finalized?`<div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:8px"><div style="font-size:11.5px;color:var(--sub);margin-bottom:6px">🎁 ${lang==='ko'?'럭키 드로우':'Raffle'}</div><div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><input id="rfCount" type="number" min="1" value="${rfDone?evAwards.raffle_count:1}" style="flex:0 0 70px;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px"><label style="font-size:11.5px;display:inline-flex;align-items:center;gap:5px"><input id="rfIncl" type="checkbox" ${evAwards.raffle_include_winners?'checked':''}>${lang==='ko'?'수상자 포함':'Include winners'}</label></div><button class="gbtn line" data-evraffle="${evData.id}" style="width:100%">🎁 ${rfDone?(lang==='ko'?'다시 추첨':'Redraw'):(lang==='ko'?'추첨':'Draw')}</button></div>`:'';
+      const rfBlock=finalized?`<div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:8px"><button class="gbtn" data-raffleopen style="width:100%;background:linear-gradient(135deg,#FFB300,#FF6F00);color:#fff;border:none">🎁 ${lang==='ko'?'럭키 드로우 룰렛 돌리기':'Lucky draw'}${rfDone?` (${lang==='ko'?'당첨':'won'} ${evAwards.raffle_count})`:''}</button></div>`:'';
       wiz=`<div style="background:#f7f8fa;border:1px solid var(--line);border-radius:14px;padding:13px;margin:6px 0 12px"><div style="font-weight:800;margin-bottom:8px">🏆 ${lang==='ko'?'시상 설정':'Awards setup'} ${finalized?`<span class="flag" style="color:#16a34a;background:#eaf7ef;border-color:#bbf0cf">${lang==='ko'?'발표 완료':'Published'}</span>`:`<span class="flag" style="color:#b45309;background:#fef3c7;border-color:#fcd34d">🔒 ${lang==='ko'?'잠금':'Locked'}</span>`}</div>
         <div style="font-size:11.5px;color:var(--sub);margin-bottom:4px">${lang==='ko'?'시상 방식':'Method'}</div>${sel}
         <div style="display:flex;gap:8px"><div style="flex:1"><div style="font-size:11.5px;color:var(--sub);margin-bottom:4px">${lang==='ko'?'그로스 시상(명)':'Gross #'}</div>${grSel}</div><div style="flex:1"><div style="font-size:11.5px;color:var(--sub);margin-bottom:4px">${lang==='ko'?'보정 시상(명)':'Adj #'}</div>${mrSel}</div></div>
@@ -2653,7 +2738,7 @@ function eventDetailView(){
     if(R.finalized&&nearSet.has(p.user_id)) badge+=`<span class="flag" style="color:#2f6df0;background:#eef4ff;border-color:#cfe0ff">🎯 ${lang==='ko'?'니어리스트':'Nearest'}</span>`;
     const me=p.user_id===uid?`<span style="font-size:10px;color:var(--sub)"> (${lang==='ko'?'나':'me'})</span>`:'';
     if(p._cb&&gi>=0) badge+=`<span class="flag" style="color:#92722a;background:#fdf6e3;border-color:#eaddb0">⚖️ ${countbackLabel(p._cb)}</span>`;
-    const adj=(R.finalized&&p.adjLabel)?`<div style="font-size:11px;color:var(--sub);margin-top:2px">${escT(p.adjLabel)}</div>`:'';
+    const adj=(R.finalized&&p.adjLabel)?`<div style="font-size:11.5px;color:#2f6df0;font-weight:700;margin-top:2px">${escT(p.adjLabel)}</div>${p.adjCalc?`<div style="font-size:10px;color:var(--sub);margin-top:1px;line-height:1.4">${escT(p.adjCalc)}</div>`:''}`:'';
     const hasCard=Array.isArray(p.holes)&&p.holes.length>=18;
     const vBtn=hasCard?`<button class="join" style="background:#eef0f3;color:#333;padding:3px 8px;font-size:11px" data-evpview="${p.user_id}">${evPartOpen===p.user_id?'▲':'▦'}</button>`:'';
     const inBtn=(isStaff&&!locked)?`<button class="join" style="background:#eef4ff;color:#2f6df0;padding:3px 8px;font-size:11px" data-evscorefor="${p.user_id}">✏️</button>`:'';
@@ -2674,10 +2759,12 @@ function eventDetailView(){
       addMemSec=`<button class="gbtn line" data-evaddmem style="width:100%;margin-top:10px">➕ ${lang==='ko'?'동호회 멤버 참가시키기':'Add club members'}</button>`;
     }
   }
-  const peoriaInfo=(finalized&&evAwards.award_method==='peoria'&&Array.isArray(evAwards.peoria_holes)&&evAwards.peoria_holes.length)?`<div style="font-size:11.5px;color:var(--sub);text-align:center;margin-top:8px">🎲 ${lang==='ko'?'신페리오 선정 12홀':'Peoria holes'}: ${evAwards.peoria_holes.join(', ')}</div>`:'';
+  const methodBox=(finalized&&R.method&&R.method!=='none')?`<div style="background:#eff5ff;border:1px solid #d4e3ff;border-radius:12px;padding:10px 12px;margin-top:10px;font-size:11.5px;color:#1d4ed8;line-height:1.5">📐 <b>${methodLabel(R.method)}</b> ${lang==='ko'?'계산법':'method'}: ${escT(methodExplain(R.method))}</div>`:'';
+  const peoriaInfo=(finalized&&evAwards.award_method==='peoria'&&Array.isArray(evAwards.peoria_holes)&&evAwards.peoria_holes.length)?`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow);margin-top:10px"><div style="font-weight:800;font-size:13px;margin-bottom:2px">🎲 ${lang==='ko'?'신페리오 선정 12홀 (노란칸)':'Peoria 12 holes (yellow)'}</div><div style="font-size:11px;color:var(--sub);margin-bottom:4px">${lang==='ko'?'추첨된 홀의 타수만으로 핸디를 산출합니다':'Handicap from these holes only'}</div>${peoriaScorecardView(parOk?evData.hole_pars:null, evAwards.peoria_holes)}</div>`:'';
   const rfWin=(finalized&&Array.isArray(evAwards.raffle_winners)&&evAwards.raffle_winners.length)?`<div style="background:#fff7e8;border:1px solid #ffe6b3;border-radius:12px;padding:12px;margin-top:10px"><div style="font-weight:800;font-size:13px;margin-bottom:5px">🎁 ${lang==='ko'?'럭키 드로우 당첨':'Raffle winners'} (${evAwards.raffle_winners.length})</div><div style="font-size:13.5px;line-height:1.6">${evAwards.raffle_winners.map(u=>'🎉 '+escT(evN(u))).join('<br>')}</div></div>`:'';
   const title=finalized?(lang==='ko'?'최종 결과':'Final results'):(lang==='ko'?'참가자 · 현재 스코어':'Participants');
-  return back+head+joinBar+scoreBar+wiz+`<h2 class="sech" style="margin:6px 0 8px">📊 ${title} (${evParts.length})</h2><div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 14px;box-shadow:var(--shadow)">${rows}</div>`+addMemSec+peoriaInfo+rfWin;
+  const raffleSec=(isStaff&&finalized&&raffleOpen)?raffleSectionHTML():'';
+  return back+head+joinBar+scoreBar+wiz+raffleSec+`<h2 class="sech" style="margin:6px 0 8px">📊 ${title} (${evParts.length})</h2>`+methodBox+`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 14px;box-shadow:var(--shadow);margin-top:6px">${rows}</div>`+addMemSec+peoriaInfo+rfWin;
 }
 /* ⛳ 네이티브 골프 허브 — 동호회(모임)·동반자·개인·골프장 4구획 (임베드 앱 폐기) */
 function viewGolfHub(){
@@ -2978,8 +3065,8 @@ document.addEventListener('click',e=>{
   const ajn=e.target.closest('[data-actjoin]'); if(ajn){if(!canAct())return;const[cid,aid]=ajn.dataset.actjoin.split(':');joinActivity(cid,aid);return;}
   const alv=e.target.closest('[data-actleave]'); if(alv){const[cid,aid]=alv.dataset.actleave.split(':');leaveActivity(cid,aid);return;}
   // ── 시상(라운드 이벤트) ──
-  const evo=e.target.closest('[data-evopen]'); if(evo){openEvent(evo.dataset.evopen);return;}
-  if(e.target.closest('[data-evback]')){evOpen=null;evData=null;evScoreOpen=false;render();page.scrollTo(0,0);return;}
+  const evo=e.target.closest('[data-evopen]'); if(evo){raffleOpen=false;openEvent(evo.dataset.evopen);return;}
+  if(e.target.closest('[data-evback]')){evOpen=null;evData=null;evScoreOpen=false;raffleOpen=false;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-evcreate]')){evCreateOpen=true;render();return;}
   if(e.target.closest('[data-evcreatecancel]')){evCreateOpen=false;render();return;}
   const evcs=e.target.closest('[data-evcreatesave]'); if(evcs){createEvent(evcs.dataset.evcreatesave);return;}
@@ -3001,7 +3088,9 @@ document.addEventListener('click',e=>{
   const evp=e.target.closest('[data-evpeoria]'); if(evp){drawPeoria(evp.dataset.evpeoria);return;}
   const evpb=e.target.closest('[data-evpublish]'); if(evpb){publishEvent(evpb.dataset.evpublish);return;}
   const evsp=e.target.closest('[data-evspecial]'); if(evsp){saveSpecial(evsp.dataset.evspecial);return;}
-  const evrf=e.target.closest('[data-evraffle]'); if(evrf){drawRaffle(evrf.dataset.evraffle);return;}
+  if(e.target.closest('[data-raffleopen]')){raffleOpen=true;window.__raffleRot=0;render();page.scrollTo(0,0);return;}
+  if(e.target.closest('[data-raffleclose]')){raffleOpen=false;render();return;}
+  const rfin=e.target.closest('[data-raffleincl]'); if(rfin){toggleRaffleIncl(evOpen);return;}
   if(e.target.closest('#gmclose')||e.target.closest('#gmclose2')){gmGateOpen=false;render();return;}
   const gau=e.target.closest('[data-gmauth]'); if(gau){authed=true;render();return;}
   if(e.target.closest('[data-golfback]')){golfOpen=false;golfSub=null;render();page.scrollTo(0,0);return;}
