@@ -2430,9 +2430,10 @@ async function applyMethod(eventId){
 }
 async function drawPeoria(eventId){
   const pars=(evData&&Array.isArray(evData.hole_pars)&&evData.hole_pars.length===18)?evData.hole_pars:GOLF_DEFAULT_PAR;
+  // 정석 신페리오: 파3·파4·파5에서 각각 4홀씩 선정(총 12홀, 숨긴홀 par합=48 → ×1.5=72)
   const par3=[],par4=[],par5=[]; for(let i=0;i<18;i++){ const p=pars[i]; if(p===3)par3.push(i+1); else if(p===5)par5.push(i+1); else par4.push(i+1); }
-  const sh=(arr,n)=>{ if(arr.length<=n)return []; const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a.slice(n); };
-  const holes=[...sh(par3,2),...sh(par4,2),...sh(par5,2)].sort((a,b)=>a-b);
+  const pick=(arr,n)=>{ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a.slice(0,Math.min(n,a.length)); };
+  const holes=[...pick(par3,4),...pick(par4,4),...pick(par5,4)].sort((a,b)=>a-b);
   try{ const {error}=await sb.from('event_awards').update({peoria_holes:holes,updated_at:new Date().toISOString()}).eq('event_id',eventId); if(error){toast(error.message);return;} toast(lang==='ko'?'12홀 추첨 완료':'Drawn'); openEvent(eventId); }catch(e){toast(String(e.message||e));}
 }
 async function publishEvent(eventId){
