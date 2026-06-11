@@ -2854,6 +2854,7 @@ function eventDetailView(){
         <div style="font-size:13px;font-weight:800;margin-bottom:2px">📊 ${lang==='ko'?'스테이블포드 점수표':'Stableford points'}</div>
         <div style="font-size:10.5px;color:var(--sub);margin-bottom:7px">${lang==='ko'?'결과별 점수를 동호회가 직접 설정 (변형 자유) — 홀당 점수 합산':'Set points per result, then summed per hole'}</div>
         <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:4px">${stInputs}</div>
+        <div style="font-size:10.5px;color:#92722a;background:#fdf6e3;border:1px solid #eaddb0;border-radius:8px;padding:6px 9px;margin-top:7px;line-height:1.45">⚖️ ${lang==='ko'?'동점 시: 후반9홀 → 후반6 → 후반3 → 18번홀 점수 합이 많은 순으로 우선 (포인트 카운트백)':lang==='th'?'เสมอกัน: นับแต้ม 9 หลัง → 6 → 3 → หลุม 18 มากกว่าได้เปรียบ':'Tie: more points in back 9 → 6 → 3 → 18th hole wins (points countback)'}</div>
         <button class="gbtn line" data-evstpts="${evData.id}" style="width:100%;margin-top:7px">${lang==='ko'?'점수표 저장':'Save points'}</button>
       </div>`:'';
       const rfDone=Array.isArray(evAwards.raffle_winners)&&evAwards.raffle_winners.length;
