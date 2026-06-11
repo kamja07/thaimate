@@ -1680,9 +1680,9 @@ function renderGate(){
      <button class="gmback" data-gmode="home" style="font-size:24px;padding:0 0 6px">‹</button>
      <div class="gtitle">${isLogin?L().g_login:L().g_signup}</div>
      <div class="gform">
-       <div class="gfield"><label>${L().a_id}</label><input id="auId" placeholder="${L().a_id}" autocomplete="off"></div>
-       <div class="gfield"><label>${L().a_pw}</label><input id="auPw" type="password" placeholder="••••••••"></div>
-       ${isLogin?'':`<div class="gfield"><label>${L().a_pw2}</label><input id="auPw2" type="password" placeholder="••••••••"></div>`}
+       <div class="gfield"><label>${L().a_id}</label><input id="auId" placeholder="${L().a_id}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="text"></div>
+       <div class="gfield"><label>${L().a_pw}</label><input id="auPw" type="password" placeholder="••••••••" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="${isLogin?'current-password':'new-password'}"></div>
+       ${isLogin?'':`<div class="gfield"><label>${L().a_pw2}</label><input id="auPw2" type="password" placeholder="••••••••" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="new-password"></div>`}
        ${isLogin?'':`<div class="gfield"><label>${L().a_email_opt}</label><input id="auEmail" type="email" placeholder="${L().a_email_ph}"></div>`}
        ${isLogin?'':`<div class="gnote">ℹ️ ${L().a_browse_only}</div>`}
        <button class="gbtn primary" data-ausubmit="${gateMode}" style="margin-top:6px;width:100%">${isLogin?L().a_login_btn:L().a_signup_btn}</button>
