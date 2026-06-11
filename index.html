@@ -2838,7 +2838,7 @@ function eventDetailView(){
       const rfBlock=finalized?`<div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:8px"><button class="gbtn" data-raffleopen style="width:100%;background:linear-gradient(135deg,#FFB300,#FF6F00);color:#fff;border:none">🎁 ${lang==='ko'?'럭키 드로우 룰렛 돌리기':'Lucky draw'}${rfDone?` (${lang==='ko'?'당첨':'won'} ${evAwards.raffle_count})`:''}</button></div>`:'';
       wiz=`<div style="background:#f7f8fa;border:1px solid var(--line);border-radius:14px;padding:13px;margin:6px 0 12px"><div style="font-weight:800;margin-bottom:8px">🏆 ${lang==='ko'?'시상 설정':'Awards setup'} ${finalized?`<span class="flag" style="color:#16a34a;background:#eaf7ef;border-color:#bbf0cf">${lang==='ko'?'발표 완료':'Published'}</span>`:`<span class="flag" style="color:#b45309;background:#fef3c7;border-color:#fcd34d">🔒 ${lang==='ko'?'잠금':'Locked'}</span>`}</div>
         <div style="font-size:11.5px;color:var(--sub);margin-bottom:4px">${lang==='ko'?'시상 방식':'Method'}</div>${sel}
-        <div style="display:flex;gap:8px"><div style="flex:1"><div style="font-size:11.5px;color:var(--sub);margin-bottom:4px">${lang==='ko'?'그로스 시상(명)':'Gross #'}</div>${grSel}</div><div style="flex:1"><div style="font-size:11.5px;color:var(--sub);margin-bottom:4px">${lang==='ko'?'보정 시상(명)':'Adj #'}</div>${mrSel}</div></div>
+        <div style="display:flex;gap:8px"><div style="flex:1"><div style="font-size:11.5px;color:var(--sub);margin-bottom:4px">${lang==='ko'?'메달리스트 시상(명)':'Medalist #'}</div>${grSel}</div><div style="flex:1"><div style="font-size:11.5px;color:var(--sub);margin-bottom:4px">${lang==='ko'?'보정 시상(명)':'Adj #'}</div>${mrSel}</div></div>
         <button class="gbtn line" data-evmethod="${evData.id}" style="width:100%;margin-bottom:8px">${lang==='ko'?'방식 적용':'Apply method'}</button>
         ${m==='peoria'?`<button class="gbtn line" data-evpeoria="${evData.id}" style="width:100%;margin-bottom:8px">🎲 ${peoriaDone?(lang==='ko'?'12홀 재추첨':'Redraw'):(lang==='ko'?'12홀 추첨':'Draw 12 holes')}${peoriaDone?` <span style="font-size:11px;color:var(--sub)">(${evAwards.peoria_holes.join(',')})</span>`:''}</button>`:''}
         ${stBlock}
@@ -2854,7 +2854,7 @@ function eventDetailView(){
   const rows=R.displayList.length?R.displayList.map(p=>{
     const gi=R.grossOrder.indexOf(p.user_id), mi=R.methodOrder.indexOf(p.user_id);
     let badge='';
-    if(R.finalized&&gi>=0) badge=`<span class="flag" style="color:#b45309;background:#fef3c7;border-color:#fcd34d">${['🥇','🥈','🥉'][gi]||'🏆'} ${lang==='ko'?'그로스':'Gross'} ${gi+1}${lang==='ko'?'위':''}</span>`;
+    if(R.finalized&&gi>=0) badge=`<span class="flag" style="color:#b45309;background:#fef3c7;border-color:#fcd34d">${['🥇','🥈','🥉'][gi]||'🏆'} ${lang==='ko'?'메달리스트':'Medalist'} ${gi+1}${lang==='ko'?'위':''}</span>`;
     else if(R.finalized&&mi>=0) badge=`<span class="flag" style="color:#2f6df0;background:#eef4ff;border-color:#cfe0ff">🏅 ${methodLabel(R.method)} ${mi+1}${lang==='ko'?'위':''}</span>`;
     if(R.finalized&&longSet.has(p.user_id)) badge+=`<span class="flag" style="color:#b45309;background:#fff7e8;border-color:#ffe6b3">🏌️ ${lang==='ko'?'롱기스트':'Longest'}</span>`;
     if(R.finalized&&nearSet.has(p.user_id)) badge+=`<span class="flag" style="color:#2f6df0;background:#eef4ff;border-color:#cfe0ff">🎯 ${lang==='ko'?'니어리스트':'Nearest'}</span>`;
