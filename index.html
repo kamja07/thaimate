@@ -291,7 +291,10 @@
   .locpill .lcv{font-size:12px;color:var(--sub)}
   .myhood{color:var(--green);font-weight:800}
   /* Golf Mate hub */
-  .gmback{display:flex;align-items:center;gap:6px;border:none;background:transparent;font-size:14px;font-weight:700;color:var(--sub);cursor:pointer;padding:2px 0 12px}
+  .gmback{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:#fff;font-size:14.5px;font-weight:800;color:var(--ink);cursor:pointer;padding:9px 15px;border-radius:11px;box-shadow:0 1px 3px rgba(20,24,30,.07);margin-bottom:10px}
+  .gmback:active{background:#f4f5f7}
+  .gmhome{border-color:#bbe3c9;color:#0b7a3b;background:#f2faf5}
+  .gmnav{display:flex;align-items:center;justify-content:space-between;gap:8px}
   .gmhero{border-radius:18px;padding:18px;color:#fff;background:linear-gradient(125deg,#0b7a3b,#16a34a);box-shadow:0 12px 28px rgba(11,122,59,.28);margin-bottom:13px}
   .gmhero .gt{display:flex;align-items:center;gap:9px;font-size:21px;font-weight:900;letter-spacing:-.4px}
   .gmhero .gp{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;background:rgba(255,255,255,.22);border-radius:999px;padding:4px 10px;margin-top:9px}
@@ -1322,7 +1325,7 @@ function viewClubHub(){
   const myRole=myClubMem[c.id];
   const isLeader=myRole==='leader';
   const isStaff=isLeader||myRole==='vice';   // 운영진: 공지·회원채팅 가능
-  const back=`<button class="gmback" data-clubback>‹ ${L().comm_clubs}</button>`;
+  const back=(c.category==='golf')?gmNav(`<button class="gmback" data-clubback>‹ ${L().comm_clubs}</button>`):`<button class="gmback" data-clubback>‹ ${L().comm_clubs}</button>`;
   const hero=`<div class="club" style="margin-bottom:12px"><div class="banner" style="background:${c.grad||'linear-gradient(120deg,#64748b,#94a3b8)'};height:64px">${c.emoji||'👥'} ${escT(c.name||'')}</div><div class="cbody2"><div class="desc">${escT(c.intro||'')}</div></div></div>`;
   if(!clubData) return back+hero+`<div class="empty" style="padding:40px 0;text-align:center;color:var(--sub)">${lang==='ko'?'불러오는 중…':lang==='th'?'กำลังโหลด…':'Loading…'}</div>`;
   const nm=u=>clubData.names[u]||(lang==='ko'?'회원':lang==='th'?'สมาชิก':'Member');
@@ -2095,8 +2098,10 @@ async function joinGolfMatch(id){ if(!canAct())return; try{ const {error}=await 
 async function leaveGolfMatch(id){ try{ const {error}=await sb.from('golf_match_participants').delete().eq('match_id',id).eq('user_id',uid); if(error){toast(error.message);return;} toast(lang==='ko'?'신청 취소':lang==='th'?'ยกเลิกแล้ว':'Cancelled'); loadGolfMatches(); }catch(e){toast(String(e.message||e));} }
 async function matchDecide(matchId,userId,approve){ if(!approve&&!confirm(lang==='ko'?'이 신청을 거절할까요?':lang==='th'?'ปฏิเสธผู้สมัครนี้?':'Reject this applicant?'))return; try{ const {error}=await sb.rpc('match_decide',{p_match:matchId,p_user:userId,p_approve:approve}); if(error){toast(error.message);return;} toast(approve?(lang==='ko'?'승인됨':lang==='th'?'อนุมัติแล้ว':'Approved'):(lang==='ko'?'거절됨':lang==='th'?'ปฏิเสธแล้ว':'Rejected')); loadGolfMatches(); }catch(e){toast(String(e.message||e));} }
 async function deleteGolfMatch(id){ if(!confirm(lang==='ko'?'이 모집글을 삭제할까요?':lang==='th'?'ลบโพสต์นี้?':'Delete this post?'))return; try{ const {error}=await sb.from('golf_matches').delete().eq('id',id); if(error){toast(error.message);return;} toast(lang==='ko'?'삭제됨':lang==='th'?'ลบแล้ว':'Deleted'); loadGolfMatches(); }catch(e){toast(String(e.message||e));} }
+// 골프 뷰 상단바: 뒤로가기 + 골프 홈 버튼
+function gmNav(backBtn){ return `<div class="gmnav">${backBtn}<button class="gmback gmhome" data-golfhome>⛳ ${lang==='ko'?'골프 홈':lang==='th'?'หน้าหลัก':'Golf home'}</button></div>`; }
 function golfMatchesView(){
-  const back=`<button class="gmback" data-golfsubback>‹ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</button>`;
+  const back=gmNav(`<button class="gmback" data-golfsubback>‹ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</button>`);
   const fmtDate=d=>{ if(!d)return ''; try{ const x=new Date(d+'T00:00'); return `${x.getMonth()+1}/${x.getDate()}`; }catch(e){return d;} };
   const inp='width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:14px;margin-bottom:8px';
   const em=golfMatchEdit?golfMatches.find(m=>m.id===golfMatchEdit):null;
@@ -2120,7 +2125,7 @@ function golfMatchesView(){
 }
 function golfMatchDetailView(){
   const m=golfMatches.find(x=>x.id===golfMatchOpen); if(!m) { golfMatchOpen=null; return golfMatchesView(); }
-  const back=`<button class="gmback" data-gmdetailback>‹ ${lang==='ko'?'동반자 모집':lang==='th'?'หาเพื่อนออกรอบ':'Find partners'}</button>`;
+  const back=gmNav(`<button class="gmback" data-gmdetailback>‹ ${lang==='ko'?'동반자 모집':lang==='th'?'หาเพื่อนออกรอบ':'Find partners'}</button>`);
   const fmtFull=d=>{ if(!d)return ''; try{ const x=new Date(d+'T00:00'); return `${x.getFullYear()}.${String(x.getMonth()+1).padStart(2,'0')}.${String(x.getDate()).padStart(2,'0')}`; }catch(e){return d;} };
   const mine=m.host_id===uid; const full=m.spots&&m._approved>=m.spots;
   const meta=[fmtFull(m.play_date),m.tee_time,m.region?('📍 '+escT(m.region)):'',m.hcp_max!=null?('핸디 ≤'+m.hcp_max):''].filter(Boolean).join(' · ');
@@ -2238,7 +2243,7 @@ async function saveCourse(){
 }
 async function deleteCourse(id){ if(!confirm(lang==='ko'?'이 골프장을 삭제할까요?':lang==='th'?'ลบสนามนี้?':'Delete this course?'))return; try{ const {error}=await sb.from('golf_courses').delete().eq('id',id); if(error){toast(error.message);return;} toast(lang==='ko'?'삭제됨':lang==='th'?'ลบแล้ว':'Deleted'); loadGolfCourses(); }catch(e){toast(String(e.message||e));} }
 function golfCoursesView(){
-  const back=`<button class="gmback" data-golfsubback>‹ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</button>`;
+  const back=gmNav(`<button class="gmback" data-golfsubback>‹ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</button>`);
   const inp='width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:14px;margin-bottom:8px';
   const verified=authed&&emailVerified;
   const ec=golfCourseEdit?golfCourses.find(c=>c.id===golfCourseEdit):null;
@@ -2311,7 +2316,7 @@ async function saveHcp(){
 }
 async function deleteRound(id){ if(!confirm(lang==='ko'?'이 라운드 기록을 삭제할까요?':lang==='th'?'ลบรอบนี้?':'Delete this round?'))return; try{ const {error}=await sb.from('rounds').delete().eq('id',id).eq('user_id',uid).is('event_id',null); if(error){toast(error.message);return;} loadGolfRounds(); }catch(e){toast(String(e.message||e));} }
 function golfRoundsView(){
-  const back=`<button class="gmback" data-golfsubback>‹ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</button>`;
+  const back=gmNav(`<button class="gmback" data-golfsubback>‹ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</button>`);
   if(!authed) return back+`<h2 class="sech" style="margin:6px 0 10px">🏌️ ${lang==='ko'?'개인 활동':lang==='th'?'กอล์ฟของฉัน':'My golf'}</h2><div class="empty" style="padding:30px 0;text-align:center;color:var(--sub)">${lang==='ko'?'로그인 후 이용하세요':lang==='th'?'กรุณาล็อกอิน':'Login required'}</div>`;
   const inp='width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:14px;margin-bottom:8px';
   const valid=golfRounds.filter(r=>r.total!=null);
@@ -2801,7 +2806,7 @@ function raffleSectionHTML(){
 }
 function eventDetailView(){
   const c=dbClubs.find(x=>x.id===clubOpen);
-  const back=`<button class="gmback" data-evback>‹ ${escT((c&&c.name)||(lang==='ko'?'동호회':lang==='th'?'ชมรม':'Club'))}</button>`;
+  const back=gmNav(`<button class="gmback" data-evback>‹ ${escT((c&&c.name)||(lang==='ko'?'동호회':lang==='th'?'ชมรม':'Club'))}</button>`);
   if(!evData) return back+`<div class="empty" style="padding:40px 0;text-align:center;color:var(--sub)">${lang==='ko'?'불러오는 중…':lang==='th'?'กำลังโหลด…':'Loading…'}</div>`;
   const myRole=clubOpen?myClubMem[clubOpen]:null;
   const isStaff=myRole==='leader'||myRole==='vice';
@@ -2931,7 +2936,7 @@ function viewGolfHub(){
     +card('course','📋',lang==='ko'?'골프장 정보':lang==='th'?'ข้อมูลสนามกอล์ฟ':'Courses',lang==='ko'?'골퍼들이 함께 만드는 공용 골프장 DB':lang==='th'?'ฐานข้อมูลสนามที่ทุกคนช่วยกันสร้าง':'Community-built course database');
 }
 function golfClubsView(){
-  const back=`<button class="gmback" data-golfsubback>‹ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</button>`;
+  const back=gmNav(`<button class="gmback" data-golfsubback>‹ ${lang==='ko'?'골프메이트':lang==='th'?'กอล์ฟเมท':'Golf Mate'}</button>`);
   const enter=lang==='ko'?'입장':lang==='th'?'เข้า':'Enter';
   const allGolf=dbClubs.filter(c=>c.category==='golf');
   // 공개: 승인됨 + (본인이 개설한 승인대기). 관리자는 전부 봄
@@ -3152,6 +3157,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-golfnewclub]')){wClub={emoji:'⛳',grad:'linear-gradient(120deg,#0b7a3b,#16a34a)',cat:'golf'};clubCreateOpen=true;render();return;}
   const gsub=e.target.closest('[data-golfsub]'); if(gsub){ const gs=gsub.dataset.golfsub; if(gs==='match') openGolfMatches(); else if(gs==='course') openGolfCourses(); else if(gs==='rounds') openGolfRounds(); else if(gs==='clubs'){ golfSub='clubs'; clubCreateOpen=false; render(); page.scrollTo(0,0); } return; }
   if(e.target.closest('[data-golfsubback]')){golfSub=null;golfMatchForm=false;golfMatchEdit=null;golfCourseForm=false;golfCourseEdit=null;golfRoundForm=false;clubCreateOpen=false;render();page.scrollTo(0,0);return;}
+  if(e.target.closest('[data-golfhome]')){golfSub=null;clubOpen=null;clubData=null;evOpen=null;evData=null;golfMatchOpen=null;golfMatchForm=false;golfMatchEdit=null;golfCourseForm=false;golfCourseEdit=null;golfRoundForm=false;clubCreateOpen=false;raffleOpen=false;try{clubChatStop();}catch(e){}render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-grnew]')){golfRoundForm=true;render();return;}
   if(e.target.closest('[data-grcancel]')){golfRoundForm=false;render();return;}
   if(e.target.closest('[data-grsave]')){saveRound();return;}
