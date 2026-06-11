@@ -3245,6 +3245,14 @@ applyBrand();
     var standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone===true;
     if(standalone) return;
     if(sessionStorage.getItem('pwaBarDismiss')) return;
+    // 기기 언어(navigator.language)로 ko/en/th 안내 판별
+    function blang(){ var n=((navigator.language||navigator.userLanguage||'')+'').toLowerCase(); if(n.indexOf('ko')===0)return 'ko'; if(n.indexOf('th')===0)return 'th'; return 'en'; }
+    var BL={
+      ko:{install:'ThaiMate 앱 설치',installSub:'홈 화면에서 앱처럼 바로 실행',installBtn:'📲 설치',inappT:'앱처럼 쓰려면 한 단계 더!',inappSub:'기본 브라우저로 열어 “홈 화면에 추가”',inappOtherT:'외부 브라우저로 열어 설치',inappOtherSub:'⋯ 메뉴 → 다른 브라우저로 열기',openBtn:'브라우저로 열기',iosT:'홈 화면에 추가',iosSub:'공유 ⬆️ → “홈 화면에 추가”로 앱 설치',copyAlert:'주소가 복사됐어요.\nChrome/Safari에 붙여넣어 열면 “홈 화면에 추가”로 설치할 수 있어요.\n(또는 우측 상단 ⋯ 메뉴 → 다른 브라우저로 열기)'},
+      en:{install:'Install ThaiMate',installSub:'Run it like an app from your home screen',installBtn:'📲 Install',inappT:'One more step to use it like an app',inappSub:'Open in your browser, then “Add to Home Screen”',inappOtherT:'Open in a browser to install',inappOtherSub:'⋯ menu → Open in browser',openBtn:'Open in browser',iosT:'Add to Home Screen',iosSub:'Share ⬆️ → “Add to Home Screen”',copyAlert:'Link copied.\nPaste it in Chrome/Safari, then use “Add to Home Screen”.\n(Or ⋯ menu → Open in browser)'},
+      th:{install:'ติดตั้งแอป ThaiMate',installSub:'เปิดเหมือนแอปจากหน้าจอหลัก',installBtn:'📲 ติดตั้ง',inappT:'อีกขั้นเพื่อใช้เหมือนแอป',inappSub:'เปิดในเบราว์เซอร์ แล้ว “เพิ่มไปยังหน้าจอหลัก”',inappOtherT:'เปิดในเบราว์เซอร์เพื่อติดตั้ง',inappOtherSub:'เมนู ⋯ → เปิดในเบราว์เซอร์',openBtn:'เปิดในเบราว์เซอร์',iosT:'เพิ่มไปยังหน้าจอหลัก',iosSub:'แชร์ ⬆️ → “เพิ่มไปยังหน้าจอหลัก”',copyAlert:'คัดลอกลิงก์แล้ว\nวางใน Chrome/Safari แล้วเลือก “เพิ่มไปยังหน้าจอหลัก”\n(หรือเมนู ⋯ → เปิดในเบราว์เซอร์)'}
+    };
+    var T=BL[blang()]||BL.en;
     function logo(){ return '<div style="flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#ff7a33,#ffa869);color:#fff;display:grid;place-items:center;font-weight:900;font-size:20px">M</div>'; }
     function xbtn(){ return '<button onclick="window.__pwaDismiss()" aria-label="close" style="flex:0 0 auto;border:none;background:#f1f2f4;color:#999;width:26px;height:26px;border-radius:50%;font-size:15px;cursor:pointer;line-height:1">×</button>'; }
     function mkBar(inner){ var old=document.getElementById('pwaBar'); if(old)old.remove(); var b=document.createElement('div'); b.id='pwaBar'; b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(74px + env(safe-area-inset-bottom));z-index:99999;width:min(420px,calc(100% - 24px));box-sizing:border-box;background:#fff;border:1px solid #ffd9c2;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.2);padding:11px 11px 11px 13px;display:flex;align-items:center;gap:10px;font-family:inherit'; b.innerHTML=inner; document.body.appendChild(b); return b; }
@@ -3257,24 +3265,24 @@ applyBrand();
         if(isKakao){ location.href='kakaotalk://web/openExternal?url='+encodeURIComponent(url); return; }
         if(isLine){ location.href=url+(url.indexOf('?')>=0?'&':'?')+'openExternalBrowser=1'; return; }
         try{ navigator.clipboard.writeText(url); }catch(e){}
-        alert('주소가 복사됐어요.\nChrome/Safari에 붙여넣어 열면 "홈 화면에 추가"로 설치할 수 있어요.\n(또는 우측 상단 ⋯ 메뉴 → 다른 브라우저로 열기)');
+        alert(T.copyAlert);
       };
       var ti=(isKakao||isLine)
-        ?'<b style="font-size:13.5px">앱처럼 쓰려면 한 단계 더!</b><br><span style="font-size:11.5px;color:#666">기본 브라우저로 열어 “홈 화면에 추가”</span>'
-        :'<b style="font-size:13.5px">외부 브라우저로 열어 설치</b><br><span style="font-size:11.5px;color:#666">⋯ 메뉴 → 다른 브라우저로 열기</span>';
-      setTimeout(function(){ if(!sessionStorage.getItem('pwaBarDismiss')) mkBar(logo()+'<div style="flex:1;min-width:0;line-height:1.35">'+ti+'</div><button onclick="window.__pwaExternal()" style="'+aBtn+'">브라우저로 열기</button>'+xbtn()); },1200);
+        ?'<b style="font-size:13.5px">'+T.inappT+'</b><br><span style="font-size:11.5px;color:#666">'+T.inappSub+'</span>'
+        :'<b style="font-size:13.5px">'+T.inappOtherT+'</b><br><span style="font-size:11.5px;color:#666">'+T.inappOtherSub+'</span>';
+      setTimeout(function(){ if(!sessionStorage.getItem('pwaBarDismiss')) mkBar(logo()+'<div style="flex:1;min-width:0;line-height:1.35">'+ti+'</div><button onclick="window.__pwaExternal()" style="'+aBtn+'">'+T.openBtn+'</button>'+xbtn()); },1200);
       return;
     }
     if(iosSafari){
-      var ts='<b style="font-size:13.5px">홈 화면에 추가</b><br><span style="font-size:11.5px;color:#666">공유 ⬆️ → “홈 화면에 추가”로 앱 설치</span>';
+      var ts='<b style="font-size:13.5px">'+T.iosT+'</b><br><span style="font-size:11.5px;color:#666">'+T.iosSub+'</span>';
       setTimeout(function(){ if(!sessionStorage.getItem('pwaBarDismiss')) mkBar(logo()+'<div style="flex:1;min-width:0;line-height:1.35">'+ts+'</div>'+xbtn()); },1500);
       return;
     }
     var deferred=null;
     window.__pwaInstall=function(){ if(!deferred)return; deferred.prompt(); deferred.userChoice.then(function(){ deferred=null; var el=document.getElementById('pwaBar'); if(el)el.remove(); }); };
     window.addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); deferred=e; if(sessionStorage.getItem('pwaBarDismiss'))return;
-      var tb='<b style="font-size:13.5px">ThaiMate 앱 설치</b><br><span style="font-size:11.5px;color:#666">홈 화면에서 앱처럼 바로 실행</span>';
-      mkBar(logo()+'<div style="flex:1;min-width:0;line-height:1.35">'+tb+'</div><button onclick="window.__pwaInstall()" style="'+aBtn+'">📲 설치</button>'+xbtn());
+      var tb='<b style="font-size:13.5px">'+T.install+'</b><br><span style="font-size:11.5px;color:#666">'+T.installSub+'</span>';
+      mkBar(logo()+'<div style="flex:1;min-width:0;line-height:1.35">'+tb+'</div><button onclick="window.__pwaInstall()" style="'+aBtn+'">'+T.installBtn+'</button>'+xbtn());
     });
     window.addEventListener('appinstalled',function(){ var el=document.getElementById('pwaBar'); if(el)el.remove(); deferred=null; });
   }catch(e){}
