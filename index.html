@@ -2374,25 +2374,43 @@ function calcPeoria(holes, peoriaHoles, holePars){
   const gross=holes.reduce((a,b)=>a+b,0);
   return { handicap:Math.round(hcp*10)/10, net:Math.round((gross-hcp)*10)/10, hidden:s, coursePar, gross, capped:(raw!==hcp) };
 }
-function calcStableford(holes, parsArr){
+// 스테이블포드 점수표 — 변형이 많아 동호회 관리자가 직접 입력(7단계)
+const STABLE_DEF={hio:6,albatross:5,eagle:4,birdie:3,par:2,bogey:1,dbogey:0};
+const STABLE_KEYS=['hio','albatross','eagle','birdie','par','bogey','dbogey'];
+const STABLE_LABEL={ko:{hio:'홀인원',albatross:'알바트로스',eagle:'이글',birdie:'버디',par:'파',bogey:'보기',dbogey:'더블보기↑'},en:{hio:'Hole-in-one',albatross:'Albatross',eagle:'Eagle',birdie:'Birdie',par:'Par',bogey:'Bogey',dbogey:'Dbl bogey+'},th:{hio:'โฮลอินวัน',albatross:'อัลบาทรอส',eagle:'อีเกิล',birdie:'เบอร์ดี้',par:'พาร์',bogey:'โบกี้',dbogey:'ดับเบิลโบกี้+'}};
+function stablePts(p){ const o={}; for(const k of STABLE_KEYS) o[k]=(p&&p[k]!=null&&p[k]!=='')?+p[k]:STABLE_DEF[k]; return o; }
+function stableCat(s, par){ if(s===1) return 'hio'; const d=s-par; if(d<=-3)return 'albatross'; if(d===-2)return 'eagle'; if(d===-1)return 'birdie'; if(d===0)return 'par'; if(d===1)return 'bogey'; return 'dbogey'; }
+function calcStableford(holes, parsArr, ptsTable){
   const P=(Array.isArray(parsArr)&&parsArr.length===18)?parsArr:GOLF_DEFAULT_PAR;
   if(!Array.isArray(holes)||holes.length<18) return null;
-  let pts=0;
-  for(let i=0;i<18;i++){ const par=P[i]||4, s=holes[i];
-    if(par===3&&s===1){pts+=5;continue;} const d=s-par;
-    if(d<=-3)pts+=5; else if(d===-2)pts+=4; else if(d===-1)pts+=3; else if(d===0)pts+=2; else if(d===1)pts+=1; }
+  const PT=stablePts(ptsTable); let pts=0;
+  for(let i=0;i<18;i++){ const par=P[i]||4, s=holes[i]; if(s==null||s==='')continue; pts+=PT[stableCat(+s,par)]||0; }
   return pts;
 }
-function calcStablefordNet(holes, parsArr, handicap){
+function calcStablefordNet(holes, parsArr, handicap, ptsTable){
   const P=(Array.isArray(parsArr)&&parsArr.length===18)?parsArr:GOLF_DEFAULT_PAR;
   if(!Array.isArray(holes)||holes.length<18) return null;
+  const PT=stablePts(ptsTable);
   const hcp=(typeof handicap==='number'&&handicap>0)?Math.min(36,Math.floor(handicap)):0;
   const base=Math.floor(hcp/18), extra=hcp%18; let pts=0;
-  for(let i=0;i<18;i++){ const par=P[i]||4, s=holes[i];
-    if(par===3&&s===1){pts+=5;continue;}
-    const bonus=base+(i<extra?1:0); const d=(s-bonus)-par;
-    if(d<=-3)pts+=5; else if(d===-2)pts+=4; else if(d===-1)pts+=3; else if(d===0)pts+=2; else if(d===1)pts+=1; }
+  for(let i=0;i<18;i++){ const par=P[i]||4, s=holes[i]; if(s==null||s==='')continue;
+    if(+s===1){ pts+=PT.hio; continue; }
+    const bonus=base+(i<extra?1:0); const net=(+s)-bonus;
+    const d=net-par; const cat=d<=-3?'albatross':d===-2?'eagle':d===-1?'birdie':d===0?'par':d===1?'bogey':'dbogey';
+    pts+=PT[cat]||0; }
   return pts;
+}
+function stableBreakdown(holes, parsArr, ptsTable, ko, handicap){
+  const P=(Array.isArray(parsArr)&&parsArr.length===18)?parsArr:GOLF_DEFAULT_PAR;
+  const PT=stablePts(ptsTable); const isNet=(typeof handicap==='number');
+  const hcp=isNet?Math.min(36,Math.max(0,Math.floor(handicap||0))):0; const base=Math.floor(hcp/18), extra=hcp%18;
+  const cnt={}; let total=0;
+  for(let i=0;i<18;i++){ const par=P[i]||4, s=holes[i]; if(s==null||s==='')continue;
+    let cat; if(+s===1)cat='hio'; else if(isNet){ const net=(+s)-(base+(i<extra?1:0)); const d=net-par; cat=d<=-3?'albatross':d===-2?'eagle':d===-1?'birdie':d===0?'par':d===1?'bogey':'dbogey'; } else cat=stableCat(+s,par);
+    cnt[cat]=(cnt[cat]||0)+1; total+=PT[cat]||0; }
+  const L=STABLE_LABEL[ko?'ko':'en']||STABLE_LABEL.en;
+  const parts=STABLE_KEYS.filter(k=>cnt[k]).map(k=>`${L[k]} ${cnt[k]}×${PT[k]}`);
+  return parts.join(' · ')+` = ${total}${ko?'점':'pt'}`+(isNet?(ko?` (핸디 ${hcp})`:` (h${hcp})`):'');
 }
 function calcNet(gross, hcp){ if(gross==null||hcp==null) return null; return Math.round((gross-hcp)*10)/10; }
 function _b(holes,from){ return Array.isArray(holes)&&holes.length>=18?holes.slice(from,18).reduce((a,b)=>a+(b||0),0):null; }
@@ -2482,6 +2500,10 @@ async function saveSpecial(eventId, type){
   evSpecialOpen=true;
   try{ const {error}=await sb.from('event_awards').update(upd).eq('event_id',eventId); if(error){toast(error.message);return;} toast(msg); openEvent(eventId); }catch(e){toast(String(e.message||e));}
 }
+async function saveStablefordPts(eventId){
+  const v={}; for(const k of STABLE_KEYS){ const el=document.getElementById('stp_'+k); v[k]=el?(parseInt(el.value,10)||0):STABLE_DEF[k]; }
+  try{ const {error}=await sb.from('event_awards').update({stableford_points:v,updated_at:new Date().toISOString()}).eq('event_id',eventId); if(error){toast(error.message);return;} toast(lang==='ko'?'점수표 저장됨':'Points saved'); openEvent(eventId); }catch(e){toast(String(e.message||e));}
+}
 async function drawRaffle(eventId){
   const n=parseInt((document.getElementById('rfCount')||{}).value||'1',10)||1;
   const incl=!!((document.getElementById('rfIncl')||{}).checked);
@@ -2496,6 +2518,7 @@ async function drawRaffle(eventId){
 function evCompute(){
   const method=evAwards?evAwards.award_method:null;
   const peoriaHoles=evAwards?evAwards.peoria_holes:null;
+  const stPts=evAwards?evAwards.stableford_points:null;
   const grossRanks=evAwards?(evAwards.gross_ranks??0):0;
   const methodRanks=evAwards?(evAwards.award_ranks??0):0;
   const finalized=!!(evAwards&&evAwards.awarded_at);
@@ -2506,8 +2529,8 @@ function evCompute(){
     if(method==='peoria'&&peoriaHoles&&p.holes){ const r=calcPeoria(p.holes,peoriaHoles,holePars); if(r){e.adjusted=r.net;
       e.adjLabel=ko?`넷 ${r.net} · 핸디 ${r.handicap}`:`net ${r.net} · h ${r.handicap}`;
       e.adjCalc=ko?`숨긴 12홀 합 ${r.hidden} × 1.5 − Par ${r.coursePar} = ${Math.round((r.hidden*1.5-r.coursePar)*10)/10}, ×0.8 = 핸디 ${r.handicap}${r.capped?'(상한)':''} → 넷 ${r.gross}−${r.handicap}=${r.net}`:`(Σ12 ${r.hidden}×1.5−${r.coursePar})×0.8=h${r.handicap} → net ${r.gross}−${r.handicap}=${r.net}`; } }
-    else if(method==='stableford'&&p.holes){ const pts=calcStableford(p.holes,holePars); if(pts!=null){e.adjusted=-pts;e.adjLabel=`${pts}${ko?'점':'pt'}`; e.adjCalc=ko?`홀당 점수 합산(이글↑5·이글4·버디3·파2·보기1·더블↓0) = ${pts}점`:`Stableford points = ${pts}`;} }
-    else if(method==='stableford_net'&&p.holes){ const pts=calcStablefordNet(p.holes,holePars,p.handicap); if(pts!=null){e.adjusted=-pts;e.adjLabel=`${pts}${ko?'점(넷)':'pt(net)'}`; e.adjCalc=ko?`핸디 ${p.handicap??0} 보너스를 홀별 배분 후 스테이블포드 = ${pts}점`:`Stableford net (h ${p.handicap??0}) = ${pts}`;} }
+    else if(method==='stableford'&&p.holes){ const pts=calcStableford(p.holes,holePars,stPts); if(pts!=null){e.adjusted=-pts;e.adjLabel=`${pts}${ko?'점':'pt'}`; e.adjCalc=stableBreakdown(p.holes,holePars,stPts,ko,null);} }
+    else if(method==='stableford_net'&&p.holes){ const pts=calcStablefordNet(p.holes,holePars,p.handicap,stPts); if(pts!=null){e.adjusted=-pts;e.adjLabel=`${pts}${ko?'점(넷)':'pt(net)'}`; e.adjCalc=stableBreakdown(p.holes,holePars,stPts,ko,(p.handicap||0));} }
     else if(method==='net'&&p.total!=null&&p.handicap!=null){ const n=calcNet(p.total,p.handicap); e.adjusted=n;e.adjLabel=ko?`넷 ${n} · 핸디 ${p.handicap}`:`net ${n}`; e.adjCalc=ko?`그로스 ${p.total} − 핸디 ${p.handicap} = 넷 ${n}`:`${p.total} − ${p.handicap} = ${n}`; }
     return e;
   });
@@ -2640,11 +2663,13 @@ function scorecardView(pars, holes){
   const foot=P?`<div style="font-size:10.5px;color:var(--sub);margin-top:4px;text-align:right">${lang==='ko'?'전반':'Out'} ${fs} (${dd(fs-fp)}) · ${lang==='ko'?'후반':'In'} ${bs} (${dd(bs-bp)})</div>`:'';
   return `<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;table-layout:fixed">${nine(0)}<tr><td colspan="11" style="height:3px;border:none"></td></tr>${nine(9)}</table></div>${foot}`;
 }
-function methodExplain(method){ const ko=lang==='ko'; return ({
+function methodExplain(method){ const ko=lang==='ko'; const llk=ko?'ko':lang==='th'?'th':'en';
+  const stp=stablePts(evAwards&&evAwards.stableford_points); const stTable=STABLE_KEYS.map(k=>STABLE_LABEL[llk][k]+' '+stp[k]).join(' · ');
+  return ({
   peoria: ko?'파3·파4·파5에서 각 4홀씩 무작위로 12홀 선정(숨긴홀 Par 합=48). 12홀 타수 합 × 1.5 − 코스 Par, 다시 × 0.8 = 핸디(0~36). 그로스 − 핸디 = 넷. 낮을수록 우승.':'Pick 4 holes from each of par3/4/5 = 12 holes (hidden par sum 48). Σ(12 holes)×1.5 − coursePar, ×0.8 = handicap(0–36). net = gross − handicap. Lower wins.',
   net: ko?'그로스 − 개인 핸디캡 = 넷. 낮을수록 우승.':'gross − personal handicap. Lower wins.',
-  stableford: ko?'홀당 점수 합 — 이글 이상 5, 이글 4, 버디 3, 파 2, 보기 1, 더블 이상 0. 높을수록 우승.':'Per-hole points. Higher wins.',
-  stableford_net: ko?'핸디캡을 18홀에 보너스로 분배한 뒤 스테이블포드 점수. 높을수록 우승 (핸디 높은 약자도 시상 가능).':'Stableford with handicap bonus distributed. Higher wins.',
+  stableford: ko?`홀당 결과별 점수를 합산 (동호회 설정 — ${stTable}). 홀인원은 1타 그대로 적용. 높을수록 우승.`:`Sum of per-hole points (club-set — ${stTable}). Higher wins.`,
+  stableford_net: ko?`핸디캡을 홀별 보너스로 분배해 넷 결과로 점수 합산 (${stTable}). 높을수록 우승 — 핸디 높은 약자도 시상 가능.`:`Handicap bonus distributed per hole, then points by net result (${stTable}). Higher wins.`,
   gross: ko?'18홀 총타수 그대로 비교. 낮을수록 우승.':'Raw 18-hole total. Lower wins.'
 })[method]||''; }
 // 신페리오 선정 12홀 스코어카드 (선정홀 노란칸 하이라이트)
@@ -2799,6 +2824,16 @@ function eventDetailView(){
           <button class="gbtn line" data-evspecial="${evData.id}" data-sptype="near" style="flex:1;color:#2f6df0;border-color:#cfe0ff">🎯 ${lang==='ko'?'니어 저장':'Save N'}</button>
         </div></div>`:''}
       </div>`;
+      const isStable=(m==='stableford'||m==='stableford_net');
+      const llk=lang==='ko'?'ko':lang==='th'?'th':'en';
+      const stCur=stablePts(evAwards.stableford_points);
+      const stInputs=STABLE_KEYS.map(k=>`<div style="flex:0 0 auto;text-align:center"><div style="font-size:10px;color:var(--sub);margin-bottom:2px;white-space:nowrap">${STABLE_LABEL[llk][k]}</div><input id="stp_${k}" type="number" inputmode="numeric" value="${stCur[k]}" style="width:50px;padding:7px 2px;border:1px solid var(--line);border-radius:8px;text-align:center;font-size:14px;font-weight:700;box-sizing:border-box"></div>`).join('');
+      const stBlock=isStable?`<div style="border-top:1px dashed var(--line);margin-top:6px;padding-top:9px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:2px">📊 ${lang==='ko'?'스테이블포드 점수표':'Stableford points'}</div>
+        <div style="font-size:10.5px;color:var(--sub);margin-bottom:7px">${lang==='ko'?'결과별 점수를 동호회가 직접 설정 (변형 자유) — 홀당 점수 합산':'Set points per result, then summed per hole'}</div>
+        <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:4px">${stInputs}</div>
+        <button class="gbtn line" data-evstpts="${evData.id}" style="width:100%;margin-top:7px">${lang==='ko'?'점수표 저장':'Save points'}</button>
+      </div>`:'';
       const rfDone=Array.isArray(evAwards.raffle_winners)&&evAwards.raffle_winners.length;
       const rfBlock=finalized?`<div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:8px"><button class="gbtn" data-raffleopen style="width:100%;background:linear-gradient(135deg,#FFB300,#FF6F00);color:#fff;border:none">🎁 ${lang==='ko'?'럭키 드로우 룰렛 돌리기':'Lucky draw'}${rfDone?` (${lang==='ko'?'당첨':'won'} ${evAwards.raffle_count})`:''}</button></div>`:'';
       wiz=`<div style="background:#f7f8fa;border:1px solid var(--line);border-radius:14px;padding:13px;margin:6px 0 12px"><div style="font-weight:800;margin-bottom:8px">🏆 ${lang==='ko'?'시상 설정':'Awards setup'} ${finalized?`<span class="flag" style="color:#16a34a;background:#eaf7ef;border-color:#bbf0cf">${lang==='ko'?'발표 완료':'Published'}</span>`:`<span class="flag" style="color:#b45309;background:#fef3c7;border-color:#fcd34d">🔒 ${lang==='ko'?'잠금':'Locked'}</span>`}</div>
@@ -2806,6 +2841,7 @@ function eventDetailView(){
         <div style="display:flex;gap:8px"><div style="flex:1"><div style="font-size:11.5px;color:var(--sub);margin-bottom:4px">${lang==='ko'?'그로스 시상(명)':'Gross #'}</div>${grSel}</div><div style="flex:1"><div style="font-size:11.5px;color:var(--sub);margin-bottom:4px">${lang==='ko'?'보정 시상(명)':'Adj #'}</div>${mrSel}</div></div>
         <button class="gbtn line" data-evmethod="${evData.id}" style="width:100%;margin-bottom:8px">${lang==='ko'?'방식 적용':'Apply method'}</button>
         ${m==='peoria'?`<button class="gbtn line" data-evpeoria="${evData.id}" style="width:100%;margin-bottom:8px">🎲 ${peoriaDone?(lang==='ko'?'12홀 재추첨':'Redraw'):(lang==='ko'?'12홀 추첨':'Draw 12 holes')}${peoriaDone?` <span style="font-size:11px;color:var(--sub)">(${evAwards.peoria_holes.join(',')})</span>`:''}</button>`:''}
+        ${stBlock}
         ${spBlock}
         ${!finalized?`<button class="gbtn primary" data-evpublish="${evData.id}" style="width:100%;margin:8px 0">📣 ${lang==='ko'?'시상 발표':'Publish'}</button>`:''}
         ${rfBlock}
@@ -3176,6 +3212,7 @@ document.addEventListener('click',e=>{
   const evpb=e.target.closest('[data-evpublish]'); if(evpb){publishEvent(evpb.dataset.evpublish);return;}
   if(e.target.closest('[data-evsptoggle]')){evSpecialOpen=!evSpecialOpen;render();return;}
   const evsp=e.target.closest('[data-evspecial]'); if(evsp){saveSpecial(evsp.dataset.evspecial, evsp.dataset.sptype);return;}
+  const evst=e.target.closest('[data-evstpts]'); if(evst){saveStablefordPts(evst.dataset.evstpts);return;}
   if(e.target.closest('[data-raffleopen]')){raffleOpen=true;window.__raffleRot=0;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-raffleclose]')){raffleOpen=false;render();return;}
   const rfin=e.target.closest('[data-raffleincl]'); if(rfin){toggleRaffleIncl(evOpen);return;}
