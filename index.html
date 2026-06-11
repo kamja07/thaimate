@@ -2308,10 +2308,20 @@ function golfRoundsView(){
   const stats=valid.length?{count:valid.length, avg:Math.round(valid.reduce((s,r)=>s+r.total,0)/valid.length), best:Math.min(...valid.map(r=>r.total)), recent:valid[0].total}:null;
   const cell=(lbl,val)=>`<div style="flex:1;text-align:center;padding:10px 4px"><div style="font-size:20px;font-weight:800;color:#0b7a3b">${val}</div><div style="font-size:11px;color:var(--sub);margin-top:2px">${lbl}</div></div>`;
   const statCard=stats?`<div style="display:flex;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-bottom:12px;divide">${cell(lang==='ko'?'라운드':'Rounds',stats.count)}${cell(lang==='ko'?'평균':'Avg',stats.avg)}${cell(lang==='ko'?'베스트':'Best',stats.best)}${cell(lang==='ko'?'최근':'Recent',stats.recent)}</div>`:'';
-  // 핸디캡 카드
+  // 핸디캡 카드 — ① 직접 입력 ② 내 라운딩 기록 평균
+  const hcpDiffs=golfRounds.filter(r=>r.total!=null).map(r=>{ const pars=roundPars(r); const cp=(Array.isArray(pars)&&pars.length===18)?pars.reduce((a,b)=>a+b,0):72; return r.total-cp; });
+  const avgHcp=hcpDiffs.length?Math.max(0,Math.round((hcpDiffs.reduce((a,b)=>a+b,0)/hcpDiffs.length)*10)/10):null;
   const hcpCard=hcpEditOpen
-    ?`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow);margin-bottom:12px;display:flex;gap:8px;align-items:center"><span style="font-size:13px;font-weight:700">${lang==='ko'?'핸디캡':'Handicap'}</span><input id="hcpInput" type="number" min="0" max="54" step="0.1" value="${myHcp!=null?myHcp:''}" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px"><button class="join" data-hcpsave>${lang==='ko'?'저장':'Save'}</button><button class="join" style="background:#eef0f3;color:#333" data-hcpcancel>${lang==='ko'?'취소':'Cancel'}</button></div>`
-    :`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 14px;box-shadow:var(--shadow);margin-bottom:12px"><span style="font-size:13px"><b>🎯 ${lang==='ko'?'내 핸디캡':'My handicap'}</b> · <span style="color:#0b7a3b;font-weight:800;font-size:15px">${myHcp!=null?myHcp:'—'}</span></span><button class="join" style="background:#eef0f3;color:#333;font-size:12px" data-hcpedit>${lang==='ko'?'수정':'Edit'}</button></div>`;
+    ?`<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;box-shadow:var(--shadow);margin-bottom:12px">
+        <div style="font-weight:800;font-size:13px;margin-bottom:10px">🎯 ${lang==='ko'?'핸디캡 설정':'Set handicap'}</div>
+        <div style="font-size:11.5px;color:var(--sub);font-weight:700;margin-bottom:5px">① ${lang==='ko'?'직접 입력':'Enter directly'}</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:13px"><input id="hcpInput" type="number" min="0" max="54" step="0.1" value="${myHcp!=null?myHcp:''}" placeholder="0~54" style="flex:1;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:14px"><button class="join" data-hcpsave>${lang==='ko'?'저장':'Save'}</button><button class="join" style="background:#eef0f3;color:#333" data-hcpcancel>${lang==='ko'?'취소':'Cancel'}</button></div>
+        <div style="font-size:11.5px;color:var(--sub);font-weight:700;margin-bottom:5px">② ${lang==='ko'?'내 라운딩 기록 평균':'Average of my rounds'}</div>
+        ${avgHcp!=null
+          ?`<button class="gbtn line" data-hcpavg="${avgHcp}" style="width:100%;color:#0b7a3b;border-color:#bbe3c9">📊 ${lang==='ko'?`내 기록 평균으로 채우기 (${hcpDiffs.length}R · 핸디 ${avgHcp})`:`Use my average (${hcpDiffs.length}R · ${avgHcp})`}</button><div style="font-size:10.5px;color:var(--sub);margin-top:4px;line-height:1.4">${lang==='ko'?`각 라운드 (총타수 − 코스 Par)의 평균. 누르면 위 칸에 채워져요 — 확인 후 저장.`:'Avg of (gross − course par). Fills the field above — review, then Save.'}</div>`
+          :`<div style="font-size:12px;color:var(--sub);padding:6px 0">${lang==='ko'?'라운드 기록이 없어요. 먼저 라운드를 추가하면 평균을 계산할 수 있어요.':'No rounds yet — add a round first.'}</div>`}
+      </div>`
+    :`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 14px;box-shadow:var(--shadow);margin-bottom:12px"><span style="font-size:13px"><b>🎯 ${lang==='ko'?'내 핸디캡':'My handicap'}</b> · <span style="color:#0b7a3b;font-weight:800;font-size:15px">${myHcp!=null?myHcp:'—'}</span>${avgHcp!=null?`<span style="font-size:11px;color:var(--sub)"> · ${lang==='ko'?'기록평균':'avg'} ${avgHcp}</span>`:''}</span><button class="join" style="background:#eef0f3;color:#333;font-size:12px" data-hcpedit>${lang==='ko'?'수정':'Edit'}</button></div>`;
   // 라운드 추가 폼 (지역→골프장→조합 + 스코어카드)
   let form;
   if(golfRoundForm){
@@ -3077,6 +3087,7 @@ document.addEventListener('click',e=>{
   const grvw=e.target.closest('[data-grview]'); if(grvw){const id=grvw.dataset.grview;golfRoundOpen=(golfRoundOpen===id?null:id);render();return;}
   if(e.target.closest('[data-hcpedit]')){hcpEditOpen=true;render();return;}
   if(e.target.closest('[data-hcpcancel]')){hcpEditOpen=false;render();return;}
+  const hav=e.target.closest('[data-hcpavg]'); if(hav){ const ip=document.getElementById('hcpInput'); if(ip){ip.value=hav.dataset.hcpavg;ip.focus();} toast(lang==='ko'?'기록 평균을 채웠어요 — 확인 후 저장':'Filled — review & save'); return; }
   if(e.target.closest('[data-hcpsave]')){saveHcp();return;}
   const gcr=e.target.closest('[data-gcregion]'); if(gcr){golfCourseRegion=gcr.dataset.gcregion;render();return;}
   if(e.target.closest('[data-gcnew]')){golfCourseForm=true;golfCourseEdit=null;render();page.scrollTo(0,0);return;}
