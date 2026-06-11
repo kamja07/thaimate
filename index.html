@@ -1182,7 +1182,7 @@ async function openClub(id){
   if(actIds.length){ try{ const ap=await sb.from('activity_participants').select('activity_id,user_id').in('activity_id',actIds);
     (ap.data||[]).forEach(r=>{ cd.partCounts[r.activity_id]=(cd.partCounts[r.activity_id]||0)+1; if(r.user_id===uid) cd.joined.add(r.activity_id); }); }catch(e){} }
   // 단체대화방 메시지 (멤버만 RLS 허용 — 비멤버면 빈 배열)
-  const amMember=['leader','vice','member'].includes(myClubMem[id]);
+  const amMember=['leader','vice','member'].includes(myClubMem[id])||isAdmin;
   if(amMember){ try{ const cm=await sb.from('club_messages').select('*').eq('club_id',id).order('created_at',{ascending:true}).limit(300);
     cd.cmsgs=(cm.data||[]).map(m=>({me:m.sender_id===uid,who:(cd.names[m.sender_id]||(lang==='ko'?'회원':lang==='th'?'สมาชิก':'Member')),tx:m.body,id:m.id,ts:m.created_at})); }catch(e){} }
   if(clubOpen===id){ clubData=cd; render();
@@ -1323,7 +1323,7 @@ function viewClubHub(){
   if(!c){ clubOpen=null; return clubsInner(); }
   if(evOpen) return eventDetailView();
   const myRole=myClubMem[c.id];
-  const isLeader=myRole==='leader';
+  const isLeader=myRole==='leader'||isAdmin;   // 슈퍼관리자(Danny)는 모든 동호회에서 방장 권한
   const isStaff=isLeader||myRole==='vice';   // 운영진: 공지·회원채팅 가능
   const back=(c.category==='golf')?gmNav(`<button class="gmback" data-clubback>‹ ${L().comm_clubs}</button>`):`<button class="gmback" data-clubback>‹ ${L().comm_clubs}</button>`;
   const hero=`<div class="club" style="margin-bottom:12px"><div class="banner" style="background:${c.grad||'linear-gradient(120deg,#64748b,#94a3b8)'};height:64px">${c.emoji||'👥'} ${escT(c.name||'')}</div><div class="cbody2"><div class="desc">${escT(c.intro||'')}</div></div></div>`;
@@ -2056,7 +2056,7 @@ function clubsInner(){
   const gmCard=gm?`<div class="club" data-golf="1" style="cursor:pointer"><div class="banner" style="background:${gm.grad}">${gm.emo} ${tx(gm.nm)}</div><div class="cbody2"><div class="desc">${tx(gm.d)}</div><div class="cfoot"><span class="flag">★ ${L().flagship}</span><button class="join" data-golf="1">${enter}</button></div></div></div>`:'';
   const dbCards=dbClubs.filter(c=>c.category!=='golf').map(c=>{   // 골프 동호회는 ⛳골프 허브에만 표시
     const st=myClubMem[c.id]; let btn;
-    if(st==='leader'||st==='vice'||st==='member') btn=`<button class="join" data-clubenter="${c.id}">${lang==='ko'?'입장':enter}</button>`;
+    if(isAdmin||st==='leader'||st==='vice'||st==='member') btn=`<button class="join" data-clubenter="${c.id}">${lang==='ko'?'입장':enter}</button>`;
     else if(st==='pending') btn=`<button class="join" disabled style="background:#cbd5e1;cursor:default">${lang==='ko'?'승인 대기':lang==='th'?'รออนุมัติ':'Pending'}</button>`;
     else if(st==='rejected') btn=`<button class="join" disabled style="background:#e5e7eb;color:#9ca3af;cursor:default">${lang==='ko'?'거절됨':lang==='th'?'ปฏิเสธแล้ว':'Rejected'}</button>`;
     else btn=`<button class="join" data-clubapply="${c.id}">${lang==='ko'?'가입 신청':lang==='en'?'Apply':'สมัคร'}</button>`;
@@ -2809,7 +2809,7 @@ function eventDetailView(){
   const back=gmNav(`<button class="gmback" data-evback>‹ ${escT((c&&c.name)||(lang==='ko'?'동호회':lang==='th'?'ชมรม':'Club'))}</button>`);
   if(!evData) return back+`<div class="empty" style="padding:40px 0;text-align:center;color:var(--sub)">${lang==='ko'?'불러오는 중…':lang==='th'?'กำลังโหลด…':'Loading…'}</div>`;
   const myRole=clubOpen?myClubMem[clubOpen]:null;
-  const isStaff=myRole==='leader'||myRole==='vice';
+  const isStaff=myRole==='leader'||myRole==='vice'||isAdmin;   // 슈퍼관리자도 운영진 권한
   const amMember=['leader','vice','member'].includes(myRole);
   const joined=evParts.some(p=>p.user_id===uid);
   const locked=!!(evAwards&&evAwards.locked_at);
@@ -2947,8 +2947,8 @@ function golfClubsView(){
   const clubCards=visible.map(c=>{
     const pend=(c.approved===false);
     const st=myClubMem[c.id]; let btn;
-    if(pend) btn=`<button class="join" disabled style="background:#fde9c8;color:#b45309;cursor:default">⏳ ${lang==='ko'?'승인 대기':lang==='th'?'รออนุมัติ':'Pending'}</button>`;
-    else if(st==='leader'||st==='vice'||st==='member') btn=`<button class="join" data-clubenter="${c.id}">${enter}</button>`;
+    if(pend&&!isAdmin) btn=`<button class="join" disabled style="background:#fde9c8;color:#b45309;cursor:default">⏳ ${lang==='ko'?'승인 대기':lang==='th'?'รออนุมัติ':'Pending'}</button>`;
+    else if(isAdmin||st==='leader'||st==='vice'||st==='member') btn=`<button class="join" data-clubenter="${c.id}">${pend?'⏳ ':''}${enter}</button>`;
     else if(st==='pending') btn=`<button class="join" disabled style="background:#cbd5e1;cursor:default">${lang==='ko'?'승인 대기':lang==='th'?'รออนุมัติ':'Pending'}</button>`;
     else if(st==='rejected') btn=`<button class="join" disabled style="background:#e5e7eb;color:#9ca3af;cursor:default">${lang==='ko'?'거절됨':lang==='th'?'ปฏิเสธแล้ว':'Rejected'}</button>`;
     else btn=`<button class="join" data-clubapply="${c.id}">${lang==='ko'?'가입 신청':lang==='th'?'สมัคร':'Apply'}</button>`;
