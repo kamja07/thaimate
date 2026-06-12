@@ -561,6 +561,50 @@ async function loadMessages(chatId){
     const c=chats.find(x=>x.id===chatId); if(c&&Array.isArray(data)){ c.msgs=data.map(m=>({me:m.sender_id===uid,tx:m.body,id:m.id})); if(chatOpen!==null&&chats[chatOpen]&&chats[chatOpen].id===chatId){render();page.scrollTo(0,9999);} }
   }catch(e){}
 }
+// ===== 채팅 'mate' 강제 알림 (앱 열림: 아이 톤 음성 / 숨김·백그라운드: 브라우저 알림) =====
+function mateMuted(){ try{ return localStorage.getItem('mateMute')==='1'; }catch(e){ return false; } }
+function setMateMute(on){ try{ localStorage.setItem('mateMute', on?'1':'0'); }catch(e){} }
+let __mateVoices=[];
+try{ if('speechSynthesis' in window){ __mateVoices=speechSynthesis.getVoices(); speechSynthesis.addEventListener('voiceschanged',()=>{ __mateVoices=speechSynthesis.getVoices(); }); } }catch(e){}
+function mateSpeak(){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    const u=new SpeechSynthesisUtterance('mate'); u.lang='en-US'; u.pitch=1.9; u.rate=1.05; u.volume=1;   // 높은 피치 = 아이처럼 청량/화끈
+    const vs=__mateVoices.length?__mateVoices:speechSynthesis.getVoices();
+    const pick=vs.find(v=>/(child|kid)/i.test(v.name))||vs.find(v=>/(Samantha|female|Google US English|Zira|Kanya|Narisa)/i.test(v.name)); if(pick)u.voice=pick;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  }catch(e){}
+}
+function mateAlert(opt){
+  if(mateMuted()) return; opt=opt||{};
+  mateSpeak();
+  try{
+    if(document.hidden && typeof Notification!=='undefined' && Notification.permission==='granted'){
+      const n=new Notification('ThaiMate · mate 💬', {body:opt.body||(lang==='ko'?'새 메시지가 왔어요':lang==='th'?'มีข้อความใหม่':'New message'), tag:'mate-chat', icon:'/icon-192.png', badge:'/icon-192.png', renotify:true});
+      n.onclick=function(){ try{window.focus();}catch(e){} n.close(); };
+    }
+  }catch(e){}
+}
+// 닫힌 앱 푸시(웹푸시) — VAPID 공개키는 키 생성 후 채움(빈 값이면 권한만 켜고 구독은 생략)
+const PUSH_VAPID_PUBLIC='';
+function urlBase64ToUint8Array(b64){ const pad='='.repeat((4-b64.length%4)%4); const s=(b64+pad).replace(/-/g,'+').replace(/_/g,'/'); const raw=atob(s); const arr=new Uint8Array(raw.length); for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i); return arr; }
+function pushEnabled(){ try{ return typeof Notification!=='undefined' && Notification.permission==='granted'; }catch(e){ return false; } }
+async function enablePush(){
+  try{
+    if(typeof Notification==='undefined'){ toast(lang==='ko'?'이 브라우저는 알림 미지원':'Notifications unsupported'); return; }
+    let perm=Notification.permission;
+    if(perm!=='granted') perm=await Notification.requestPermission();
+    if(perm!=='granted'){ toast(lang==='ko'?'알림이 차단돼 있어요 — 브라우저 설정에서 허용하세요':lang==='th'?'การแจ้งเตือนถูกบล็อก':'Notifications blocked'); render(); return; }
+    if(PUSH_VAPID_PUBLIC && 'serviceWorker' in navigator && 'PushManager' in window && authed){
+      try{ const reg=await navigator.serviceWorker.ready; let sub=await reg.pushManager.getSubscription();
+        if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(PUSH_VAPID_PUBLIC)});
+        await sb.from('push_subscriptions').upsert({user_id:uid, endpoint:sub.endpoint, sub:sub.toJSON()}, {onConflict:'endpoint'});
+      }catch(e){}
+    }
+    setMateMute(false);
+    toast(lang==='ko'?'알림을 켰어요 🔔':lang==='th'?'เปิดแจ้งเตือนแล้ว 🔔':'Notifications on 🔔'); render();
+  }catch(e){ toast(String(e.message||e)); }
+}
 function subscribeChat(chatId){
   try{ if(chatSub){ sb.removeChannel(chatSub); chatSub=null; } }catch(e){}
   try{ chatSub=sb.channel('chat-'+chatId).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'chat_id=eq.'+chatId}, payload=>{
@@ -568,6 +612,7 @@ function subscribeChat(chatId){
     const c=chats.find(x=>x.id===chatId); if(!c) return; c.msgs=c.msgs||[];
     if(c.msgs.some(x=>x.id===m.id)) return;
     c.msgs.push({me:false,tx:m.body,id:m.id});
+    mateAlert({body:m.body});
     if(chatOpen!==null&&chats[chatOpen]&&chats[chatOpen].id===chatId){ render(); page.scrollTo(0,9999); }
   }).subscribe(); }catch(e){}
 }
@@ -1253,6 +1298,7 @@ function subscribeClubMsgs(clubId){
     if(!clubData||clubOpen!==clubId) return; clubData.cmsgs=clubData.cmsgs||[];
     if(clubData.cmsgs.some(x=>x.id===m.id)) return;
     clubData.cmsgs.push({me:false,who:cmName(m.sender_id),tx:m.body,id:m.id,ts:m.created_at});
+    mateAlert({body:m.body});
     refreshClubChatBox();
   }).subscribe(); }catch(e){}
 }
@@ -2988,6 +3034,15 @@ function viewMe(){
        <span class="ar">›</span></div>`).join('')}
    </div>
    ${authed?`<div class="menu" style="margin-top:10px"><div class="mrow" data-myclubs><span class="em">🏘️</span><span>${lang==='ko'?'내 모임 관리':lang==='th'?'จัดการชมรมของฉัน':'My clubs'}</span>${(()=>{const p=Object.keys(clubPending).reduce((s,k)=>s+(clubPending[k]||0),0);return p?`<span style="background:var(--red);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px;margin-left:auto">${p}</span>`:'<span class="ar" style="margin-left:auto">›</span>';})()}</div></div>`:''}
+   <div class="menu" style="margin-top:10px;padding:13px 15px">
+     <div style="font-weight:800;font-size:13.5px;margin-bottom:4px">🔔 ${lang==='ko'?'채팅 알림 (mate)':lang==='th'?'แจ้งเตือนแชท (mate)':'Chat alert (mate)'}</div>
+     <div style="font-size:11px;color:var(--sub);margin-bottom:9px;line-height:1.45">${lang==='ko'?'새 채팅이 오면 “mate” 음성으로 알려드려요. 앱이 꺼져 있을 때 받으려면 알림을 켜세요.':lang==='th'?'มีแชทใหม่จะเตือนด้วยเสียง “mate” เปิดแจ้งเตือนเพื่อรับตอนปิดแอป':'New chats ring with a “mate” voice. Turn on notifications to get them when the app is closed.'}</div>
+     <label style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;cursor:pointer">
+       <span style="font-size:13px;font-weight:600">${lang==='ko'?'“mate” 음성 알림':lang==='th'?'เสียง “mate”':'“mate” voice'}</span>
+       <input type="checkbox" data-matemute ${mateMuted()?'':'checked'} style="width:34px;height:20px;accent-color:#ff7a33;cursor:pointer">
+     </label>
+     <button class="gbtn ${pushEnabled()?'line':'primary'}" data-pushenable style="width:100%;margin-top:8px">${pushEnabled()?(lang==='ko'?'✓ 알림 켜짐 (앱 꺼져도 수신)':lang==='th'?'✓ เปิดแจ้งเตือนแล้ว':'✓ Notifications on'):(lang==='ko'?'📲 앱 꺼져 있어도 알림 받기':lang==='th'?'📲 รับแจ้งเตือนตอนปิดแอป':'📲 Get alerts when app is closed')}</button>
+   </div>
    ${isAdmin?`<a href="admin.html" class="gbtn line" style="display:block;box-sizing:border-box;width:100%;text-align:center;margin-top:14px;text-decoration:none;color:#2f6df0;border-color:#bcd2f7;background:#f3f7ff">🛠 ${L().admin_console}</a>`:''}
    ${authed?`<button class="gbtn line" data-logout style="width:100%;margin-top:10px;color:var(--red);border-color:#f6c9c4">↩ ${L().logout}</button>`:`<button class="gbtn primary" data-dologin style="width:100%;margin-top:14px">${L().do_login}</button>`}
    <p style="text-align:center;font-size:11.5px;color:var(--sub);margin-top:16px;line-height:1.5">${L().lang_label}</p>`;
@@ -3056,6 +3111,8 @@ document.addEventListener('click',e=>{
     render();return;}
   const gmo=e.target.closest('[data-gmode]'); if(gmo){gateMode=gmo.dataset.gmode;render();return;}
   const aus=e.target.closest('[data-ausubmit]'); if(aus){doAuth(aus.dataset.ausubmit);return;}
+  const mm=e.target.closest('[data-matemute]'); if(mm){ setMateMute(!mm.checked); if(mm.checked) mateSpeak(); return; }
+  if(e.target.closest('[data-pushenable]')){enablePush();return;}
   if(e.target.closest('[data-logout]')){doLogout();return;}
   if(e.target.closest('[data-dologin]')){screen='gate';gateMode='home';render();return;}
   const meRow=e.target.closest('[data-me]'); if(meRow){ const i=+meRow.dataset.me;
