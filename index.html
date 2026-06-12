@@ -3084,7 +3084,8 @@ function viewMe(){
        <span style="font-size:13px;font-weight:600">${lang==='ko'?'“ThaiMate” 음성 알림':lang==='th'?'เสียง “ThaiMate”':'“ThaiMate” voice'}</span>
        <input type="checkbox" data-matemute ${mateMuted()?'':'checked'} style="width:34px;height:20px;accent-color:#ff7a33;cursor:pointer">
      </label>
-     <button class="gbtn ${pushEnabled()?'line':'primary'}" data-pushenable style="width:100%;margin-top:8px">${pushEnabled()?(lang==='ko'?'✓ 알림 켜짐 (앱 꺼져도 수신)':lang==='th'?'✓ เปิดแจ้งเตือนแล้ว':'✓ Notifications on'):(lang==='ko'?'📲 앱 꺼져 있어도 알림 받기':lang==='th'?'📲 รับแจ้งเตือนตอนปิดแอป':'📲 Get alerts when app is closed')}</button>
+     <button class="gbtn ${pushEnabled()?'line':'primary'}" data-pushenable style="width:100%;margin-top:8px">${pushEnabled()?(PUSH_VAPID_PUBLIC?(lang==='ko'?'✓ 알림 켜짐 (앱 꺼져도 수신)':lang==='th'?'✓ เปิดแจ้งเตือน (รับตอนปิดแอป)':'✓ On (even when closed)'):(lang==='ko'?'🔔 알림 켜짐 (앱 열려 있을 때)':lang==='th'?'🔔 เปิดแล้ว (เฉพาะตอนเปิดแอป)':'🔔 On (while app is open)')):(lang==='ko'?'📲 알림 켜기':lang==='th'?'📲 เปิดแจ้งเตือน':'📲 Enable alerts')}</button>
+     ${pushEnabled()&&!PUSH_VAPID_PUBLIC?`<div style="font-size:10px;color:var(--sub);margin-top:5px;line-height:1.4">${lang==='ko'?'※ 앱을 완전히 닫았을 때의 알림은 푸시 서버 설정 후 동작합니다.':lang==='th'?'※ แจ้งเตือนตอนปิดแอปสนิทต้องตั้งค่าเซิร์ฟเวอร์พุชก่อน':'※ Alerts when fully closed need the push server set up.'}</div>`:''}
    </div>
    ${isAdmin?`<a href="admin.html" class="gbtn line" style="display:block;box-sizing:border-box;width:100%;text-align:center;margin-top:14px;text-decoration:none;color:#2f6df0;border-color:#bcd2f7;background:#f3f7ff">🛠 ${L().admin_console}</a>`:''}
    ${authed?`<button class="gbtn line" data-logout style="width:100%;margin-top:10px;color:var(--red);border-color:#f6c9c4">↩ ${L().logout}</button>`:`<button class="gbtn primary" data-dologin style="width:100%;margin-top:14px">${L().do_login}</button>`}
