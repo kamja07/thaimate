@@ -583,9 +583,9 @@ function mateChime(){
 function mateSpeak(){
   try{
     if(!('speechSynthesis' in window)) return;
-    const u=new SpeechSynthesisUtterance('Thai Mate'); u.lang='en-US'; u.pitch=1.9; u.rate=1.0; u.volume=1;   // 높은 피치 = 아이처럼 청량/화끈
+    const u=new SpeechSynthesisUtterance('Thai Mate'); u.lang='en-US'; u.pitch=1.0; u.rate=0.95; u.volume=1;   // 차분한 자연 음성
     const vs=__mateVoices.length?__mateVoices:speechSynthesis.getVoices();
-    const pick=vs.find(v=>/(child|kid)/i.test(v.name))||vs.find(v=>/(Samantha|female|Google US English|Zira|Kanya|Narisa)/i.test(v.name)); if(pick)u.voice=pick;
+    const pick=vs.find(v=>/(Samantha|Google US English|Zira|female)/i.test(v.name)); if(pick)u.voice=pick;
     speechSynthesis.cancel(); speechSynthesis.speak(u);
   }catch(e){}
 }
