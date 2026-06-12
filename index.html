@@ -569,7 +569,7 @@ try{ if('speechSynthesis' in window){ __mateVoices=speechSynthesis.getVoices(); 
 function mateSpeak(){
   try{
     if(!('speechSynthesis' in window)) return;
-    const u=new SpeechSynthesisUtterance('mate'); u.lang='en-US'; u.pitch=1.9; u.rate=1.05; u.volume=1;   // 높은 피치 = 아이처럼 청량/화끈
+    const u=new SpeechSynthesisUtterance('Thai Mate'); u.lang='en-US'; u.pitch=1.9; u.rate=1.0; u.volume=1;   // 높은 피치 = 아이처럼 청량/화끈
     const vs=__mateVoices.length?__mateVoices:speechSynthesis.getVoices();
     const pick=vs.find(v=>/(child|kid)/i.test(v.name))||vs.find(v=>/(Samantha|female|Google US English|Zira|Kanya|Narisa)/i.test(v.name)); if(pick)u.voice=pick;
     speechSynthesis.cancel(); speechSynthesis.speak(u);
@@ -580,7 +580,7 @@ function mateAlert(opt){
   mateSpeak();
   try{
     if(document.hidden && typeof Notification!=='undefined' && Notification.permission==='granted'){
-      const n=new Notification('ThaiMate · mate 💬', {body:opt.body||(lang==='ko'?'새 메시지가 왔어요':lang==='th'?'มีข้อความใหม่':'New message'), tag:'mate-chat', icon:'/icon-192.png', badge:'/icon-192.png', renotify:true});
+      const n=new Notification('ThaiMate 💬', {body:opt.body||(lang==='ko'?'새 메시지가 왔어요':lang==='th'?'มีข้อความใหม่':'New message'), tag:'mate-chat', icon:'/icon-192.png', badge:'/icon-192.png', renotify:true});
       n.onclick=function(){ try{window.focus();}catch(e){} n.close(); };
     }
   }catch(e){}
@@ -3035,10 +3035,10 @@ function viewMe(){
    </div>
    ${authed?`<div class="menu" style="margin-top:10px"><div class="mrow" data-myclubs><span class="em">🏘️</span><span>${lang==='ko'?'내 모임 관리':lang==='th'?'จัดการชมรมของฉัน':'My clubs'}</span>${(()=>{const p=Object.keys(clubPending).reduce((s,k)=>s+(clubPending[k]||0),0);return p?`<span style="background:var(--red);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px;margin-left:auto">${p}</span>`:'<span class="ar" style="margin-left:auto">›</span>';})()}</div></div>`:''}
    <div class="menu" style="margin-top:10px;padding:13px 15px">
-     <div style="font-weight:800;font-size:13.5px;margin-bottom:4px">🔔 ${lang==='ko'?'채팅 알림 (mate)':lang==='th'?'แจ้งเตือนแชท (mate)':'Chat alert (mate)'}</div>
-     <div style="font-size:11px;color:var(--sub);margin-bottom:9px;line-height:1.45">${lang==='ko'?'새 채팅이 오면 “mate” 음성으로 알려드려요. 앱이 꺼져 있을 때 받으려면 알림을 켜세요.':lang==='th'?'มีแชทใหม่จะเตือนด้วยเสียง “mate” เปิดแจ้งเตือนเพื่อรับตอนปิดแอป':'New chats ring with a “mate” voice. Turn on notifications to get them when the app is closed.'}</div>
+     <div style="font-weight:800;font-size:13.5px;margin-bottom:4px">🔔 ${lang==='ko'?'채팅 알림 (ThaiMate)':lang==='th'?'แจ้งเตือนแชท (ThaiMate)':'Chat alert (ThaiMate)'}</div>
+     <div style="font-size:11px;color:var(--sub);margin-bottom:9px;line-height:1.45">${lang==='ko'?'새 채팅이 오면 “ThaiMate” 음성으로 알려드려요. 앱이 꺼져 있을 때 받으려면 알림을 켜세요.':lang==='th'?'มีแชทใหม่จะเตือนด้วยเสียง “ThaiMate” เปิดแจ้งเตือนเพื่อรับตอนปิดแอป':'New chats ring with a “ThaiMate” voice. Turn on notifications to get them when the app is closed.'}</div>
      <label style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;cursor:pointer">
-       <span style="font-size:13px;font-weight:600">${lang==='ko'?'“mate” 음성 알림':lang==='th'?'เสียง “mate”':'“mate” voice'}</span>
+       <span style="font-size:13px;font-weight:600">${lang==='ko'?'“ThaiMate” 음성 알림':lang==='th'?'เสียง “ThaiMate”':'“ThaiMate” voice'}</span>
        <input type="checkbox" data-matemute ${mateMuted()?'':'checked'} style="width:34px;height:20px;accent-color:#ff7a33;cursor:pointer">
      </label>
      <button class="gbtn ${pushEnabled()?'line':'primary'}" data-pushenable style="width:100%;margin-top:8px">${pushEnabled()?(lang==='ko'?'✓ 알림 켜짐 (앱 꺼져도 수신)':lang==='th'?'✓ เปิดแจ้งเตือนแล้ว':'✓ Notifications on'):(lang==='ko'?'📲 앱 꺼져 있어도 알림 받기':lang==='th'?'📲 รับแจ้งเตือนตอนปิดแอป':'📲 Get alerts when app is closed')}</button>

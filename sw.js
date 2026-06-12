@@ -7,8 +7,8 @@ const SHELL = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/manifest.
 /* 닫힌 앱/화면 꺼짐에서도 채팅 'mate' 알림 — 웹푸시 수신(소리는 폰 기본음, 진동 패턴 적용) */
 self.addEventListener('push', function(e){
   var d={}; try{ d=e.data?e.data.json():{}; }catch(_){ try{ d={body:e.data.text()}; }catch(__){ d={}; } }
-  var title=d.title||'ThaiMate · mate 💬';
-  var body=d.body||'mate! 새 메시지가 왔어요';
+  var title=d.title||'ThaiMate 💬';
+  var body=d.body||'ThaiMate · 새 메시지가 왔어요';
   e.waitUntil(self.registration.showNotification(title, {
     body: body, tag:'mate-chat', renotify:true,
     icon:'/icon-192.png', badge:'/icon-192.png',
