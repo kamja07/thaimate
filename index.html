@@ -566,6 +566,20 @@ function mateMuted(){ try{ return localStorage.getItem('mateMute')==='1'; }catch
 function setMateMute(on){ try{ localStorage.setItem('mateMute', on?'1':'0'); }catch(e){} }
 let __mateVoices=[];
 try{ if('speechSynthesis' in window){ __mateVoices=speechSynthesis.getVoices(); speechSynthesis.addEventListener('voiceschanged',()=>{ __mateVoices=speechSynthesis.getVoices(); }); } }catch(e){}
+// 오디오 잠금 해제 — 모바일은 첫 사용자 제스처가 있어야 이후 소리 재생 가능. 첫 탭에 AudioContext resume + 음성 워밍업.
+let __mateAC=null, __mateSpeechPrimed=false;
+function mateUnlock(){
+  try{ const AC=window.AudioContext||window.webkitAudioContext; if(AC){ if(!__mateAC)__mateAC=new AC(); if(__mateAC.state==='suspended')__mateAC.resume(); } }catch(e){}
+  if(!__mateSpeechPrimed){ __mateSpeechPrimed=true; try{ if('speechSynthesis' in window){ const w=new SpeechSynthesisUtterance(' '); w.volume=0; speechSynthesis.speak(w); } }catch(e){} }
+}
+try{ ['pointerdown','touchend','click','keydown'].forEach(ev=>window.addEventListener(ev, mateUnlock, {passive:true})); }catch(e){}
+// 차임: AudioContext 잠금 해제 뒤엔 제스처 없이도 재생됨(음성보다 안정적) — 어느 화면에서든 들림
+function mateChime(){
+  try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; if(!__mateAC)__mateAC=new AC(); const ctx=__mateAC; if(ctx.state==='suspended')ctx.resume();
+    const t=ctx.currentTime;
+    [[1046,0],[1568,0.12],[2093,0.24]].forEach(p=>{ const f=p[0],dt=p[1]; const o=ctx.createOscillator(),g=ctx.createGain(); o.type='triangle'; o.frequency.value=f; const s=t+dt; g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(0.45,s+0.015); g.gain.exponentialRampToValueAtTime(0.0001,s+0.32); o.connect(g); g.connect(ctx.destination); o.start(s); o.stop(s+0.35); });
+  }catch(e){}
+}
 function mateSpeak(){
   try{
     if(!('speechSynthesis' in window)) return;
@@ -577,7 +591,8 @@ function mateSpeak(){
 }
 function mateAlert(opt){
   if(mateMuted()) return; opt=opt||{};
-  mateSpeak();
+  mateChime();   // 항상 들리는 차임(잠금 해제 후)
+  mateSpeak();   // 음성은 가능할 때(최근 제스처/안드로이드)
   try{
     if(document.hidden && typeof Notification!=='undefined' && Notification.permission==='granted'){
       const n=new Notification('ThaiMate 💬', {body:opt.body||(lang==='ko'?'새 메시지가 왔어요':lang==='th'?'มีข้อความใหม่':'New message'), tag:'mate-chat', icon:'/icon-192.png', badge:'/icon-192.png', renotify:true});
