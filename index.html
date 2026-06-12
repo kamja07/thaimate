@@ -605,6 +605,26 @@ async function enablePush(){
     toast(lang==='ko'?'알림을 켰어요 🔔':lang==='th'?'เปิดแจ้งเตือนแล้ว 🔔':'Notifications on 🔔'); render();
   }catch(e){ toast(String(e.message||e)); }
 }
+// 전역 채팅 구독 — 어느 화면에 있든 모든 채팅(1:1·동호회) 실시간 수신 → ThaiMate 음성 + 목록/뱃지 갱신
+let globalChatSub=null;
+function subscribeGlobalChat(){
+  try{ if(globalChatSub){ sb.removeChannel(globalChatSub); globalChatSub=null; } }catch(e){}
+  if(!uid) return;
+  try{
+    globalChatSub=sb.channel('global-chat-'+uid)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'}, payload=>{
+        const m=payload.new; if(!m||m.sender_id===uid) return;
+        mateAlert({body:m.body});
+        const oc=(chatOpen!==null&&chats[chatOpen])?chats[chatOpen]:null;
+        if(!(oc&&oc.id===m.chat_id)) loadChats();   // 열린 채팅 밖 → 채팅 목록·안읽음 뱃지 갱신
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'club_messages'}, payload=>{
+        const m=payload.new; if(!m||m.sender_id===uid) return;
+        mateAlert({body:m.body});   // 동호회 채팅도 어디서든 음성. 열린 동호회 append는 clubChatSub가 처리.
+      })
+      .subscribe();
+  }catch(e){}
+}
 function subscribeChat(chatId){
   try{ if(chatSub){ sb.removeChannel(chatSub); chatSub=null; } }catch(e){}
   try{ chatSub=sb.channel('chat-'+chatId).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'chat_id=eq.'+chatId}, payload=>{
@@ -612,7 +632,6 @@ function subscribeChat(chatId){
     const c=chats.find(x=>x.id===chatId); if(!c) return; c.msgs=c.msgs||[];
     if(c.msgs.some(x=>x.id===m.id)) return;
     c.msgs.push({me:false,tx:m.body,id:m.id});
-    mateAlert({body:m.body});
     if(chatOpen!==null&&chats[chatOpen]&&chats[chatOpen].id===chatId){ render(); page.scrollTo(0,9999); }
   }).subscribe(); }catch(e){}
 }
@@ -639,7 +658,7 @@ async function applySession(session){
        emailVerified=!!(p && p.email_verified);
        if(p && p.nickname) acctId=p.nickname; }catch(e){}   // 표시이름: 저장된 닉네임(원래 한글 아이디) 우선
   try{ const {data:adm}=await sb.rpc('is_admin'); isAdmin=!!adm; if(screen==='app'&&tab==='me') render(); }catch(e){}
-  loadChats(); loadClubs();
+  loadChats(); loadClubs(); subscribeGlobalChat();
 }
 async function doAuth(mode){
   const id=((document.getElementById('auId')||{}).value||'').trim();
@@ -680,7 +699,7 @@ async function doAuth(mode){
   }
   toast(mode==='signup'?L().e_signup_ok:L().e_login_ok);
 }
-async function doLogout(){ try{await sb.auth.signOut();}catch(e){} authed=false; emailVerified=false; isAdmin=false; acctId=''; myClubMem={}; clubOpen=null; clubData=null; screen='gate'; gateMode='home'; render(); loadClubs(); }
+async function doLogout(){ try{if(globalChatSub){sb.removeChannel(globalChatSub);globalChatSub=null;}}catch(e){} try{await sb.auth.signOut();}catch(e){} authed=false; emailVerified=false; isAdmin=false; acctId=''; myClubMem={}; clubOpen=null; clubData=null; screen='gate'; gateMode='home'; render(); loadClubs(); }
 async function openInquiry(){
   if(!authed||!uid){ toast(L().v_need_login); return; }
   const txt=(window.prompt(L().inquiry_prompt)||'').trim();
@@ -1298,7 +1317,6 @@ function subscribeClubMsgs(clubId){
     if(!clubData||clubOpen!==clubId) return; clubData.cmsgs=clubData.cmsgs||[];
     if(clubData.cmsgs.some(x=>x.id===m.id)) return;
     clubData.cmsgs.push({me:false,who:cmName(m.sender_id),tx:m.body,id:m.id,ts:m.created_at});
-    mateAlert({body:m.body});
     refreshClubChatBox();
   }).subscribe(); }catch(e){}
 }
