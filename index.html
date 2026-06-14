@@ -3566,11 +3566,13 @@ function __appGoBack(){ try{
   return false;   // 상점(홈) → 나가기
 }catch(e){ return false; } }
 // 상점(홈)에서 뒤로 → 놓칠 수 없는 중앙 확인창("앱을 나가시겠어요?")
-let __exitOpen=false, __doExit=false;
+// 핵심: 확인창은 '시작 엔트리(idx0)'에서 뜬다(트랩 추가로 안 심음).
+//       → '나가기'=history.back() 한 번이면 첫 엔트리에서 OS가 앱을 종료.
+let __exitOpen=false;
+function __doStay(){ __closeExitConfirm(); try{ if(window.__syncTrap) window.__syncTrap(); }catch(e){} }  // 머무름 → 홈 트랩 복구
 function __showExitConfirm(){
   if(__exitOpen) return;
   __exitOpen=true;
-  try{ history.pushState({mateTrap:1},''); __trapN=1; }catch(e){}   // 확인창 동안 머무름(트랩 1개 유지)
   var dev=document.querySelector('.device')||document.body;
   var t=(lang==='ko')?['앱을 나가시겠어요?','나가기','머무르기']:(lang==='th')?['ออกจากแอปหรือไม่?','ออก','อยู่ต่อ']:['Exit the app?','Exit','Stay'];
   var ov=document.createElement('div'); ov.id='exitConfirm';
@@ -3582,17 +3584,16 @@ function __showExitConfirm(){
     +'<button id="__exGo" style="flex:1;padding:13px 0;border:none;background:#ff5a3c;border-radius:11px;font-size:15px;font-weight:800;color:#fff">'+t[1]+'</button>'
     +'</div></div>';
   dev.appendChild(ov);
-  document.getElementById('__exStay').onclick=function(){ __closeExitConfirm(); };
-  document.getElementById('__exGo').onclick=function(){ var o=document.getElementById('exitConfirm'); if(o)o.remove(); __exitOpen=false; __doExit=true; try{history.back();}catch(e){} };
-  ov.addEventListener('click',function(e){ if(e.target===ov) __closeExitConfirm(); });
+  document.getElementById('__exStay').onclick=function(){ __doStay(); };
+  document.getElementById('__exGo').onclick=function(){ __closeExitConfirm(); __trapN=0; try{ history.back(); }catch(e){} };  // 나가기 → 첫 엔트리에서 한 번 pop → OS 종료
+  ov.addEventListener('click',function(e){ if(e.target===ov) __doStay(); });
 }
 function __closeExitConfirm(){ var o=document.getElementById('exitConfirm'); if(o)o.remove(); __exitOpen=false; }
 window.addEventListener('popstate', function(){
-  if(__doExit){ __doExit=false; try{ history.back(); }catch(e){} return; }   // '나가기' 확정 → 한 번 더 pop → 앱 종료
   if(__trapN>0) __trapN--;                                  // 뒤로가기로 트랩 1개 소비됨
-  if(__exitOpen){ __closeExitConfirm(); __syncTrap(); return; }   // 확인창에서 폰 뒤로 → 취소(머무름)
+  if(__exitOpen){ __doStay(); return; }                     // 확인창 떠있을 때 폰 뒤로 → 닫고 머무름
   if(__appGoBack()){ __syncTrap(); return; }                // 하부메뉴 → 실제로 한 단계 위로(메시지 없음)
-  __showExitConfirm();                                      // 상점 홈 → 종료 확인창
+  __showExitConfirm();                                      // 상점 홈 → 종료 확인창(트랩 미적재 = 시작 엔트리)
 });
 __syncTrap();
 </script>
