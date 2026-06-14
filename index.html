@@ -3574,7 +3574,7 @@ function __showExitConfirm(){
   var dev=document.querySelector('.device')||document.body;
   var t=(lang==='ko')?['앱을 나가시겠어요?','나가기','머무르기']:(lang==='th')?['ออกจากแอปหรือไม่?','ออก','อยู่ต่อ']:['Exit the app?','Exit','Stay'];
   var ov=document.createElement('div'); ov.id='exitConfirm';
-  ov.style.cssText='position:absolute;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)';
+  ov.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)';
   ov.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px 18px;width:80%;max-width:300px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.35)">'
     +'<div style="font-size:16px;font-weight:800;color:#1b1b1b;margin-bottom:18px">'+t[0]+'</div>'
     +'<div style="display:flex;gap:10px">'
