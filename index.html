@@ -3517,15 +3517,17 @@ function __appGoBack(){ try{
   if(typeof listingOpen!=='undefined'&&listingOpen!==null){listingOpen=null;render();return true;}
   if(typeof chatOpen!=='undefined'&&chatOpen!==null){chatOpen=null;render();return true;}
   if(typeof golfOpen!=='undefined'&&golfOpen){golfOpen=false;if(typeof golfSub!=='undefined')golfSub=null;render();return true;}
-  return false;
+  // 서브페이지가 아니지만 '상점(홈)'이 아닌 다른 메인 탭이면 → 상점(메인메뉴)으로 복귀
+  if(typeof tab!=='undefined' && tab!=='shop'){ tab='shop'; if(typeof storeOpen!=='undefined')storeOpen=null; render(); return true; }
+  return false;   // 상점(홈) → 나가기
 }catch(e){ return false; } }
 let __backArmed=false, __backTimer=null;
 window.addEventListener('popstate', function(){
-  if(__appGoBack()){ __pushBackTrap(); __backArmed=false; return; }   // 서브화면 → 한 단계 뒤로(머무름)
-  // 메인 탭 — 한 번 더 누르면 나가기(네이티브 앱 방식)
-  if(__backArmed){ __backArmed=false; history.back(); return; }   // 두 번째 → 트랩 안 심음 → OS가 종료/최소화
+  if(__appGoBack()){ __pushBackTrap(); __backArmed=false; return; }   // 하부메뉴 → 실제로 한 단계 뒤로(메시지 없음)
+  // 상점(홈)에 도달 → 종료 물어보기(한 번 더 누르면 나가기)
+  if(__backArmed){ __backArmed=false; history.back(); return; }
   __backArmed=true;
-  try{ toast(lang==='ko'?'한 번 더 누르면 나가요':lang==='th'?'กดย้อนกลับอีกครั้งเพื่อออก':'Press back again to exit'); }catch(e){}
+  try{ toast(lang==='ko'?'한 번 더 누르면 앱을 나가요':lang==='th'?'กดย้อนกลับอีกครั้งเพื่อออก':'Press back again to exit'); }catch(e){}
   __pushBackTrap();
   clearTimeout(__backTimer); __backTimer=setTimeout(function(){ __backArmed=false; }, 2000);
 });
