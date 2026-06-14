@@ -3485,26 +3485,22 @@ applyBrand();
 let __mateAllowExit=false;
 function __pushBackTrap(){ try{ history.pushState({mateTrap:1},''); }catch(e){} }
 function __appGoBack(){ try{
+  // 화면에 떠 있는 '뒤로/닫기' 버튼을 우선순위(모달·오버레이 먼저)로 찾아 클릭 → 앱의 원래 뒤로 로직 그대로 사용
+  var sels=['[data-wclose]','[data-repclose]','[data-rvclose]','[data-raffleclose]','[data-evaddmemclose]','[data-clubclose]','[data-close]','.pclose',
+            '[data-fsback]','[data-gmframeback]',
+            '[data-gmdetailback]','[data-evback]','[data-golfsubback]','[data-golfback]','[data-myclubsback]','[data-rosterback]','[data-clubback]','[data-myexit]','[data-ldback]',
+            '.back','.gmback'];
+  for(var i=0;i<sels.length;i++){ var el=document.querySelector(sels[i]); if(el && el.offsetParent!==null){ el.click(); return true; } }
+  // DOM 버튼이 없는 모달/디테일 상태 폴백
   if(typeof writeOpen!=='undefined'&&writeOpen){writeOpen=false;render();return true;}
   if(typeof verifyOpen!=='undefined'&&verifyOpen){verifyOpen=false;render();return true;}
   if(typeof payOpen!=='undefined'&&payOpen){payOpen=false;render();return true;}
-  if(typeof reviewOpen!=='undefined'&&reviewOpen){reviewOpen=false;render();return true;}
-  if(typeof reportOpen!=='undefined'&&reportOpen){reportOpen=false;render();return true;}
   if(typeof locPickerOpen!=='undefined'&&locPickerOpen){locPickerOpen=false;render();return true;}
   if(typeof fsView!=='undefined'&&fsView){fsView=null;render();return true;}
-  if(typeof gmFrameOpen!=='undefined'&&gmFrameOpen){gmFrameOpen=false;render();return true;}
-  if(typeof gmGateOpen!=='undefined'&&gmGateOpen){gmGateOpen=false;render();return true;}
-  if(typeof raffleOpen!=='undefined'&&raffleOpen){raffleOpen=false;render();return true;}
-  if(typeof evOpen!=='undefined'&&evOpen){evOpen=null;if(typeof evData!=='undefined')evData=null;render();return true;}
-  if(typeof golfMatchOpen!=='undefined'&&golfMatchOpen){golfMatchOpen=null;render();return true;}
-  if(typeof clubOpen!=='undefined'&&clubOpen){clubOpen=null;if(typeof clubData!=='undefined')clubData=null;render();return true;}
-  if(typeof golfSub!=='undefined'&&golfSub){golfSub=null;render();return true;}
-  if(typeof golfOpen!=='undefined'&&golfOpen){golfOpen=false;render();return true;}
-  if(typeof chatOpen!=='undefined'&&chatOpen!==null){chatOpen=null;render();return true;}
-  if(typeof listingOpen!=='undefined'&&listingOpen!==null){listingOpen=null;render();return true;}
   if(typeof storeOpen!=='undefined'&&storeOpen!==null){storeOpen=null;render();return true;}
-  if(typeof myStores!=='undefined'&&myStores){myStores=false;render();return true;}
-  if(typeof myClubsOpen!=='undefined'&&myClubsOpen){myClubsOpen=false;render();return true;}
+  if(typeof listingOpen!=='undefined'&&listingOpen!==null){listingOpen=null;render();return true;}
+  if(typeof chatOpen!=='undefined'&&chatOpen!==null){chatOpen=null;render();return true;}
+  if(typeof golfOpen!=='undefined'&&golfOpen){golfOpen=false;if(typeof golfSub!=='undefined')golfSub=null;render();return true;}
   return false;
 }catch(e){ return false; } }
 window.addEventListener('popstate', function(){
