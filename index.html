@@ -704,7 +704,8 @@ async function doAuth(mode){
   const pw=((document.getElementById('auPw')||{}).value||'');
   if(!id||!pw){toast(lang==='ko'?'아이디와 비밀번호를 입력하세요':lang==='th'?'กรอก ID และรหัสผ่าน':'Enter ID & password');return;}
   if(mode==='signup' && pw!==((document.getElementById('auPw2')||{}).value||'')){toast(lang==='ko'?'비밀번호가 일치하지 않아요':lang==='th'?'รหัสผ่านไม่ตรงกัน':'Passwords do not match');return;}
-  if(mode==='signup'){ const req=['agAge','agTos','agPriv','agLoc']; const ok=req.every(function(id){const el=document.getElementById(id);return el&&el.checked;}); if(!ok){ toast(L().ag_need); return; } }
+  let consent=null;
+  if(mode==='signup'){ const req=['agAge','agTos','agPriv','agLoc']; const ok=req.every(function(id){const el=document.getElementById(id);return el&&el.checked;}); if(!ok){ toast(L().ag_need); return; } consent={age:true,tos:true,priv:true,loc:true,mkt:!!(document.getElementById('agMkt')&&document.getElementById('agMkt').checked)}; }
   const email=uname2email(id);
   let res = (mode==='signup') ? await sb.auth.signUp({email,password:pw}) : await sb.auth.signInWithPassword({email,password:pw});
   // 레거시 호환: 예전(한글 제거) 방식으로 가입한 한글 아이디 계정은 새 이메일로 못 찾음 → 옛 이메일로 재시도
@@ -731,6 +732,7 @@ async function doAuth(mode){
   await applySession(sess); acctId=id;
   // 원래 입력한 아이디(한글 포함)를 닉네임/이름으로 저장 → 새로고침·골프메이트에서도 동일 신원 표시
   try{ if(uid) await sb.from('profiles').upsert({id:uid, nickname:id, name:id},{onConflict:'id'}); }catch(e){}
+  try{ if(uid && consent) await sb.from('consent_logs').insert({user_id:uid, version:TERMS_VERSION, agreed:consent}); }catch(e){}   // 동의 이력 기록(테이블 없으면 조용히 무시)
   const realEmail=(mode==='signup')?((document.getElementById('auEmail')||{}).value||'').trim():'';
   gateMode='home'; screen='app'; render();
   if(mode==='signup' && realEmail){
@@ -1863,14 +1865,18 @@ const TERMS={
     th:{t:"ข้อตกลงบริการตามตำแหน่งที่ตั้ง", body:`1. บริการแสดง Town Mall ตลาด งาน และการจับคู่ใกล้เคียงตามละแวก (เขต) ที่คุณตั้งไว้\n\n2. ใช้หน่วยละแวกที่คุณเลือกเอง ไม่ใช่พิกัด GPS ที่แม่นยำ (ใช้ GPS อัตโนมัติเฉพาะเมื่อคุณเลือก)\n\n3. ข้อมูลตำแหน่งใช้เพื่อจับคู่ แสดงผล และระยะทางเท่านั้น ไม่เปิดเผยต่อบุคคลที่สามโดยไม่ได้รับความยินยอม\n\n4. คุณเปลี่ยนละแวกหรือหยุดใช้ฟีเจอร์ตามตำแหน่งได้ทุกเมื่อ`}
   }
 };
+const TERMS_VERSION='2026-06-14';
 function __showTerms(key){
   var d=(TERMS[key]&&TERMS[key][lang])||(TERMS[key]&&TERMS[key].ko); if(!d)return;
+  var foot=(lang==='ko')?'시행일: 2026.06.14\n운영자: ThaiMate · 문의: kamja07@gmail.com'
+          :(lang==='th')?'มีผล: 2026-06-14\nผู้ให้บริการ: ThaiMate · ติดต่อ: kamja07@gmail.com'
+          :'Effective: 2026-06-14\nOperator: ThaiMate · Contact: kamja07@gmail.com';
   var dev=document.querySelector('.device')||document.body;
   var ov=document.createElement('div'); ov.id='termsView';
   ov.style.cssText='position:fixed;inset:0;z-index:100000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5)';
   ov.innerHTML='<div style="background:#fff;width:100%;max-width:430px;max-height:82vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;overflow:hidden">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;padding:15px 16px;border-bottom:1px solid var(--line)"><b style="font-size:15.5px">'+d.t+'</b><button id="__tmClose" style="border:none;background:#f0f1f4;border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer">✕</button></div>'
-    +'<div style="padding:16px;overflow-y:auto;font-size:13px;line-height:1.7;color:#33373b;white-space:pre-wrap">'+d.body.replace(/</g,'&lt;')+'</div>'
+    +'<div style="padding:16px;overflow-y:auto;font-size:13px;line-height:1.7;color:#33373b;white-space:pre-wrap">'+d.body.replace(/</g,'&lt;')+'<div style="margin-top:16px;padding-top:12px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--sub)">'+foot+'</div></div>'
     +'<div style="padding:11px 16px;border-top:1px solid var(--line)"><button id="__tmOk" class="gbtn primary" style="width:100%">'+L().ag_close+'</button></div>'
     +'</div>';
   dev.appendChild(ov);
