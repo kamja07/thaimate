@@ -3565,35 +3565,44 @@ function __appGoBack(){ try{
   if(typeof tab!=='undefined' && tab!=='shop'){ tab='shop'; if(typeof storeOpen!=='undefined')storeOpen=null; render(); return true; }
   return false;   // 상점(홈) → 나가기
 }catch(e){ return false; } }
-// 상점(홈)에서 뒤로 → 놓칠 수 없는 중앙 확인창("앱을 나가시겠어요?")
-// 핵심: 확인창은 '시작 엔트리(idx0)'에서 뜬다(트랩 추가로 안 심음).
-//       → '나가기'=history.back() 한 번이면 첫 엔트리에서 OS가 앱을 종료.
-let __exitOpen=false;
-function __doStay(){ __closeExitConfirm(); try{ if(window.__syncTrap) window.__syncTrap(); }catch(e){} }  // 머무름 → 홈 트랩 복구
+// 상점(홈)에서 뒤로 → 종료 안내 카드.
+// 플랫폼 제약: 설치형 PWA는 스크립트(history.back)로 자신을 못 닫음. '실제 폰 뒤로가기'로만 종료됨.
+//   → 설치형: 카드를 '시작 엔트리(트랩 없음)'에서 띄우고 "한 번 더 뒤로 누르면 나가요" 안내.
+//             사용자의 다음 하드웨어 뒤로가기 = OS가 앱 종료. [머무르기]로 취소(재트랩).
+//   → 브라우저: history.back()이 실제로 이탈시키므로 [나가기] 버튼 제공.
+var __isStandalone=(function(){ try{ return (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone===true; }catch(e){ return false; } })();
+let __exitOpen=false, __exitTimer=null;
+function __doStay(){ clearTimeout(__exitTimer); __closeExitConfirm(); try{ if(window.__syncTrap) window.__syncTrap(); }catch(e){} }  // 취소 → 홈 트랩 복구
 function __showExitConfirm(){
   if(__exitOpen) return;
   __exitOpen=true;
   var dev=document.querySelector('.device')||document.body;
-  var t=(lang==='ko')?['앱을 나가시겠어요?','나가기','머무르기']:(lang==='th')?['ออกจากแอปหรือไม่?','ออก','อยู่ต่อ']:['Exit the app?','Exit','Stay'];
+  var ko=lang==='ko', th=lang==='th';
+  var msg=__isStandalone
+    ? (ko?'한 번 더 뒤로 누르면<br>앱을 나가요':th?'กดย้อนกลับอีกครั้ง<br>เพื่อออกจากแอป':'Press back again<br>to exit the app')
+    : (ko?'앱을 나가시겠어요?':th?'ออกจากแอปหรือไม่?':'Exit the app?');
+  var stayT=ko?'머무르기':th?'อยู่ต่อ':'Stay';
+  var goT=ko?'나가기':th?'ออก':'Exit';
+  var btns='<button id="__exStay" style="flex:1;padding:13px 0;border:1px solid #e3e3e3;background:#f5f6f7;border-radius:11px;font-size:15px;font-weight:700;color:#444">'+stayT+'</button>';
+  if(!__isStandalone) btns+='<button id="__exGo" style="flex:1;padding:13px 0;border:none;background:#ff5a3c;border-radius:11px;font-size:15px;font-weight:800;color:#fff">'+goT+'</button>';
   var ov=document.createElement('div'); ov.id='exitConfirm';
   ov.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)';
   ov.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px 18px;width:80%;max-width:300px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.35)">'
-    +'<div style="font-size:16px;font-weight:800;color:#1b1b1b;margin-bottom:18px">'+t[0]+'</div>'
-    +'<div style="display:flex;gap:10px">'
-    +'<button id="__exStay" style="flex:1;padding:13px 0;border:1px solid #e3e3e3;background:#f5f6f7;border-radius:11px;font-size:15px;font-weight:700;color:#444">'+t[2]+'</button>'
-    +'<button id="__exGo" style="flex:1;padding:13px 0;border:none;background:#ff5a3c;border-radius:11px;font-size:15px;font-weight:800;color:#fff">'+t[1]+'</button>'
-    +'</div></div>';
+    +'<div style="font-size:16px;font-weight:800;color:#1b1b1b;margin-bottom:18px;line-height:1.5">'+msg+'</div>'
+    +'<div style="display:flex;gap:10px">'+btns+'</div></div>';
   dev.appendChild(ov);
   document.getElementById('__exStay').onclick=function(){ __doStay(); };
-  document.getElementById('__exGo').onclick=function(){ __closeExitConfirm(); __trapN=0; try{ history.back(); }catch(e){} };  // 나가기 → 첫 엔트리에서 한 번 pop → OS 종료
+  var go=document.getElementById('__exGo'); if(go) go.onclick=function(){ __closeExitConfirm(); __trapN=0; try{ history.back(); }catch(e){} };
   ov.addEventListener('click',function(e){ if(e.target===ov) __doStay(); });
+  // 설치형: 트랩 없는 시작 엔트리에 잠시 머무름 → 그 사이 하드웨어 뒤로 = 종료. 시간 지나면 자동 재무장(실수 종료 방지)
+  if(__isStandalone){ clearTimeout(__exitTimer); __exitTimer=setTimeout(function(){ if(__exitOpen) __doStay(); }, 4000); }
 }
 function __closeExitConfirm(){ var o=document.getElementById('exitConfirm'); if(o)o.remove(); __exitOpen=false; }
 window.addEventListener('popstate', function(){
   if(__trapN>0) __trapN--;                                  // 뒤로가기로 트랩 1개 소비됨
-  if(__exitOpen){ __doStay(); return; }                     // 확인창 떠있을 때 폰 뒤로 → 닫고 머무름
+  if(__exitOpen){ __doStay(); return; }                     // 카드 떠있을 때 popstate(드묾) → 닫고 머무름
   if(__appGoBack()){ __syncTrap(); return; }                // 하부메뉴 → 실제로 한 단계 위로(메시지 없음)
-  __showExitConfirm();                                      // 상점 홈 → 종료 확인창(트랩 미적재 = 시작 엔트리)
+  __showExitConfirm();                                      // 상점 홈 → 종료 안내 카드(트랩 미적재 = 시작 엔트리)
 });
 __syncTrap();
 </script>
