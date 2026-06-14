@@ -767,7 +767,7 @@ async function confirmEmailCode(cd){
 /* ===================== i18n ===================== */
 const T = {
  ko:{
-  title:"동네 매칭·주문", nav_shop:"상점", nav_market:"장터·나눔", nav_jobs:"구인구직", nav_chat:"채팅", nav_community:"커뮤니티", nav_me:"내정보",
+  title:"동네 매칭·주문", nav_shop:"타운몰", nav_market:"장터·나눔", nav_jobs:"구인구직", nav_chat:"채팅", nav_community:"커뮤니티", nav_me:"내정보",
   city_all:"전체", city_bkk:"방콕", city_cm:"치앙마이", city_pty:"파타야", city_east:"동부", city_west:"서부", city_north:"북부", city_central:"중부", city_nisan:"북부 이산", city_eisan:"동부 이산", city_south:"남부",
   seg_sell:"팝니다", seg_buy:"삽니다", seg_give:"나눔터", seg_hire:"구인", seg_seek:"구직",
   comm_info:"소식", comm_clubs:"모임",
@@ -821,7 +821,7 @@ const T = {
   rv_title:"매너후기", rv_q:"이 거래는 어떠셨나요?", rv_good:["시간 약속을 잘 지켜요","친절하고 매너가 좋아요","상품이 설명과 같아요","응답이 빨라요"], rv_submit:"후기 남기기", rv_done:"후기 등록 완료 — 매너온도가 올라요!"
  },
  en:{
-  title:"Match · Order", nav_shop:"Shop", nav_market:"Market", nav_jobs:"Jobs", nav_chat:"Chat", nav_community:"Community", nav_me:"My",
+  title:"Match · Order", nav_shop:"Town Mall", nav_market:"Market", nav_jobs:"Jobs", nav_chat:"Chat", nav_community:"Community", nav_me:"My",
   city_all:"All", city_bkk:"Bangkok", city_cm:"Chiang Mai", city_pty:"Pattaya", city_east:"Eastern", city_west:"Western", city_north:"Northern", city_central:"Central", city_nisan:"North Isan", city_eisan:"East Isan", city_south:"Southern",
   seg_sell:"For sale", seg_buy:"Wanted", seg_give:"Free", seg_hire:"Hiring", seg_seek:"Seeking",
   comm_info:"News", comm_clubs:"Clubs",
@@ -875,7 +875,7 @@ const T = {
   rv_title:"Manner review", rv_q:"How was this deal?", rv_good:["On time","Kind & polite","As described","Quick replies"], rv_submit:"Submit review", rv_done:"Review posted — manner score up!"
  },
  th:{
-  title:"จับคู่ · สั่งซื้อ", nav_shop:"ร้านค้า", nav_market:"ตลาด", nav_jobs:"หางาน", nav_chat:"แชท", nav_community:"คอมมูนิตี้", nav_me:"ฉัน",
+  title:"จับคู่ · สั่งซื้อ", nav_shop:"ทาวน์มอลล์", nav_market:"ตลาด", nav_jobs:"หางาน", nav_chat:"แชท", nav_community:"คอมมูนิตี้", nav_me:"ฉัน",
   city_all:"ทั้งหมด", city_bkk:"กรุงเทพ", city_cm:"เชียงใหม่", city_pty:"พัทยา", city_east:"ภาคตะวันออก", city_west:"ภาคตะวันตก", city_north:"ภาคเหนือ", city_central:"ภาคกลาง", city_nisan:"อีสานเหนือ", city_eisan:"อีสานตะวันออก", city_south:"ภาคใต้",
   seg_sell:"ขาย", seg_buy:"ต้องการซื้อ", seg_give:"แจกฟรี", seg_hire:"รับสมัคร", seg_seek:"หางาน",
   comm_info:"ข่าว", comm_clubs:"ชมรม",
@@ -1932,7 +1932,7 @@ function renderPay(){
 /* ===================== top ===================== */
 function renderTop(){
   if((tab==='chat'&&chatOpen!==null)||(tab==='shop'&&storeOpen)||(tab==='market'&&listingOpen)){topEl.innerHTML='';return;}
-  const navMeta={shop:['🏪','nav_shop'],market:['🛍️','nav_market'],jobs:['💼','nav_jobs'],chat:['💬','nav_chat'],community:['🏘️','nav_community'],me:['👤','nav_me']};
+  const navMeta={shop:['🏬','nav_shop'],market:['🛍️','nav_market'],jobs:['💼','nav_jobs'],chat:['💬','nav_chat'],community:['🏘️','nav_community'],me:['👤','nav_me']};
   const nm=navMeta[tab]||['','']; const menuName=L()[nm[1]]||'';
   topEl.innerHTML=`
    <div class="top-row">
@@ -2088,7 +2088,7 @@ function viewShop(){
     page.innerHTML=`
      <div style="display:flex;align-items:center;gap:8px;padding:4px 0 12px">
        <button class="btn" style="background:#f0f1f4;border:none;border-radius:9px;padding:7px 11px;font-weight:800;cursor:pointer" data-myexit>‹</button>
-       <b style="font-size:16px">🏪 ${L().my_stores}</b></div>
+       <b style="font-size:16px">🏬 ${L().my_stores}</b></div>
      <button class="gbtn primary" data-newstore style="width:100%;margin-bottom:12px">${L().store_new}</button>
      <div>${mine.length?mine.map(storeCard).join(''):`<div class="empty" style="padding:34px 0;text-align:center;color:var(--sub)">${L().no_stores}</div>`}</div>`;
     return;
@@ -2099,9 +2099,9 @@ function viewShop(){
   data=data.sort((a,b)=>itemDist(a)-itemDist(b));
   page.innerHTML=`
    <div class="vbanner" style="background:linear-gradient(100deg,#eafaf0,#f4fdf8);border-color:#bfe9cf">
-     <span class="em">🏪</span><div><b>${L().shop_banner_t}</b><p style="color:#0d8a47">${L().shop_banner_p}</p></div></div>
+     <span class="em">🏬</span><div><b>${L().shop_banner_t}</b><p style="color:#0d8a47">${L().shop_banner_p}</p></div></div>
    <div class="cities" style="padding:0 0 12px;margin:0;flex-wrap:wrap;gap:6px;overflow:visible">${chips.map((c,i)=>`<button class="city ${shopCat===i?'on':''}" data-shopcat="${i}">${c}</button>`).join('')}</div>
-   <button class="gbtn primary" data-newstore style="width:100%;margin:2px 0 10px">🏪 ${L().fab_shop}</button>
+   <button class="gbtn primary" data-newstore style="width:100%;margin:2px 0 10px">🏬 ${L().fab_shop}</button>
    ${rangeChipHtml()}
    <div>${data.map(storeCard).join('')||`<div class="empty">—</div>`}</div>`;
 }
@@ -3167,7 +3167,7 @@ function viewMe(){
      <div style="font-size:12px;color:var(--sub)">${L().me_sub}</div>
    </div>
    <div class="menu">
-     ${L().me_menu.map((m,i)=>`<div class="mrow" data-me="${i}"><span class="em">${["🧾","🏪","❤️","🌡️","📩"][i]}</span><span>${m}</span>
+     ${L().me_menu.map((m,i)=>`<div class="mrow" data-me="${i}"><span class="em">${["🧾","🏬","❤️","🌡️","📩"][i]}</span><span>${m}</span>
        <span class="ar">›</span></div>`).join('')}
    </div>
    ${authed?`<div class="menu" style="margin-top:10px"><div class="mrow" data-myclubs><span class="em">🏘️</span><span>${lang==='ko'?'내 모임 관리':lang==='th'?'จัดการชมรมของฉัน':'My clubs'}</span>${(()=>{const p=Object.keys(clubPending).reduce((s,k)=>s+(clubPending[k]||0),0);return p?`<span style="background:var(--red);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px;margin-left:auto">${p}</span>`:'<span class="ar" style="margin-left:auto">›</span>';})()}</div></div>`:''}
@@ -3188,7 +3188,7 @@ function viewMe(){
 
 /* ===================== nav / fab / render ===================== */
 function renderNav(){
-  const items=[["shop","🏪","nav_shop"],["market","🛍️","nav_market"],["jobs","💼","nav_jobs"],["chat","💬","nav_chat"],["community","🏘️","nav_community"],["me","👤","nav_me"]];
+  const items=[["shop","🏬","nav_shop"],["market","🛍️","nav_market"],["jobs","💼","nav_jobs"],["chat","💬","nav_chat"],["community","🏘️","nav_community"],["me","👤","nav_me"]];
   const unread=authed?chats.reduce((s,c)=>s+(c.unread||0),0):0;  // 실제 안읽음 (로그인 시에만)
   navEl.innerHTML=items.map(([k,ic,key])=>`
     <button data-tab="${k}" class="${tab===k?'on':''}">
