@@ -419,7 +419,7 @@ function dbToListing(row){
   const h=hoodByDbId(row.hood_id), give=row.kind==='give', buy=row.kind==='buy';
   const st=buy?'match':(row.status==='reserved'?'resv':(row.status==='done'?'done':'sale'));
   return { id:row.id, author_id:row.author_id, kind:row.kind, st, emo:give?'🎁':(buy?'🔎':'🆕'), city:h?h.region:'all', hoodId:h?h.id:null, like:0, chats:0, live:false,
-    t:row.title||'', pr:give?{ko:'무료나눔',en:'Free',th:'แจกฟรี'}:(row.price_text||{ko:'가격문의',en:'Ask',th:'สอบถาม'}), loc:h?tx(h):'', desc:row.body||'', ago:relTime(row.created_at) };
+    t:row.title||'', pr:give?{ko:'무료나눔',en:'Free',th:'แจกฟรี'}:(row.price_text||{ko:'가격문의',en:'Ask',th:'สอบถาม'}), loc:h?tx(h):'', desc:row.body||'', sub:row.subcat||'', ago:relTime(row.created_at) };
 }
 async function loadListings(){
   try{ const {data,error}=await sb.from('listings').select('*').in('kind',['sell','buy','give']).order('created_at',{ascending:false}).limit(100);
@@ -461,7 +461,7 @@ async function loadPosts(){
 function dbToJob(row){
   const h=hoodByDbId(row.hood_id);
   return { id:row.id, author_id:row.author_id, kind:row.kind, city:h?h.region:'all', emo:(row.kind==='hire'?'💼':'🙋'), chats:0, live:false,
-    t:row.title||'', pr:(row.price_text||'-'), loc:h?tx(h):'', ago:relTime(row.created_at) };
+    t:row.title||'', pr:(row.price_text||'-'), loc:h?tx(h):'', sub:row.subcat||'', meta:(row.meta&&typeof row.meta==='object'?row.meta:null), ago:relTime(row.created_at) };
 }
 async function loadJobs(){
   try{ const {data,error}=await sb.from('listings').select('*').in('kind',['hire','seek']).order('created_at',{ascending:false}).limit(100);
@@ -1591,6 +1591,54 @@ function renderFsView(){
   }
 }
 /* ── 가게 등록: 업종별 입력 ── */
+// ── 장터 하위분류 / 구인 직종 / 구인 단답 항목 (한·영·태) ──
+function tcc(o){ return o&&(o[lang]||o.en||o.ko)||''; }
+const MKT_SUBCATS=[
+  {c:'digital',ko:'디지털/가전',en:'Digital/Appliance',th:'ดิจิทัล/เครื่องใช้ไฟฟ้า'},
+  {c:'furniture',ko:'가구/생활',en:'Furniture/Home',th:'เฟอร์นิเจอร์/ของใช้'},
+  {c:'fashion',ko:'의류/패션',en:'Clothing/Fashion',th:'เสื้อผ้า/แฟชั่น'},
+  {c:'baby',ko:'유아동',en:'Baby/Kids',th:'แม่และเด็ก'},
+  {c:'sports',ko:'스포츠/레저',en:'Sports/Leisure',th:'กีฬา/นันทนาการ'},
+  {c:'hobby',ko:'도서/취미',en:'Books/Hobby',th:'หนังสือ/งานอดิเรก'},
+  {c:'vehicle',ko:'차량/오토바이',en:'Car/Motorbike',th:'รถ/มอเตอร์ไซค์'},
+  {c:'realestate',ko:'부동산(매매·임대)',en:'Real estate',th:'อสังหาฯ(ขาย/เช่า)'},
+  {c:'ticket',ko:'티켓/쿠폰',en:'Tickets/Coupons',th:'ตั๋ว/คูปอง'},
+  {c:'pet',ko:'반려동물',en:'Pets',th:'สัตว์เลี้ยง'},
+  {c:'etc',ko:'기타',en:'Other',th:'อื่นๆ'}
+];
+const JOB_CATS=[
+  {c:'food',ko:'식당/주방',en:'Restaurant/Kitchen',th:'ร้านอาหาร/ครัว'},
+  {c:'cafe',ko:'카페/바리스타',en:'Cafe/Barista',th:'คาเฟ่/บาริสต้า'},
+  {c:'serving',ko:'서빙/홀',en:'Serving/Hall',th:'เสิร์ฟ/หน้าร้าน'},
+  {c:'retail',ko:'매장판매',en:'Retail/Sales',th:'ขายหน้าร้าน'},
+  {c:'office',ko:'사무/행정',en:'Office/Admin',th:'ออฟฟิศ/ธุรการ'},
+  {c:'guide',ko:'가이드/관광',en:'Guide/Tourism',th:'ไกด์/ท่องเที่ยว'},
+  {c:'driver',ko:'운전/배달',en:'Driver/Delivery',th:'ขับรถ/ส่งของ'},
+  {c:'beauty',ko:'미용/마사지',en:'Beauty/Massage',th:'ความงาม/นวด'},
+  {c:'cleaning',ko:'청소/하우스키핑',en:'Cleaning/Housekeeping',th:'ทำความสะอาด/แม่บ้าน'},
+  {c:'translate',ko:'통역/번역',en:'Interpreter/Translation',th:'ล่าม/แปลภาษา'},
+  {c:'it',ko:'IT/디자인',en:'IT/Design',th:'ไอที/ดีไซน์'},
+  {c:'edu',ko:'교육/과외',en:'Education/Tutoring',th:'การศึกษา/ติว'},
+  {c:'construction',ko:'건설/기술',en:'Construction/Technical',th:'ก่อสร้าง/ช่าง'},
+  {c:'etc',ko:'기타',en:'Other',th:'อื่นๆ'}
+];
+const JOB_LV=[{v:'none',ko:'불필요',en:'N/A',th:'ไม่จำเป็น'},{v:'basic',ko:'기초',en:'Basic',th:'พื้นฐาน'},{v:'ok',ko:'가능',en:'OK',th:'ใช้ได้'},{v:'fluent',ko:'유창',en:'Fluent',th:'คล่อง'}];
+const JOB_META_FIELDS=[
+  {key:'employ',ko:'고용형태',en:'Type',th:'ประเภทงาน',opts:[{v:'fulltime',ko:'정규',en:'Full-time',th:'ประจำ'},{v:'parttime',ko:'파트',en:'Part-time',th:'พาร์ทไทม์'},{v:'daily',ko:'일용',en:'Daily',th:'รายวัน'},{v:'intern',ko:'인턴',en:'Intern',th:'ฝึกงาน'}]},
+  {key:'pay',ko:'급여형태',en:'Pay',th:'ค่าจ้าง',opts:[{v:'monthly',ko:'월급',en:'Monthly',th:'รายเดือน'},{v:'daily',ko:'일급',en:'Daily',th:'รายวัน'},{v:'hourly',ko:'시급',en:'Hourly',th:'รายชั่วโมง'},{v:'nego',ko:'협의',en:'Nego',th:'ต่อรอง'}]},
+  {key:'shift',ko:'근무시간',en:'Shift',th:'เวลางาน',opts:[{v:'morning',ko:'오전',en:'Morning',th:'เช้า'},{v:'afternoon',ko:'오후',en:'Afternoon',th:'บ่าย'},{v:'night',ko:'야간',en:'Night',th:'กลางคืน'},{v:'fullday',ko:'풀타임',en:'Full day',th:'เต็มวัน'}]},
+  {key:'thai',ko:'태국어',en:'Thai',th:'ภาษาไทย',opts:JOB_LV},
+  {key:'eng',ko:'영어',en:'English',th:'อังกฤษ',opts:JOB_LV},
+  {key:'kor',ko:'한국어',en:'Korean',th:'เกาหลี',opts:JOB_LV},
+  {key:'visa',ko:'비자지원',en:'Visa',th:'วีซ่า',opts:[{v:'yes',ko:'가능',en:'Yes',th:'ได้'},{v:'no',ko:'불가',en:'No',th:'ไม่ได้'},{v:'nego',ko:'협의',en:'Nego',th:'ต่อรอง'}]},
+  {key:'housing',ko:'숙식제공',en:'Housing',th:'ที่พัก/อาหาร',opts:[{v:'yes',ko:'제공',en:'Provided',th:'มีให้'},{v:'no',ko:'없음',en:'None',th:'ไม่มี'}]}
+];
+function mktSubLabel(c){ const x=MKT_SUBCATS.find(s=>s.c===c); return x?tcc(x):''; }
+function jobCatLabel(c){ const x=JOB_CATS.find(s=>s.c===c); return x?tcc(x):''; }
+function jobMetaLabel(key,v){ const f=JOB_META_FIELDS.find(f=>f.key===key); if(!f)return''; const o=f.opts.find(o=>o.v===v); return o?tcc(o):''; }
+let mktSubFilter='', jobCatFilter='';
+window.__mktSubF=function(v){ mktSubFilter=v; viewMarket(); };
+window.__jobCatF=function(v){ jobCatFilter=v; viewJobs(); };
 const STORE_CATS=[
   {code:'restaurant',svc:false,food:true},
   {code:'cafe',svc:false,food:true},
@@ -1683,12 +1731,23 @@ function renderWrite(){
   writeEl2.classList.remove('hidden');
   const types=[L().seg_sell,L().seg_buy,L().seg_give,L().seg_hire,L().seg_seek,L().comm_info];
   const isStore=writeType===6, noPrice=(writeType===5||isStore);
+  const isMkt=writeType<=2, isJob=(writeType===3||writeType===4);
+  const selSty='width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff';
+  let extraFields='';
+  if(isMkt){
+    extraFields=`<div class="gfield"><label>${lang==='ko'?'분류':lang==='th'?'หมวด':'Category'}</label><select id="wSubcat" style="${selSty}"><option value="">${lang==='ko'?'분류 선택':lang==='th'?'เลือกหมวด':'Select'}</option>${MKT_SUBCATS.map(s=>`<option value="${s.c}">${tcc(s)}</option>`).join('')}</select></div>`;
+  }else if(isJob){
+    const metaSel=JOB_META_FIELDS.map(f=>`<div style="flex:1 1 46%;min-width:128px"><div style="font-size:10.5px;color:var(--sub);margin-bottom:3px">${tcc(f)}</div><select id="wMeta_${f.key}" style="${selSty};padding:8px"><option value="">-</option>${f.opts.map(o=>`<option value="${o.v}">${tcc(o)}</option>`).join('')}</select></div>`).join('');
+    extraFields=`<div class="gfield"><label>${lang==='ko'?'직종':lang==='th'?'ประเภทงาน':'Job type'}</label><select id="wJobCat" style="${selSty}"><option value="">${lang==='ko'?'직종 선택':lang==='th'?'เลือกประเภท':'Select'}</option>${JOB_CATS.map(s=>`<option value="${s.c}">${tcc(s)}</option>`).join('')}</select></div>
+    <div class="gfield"><label>${lang==='ko'?'조건 (단답 선택)':lang==='th'?'เงื่อนไข':'Conditions'}</label><div style="display:flex;flex-wrap:wrap;gap:8px">${metaSel}</div></div>`;
+  }
   writeEl2.innerHTML=`<div class="pscrim" data-wclose></div><div class="psheet">
     <div class="phead" style="position:relative"><b>✏️ ${L().w_title}</b><button class="pclose" data-wclose style="position:absolute;right:0">✕</button></div>
     <div class="wtypes">${types.map((t,i)=>`<button class="wtype ${writeType===i?'on':''}" data-wtype="${i}">${t}</button>`).join('')}<button class="wtype ${isStore?'on':''}" data-wtype="6">🏪 ${L().w_store}</button></div>
     ${isStore?storeForm():`<div class="gfield"><label>${L().w_subject}</label><input id="wSubject" placeholder="${L().w_subject_ph}"></div>
+    ${extraFields}
     ${noPrice?'':`<div class="gfield"><label>${L().w_price}</label><input id="wPrice" placeholder="${L().w_price_ph}"></div>`}
-    <div class="gfield"><label>${L().w_desc}</label><textarea class="wta" id="wDesc" placeholder="${L().w_desc_ph}"></textarea></div>`}
+    <div class="gfield"><label>${L().w_desc}${isJob?` <span style="font-size:10px;color:var(--sub)">(${lang==='ko'?'선택':lang==='th'?'ไม่บังคับ':'optional'})</span>`:''}</label><textarea class="wta" id="wDesc" placeholder="${isJob?(lang==='ko'?'추가 메모 (선택)':lang==='th'?'หมายเหตุ (ไม่บังคับ)':'Extra note (optional)'):L().w_desc_ph}"></textarea></div>`}
     <div class="wrow"><button class="wphoto">📷 ${L().w_photo}</button><div class="wloc">📍 ${locShort()}</div></div>
     <button class="gbtn primary" data-wsubmit style="width:100%;margin-top:8px">${L().w_submit}</button>
   </div>`;
@@ -1880,6 +1939,7 @@ function listingCard(it){
     <div class="thumb ${thumbCls}"><span class="badge ${stCls}">${stTxt}</span>${it.emo}</div>
     <div class="cbody">
       <div class="ctitle">${tx(it.t)}</div>
+      ${it.sub?`<div style="margin:2px 0 1px"><span style="font-size:10.5px;font-weight:800;color:#c2410c;background:#fff1e8;border-radius:7px;padding:2px 8px">${mktSubLabel(it.sub)}</span></div>`:''}
       <div class="cmeta">📍 ${tx(it.loc)} · ${tx(it.ago)}${(hood&&it.hoodId===hood.id)?` · <b class="myhood">${L().my_hood}</b>`:''}</div>
       <div class="price" style="${give?'color:var(--green)':''}">${tx(it.pr)}</div>
       <div class="actions">
@@ -1925,8 +1985,11 @@ function viewListingDetail(){
    </div>`;
 }
 function viewMarket(){
-  const data=byCity(listings).filter(x=>x.kind===mseg&&inRange(x)).sort((a,b)=>itemDist(a)-itemDist(b));
+  let data=byCity(listings).filter(x=>x.kind===mseg&&inRange(x)).sort((a,b)=>itemDist(a)-itemDist(b));
+  if(mktSubFilter) data=data.filter(x=>x.sub===mktSubFilter);
   const liveN=byCity(listings).filter(x=>x.live).length+9;
+  const selSty='width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:13.5px;background:#fff';
+  const subFilter=`<select onchange="window.__mktSubF(this.value)" style="${selSty}"><option value="">${lang==='ko'?'전체 분류':lang==='th'?'ทุกหมวด':'All categories'}</option>${MKT_SUBCATS.map(s=>`<option value="${s.c}" ${mktSubFilter===s.c?'selected':''}>${tcc(s)}</option>`).join('')}</select>`;
   page.innerHTML=`
    <button class="gbtn primary" data-newpost style="width:100%;margin:2px 0 10px">📝 ${L().nav_market} ${lang==='ko'?'글쓰기':lang==='th'?'โพสต์':'Post'}</button>
    <div class="vbanner"><span class="em">🔒</span><div><b>${L().banner_t}</b><p>${L().banner_p}</p></div></div>
@@ -1935,6 +1998,7 @@ function viewMarket(){
      <button data-mseg="buy" class="${mseg==='buy'?'on':''}">🙋 ${L().seg_buy}</button>
      <button data-mseg="give" class="${mseg==='give'?'on':''}">💚 ${L().seg_give}</button>
    </div>
+   <div style="margin:0 0 10px">${subFilter}</div>
    ${rangeChipHtml()}
    ${mseg==='sell'?matchBannerHtml():''}
    ${mseg==='sell'?`<div class="livebar"><span class="dot"></span>${liveN}${L().live}</div>`:''}
@@ -1943,7 +2007,11 @@ function viewMarket(){
 
 /* ===================== jobs ===================== */
 function viewJobs(){
-  const data=byCity(jobs).filter(x=>x.kind===jseg);
+  let data=byCity(jobs).filter(x=>x.kind===jseg);
+  if(jobCatFilter) data=data.filter(x=>x.sub===jobCatFilter);
+  const selSty='width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:13.5px;background:#fff';
+  const catFilter=`<select onchange="window.__jobCatF(this.value)" style="${selSty}"><option value="">${lang==='ko'?'전체 직종':lang==='th'?'ทุกประเภทงาน':'All job types'}</option>${JOB_CATS.map(s=>`<option value="${s.c}" ${jobCatFilter===s.c?'selected':''}>${tcc(s)}</option>`).join('')}</select>`;
+  const metaChip=(j,k)=>{ if(!j.meta||!j.meta[k])return''; return `<span style="font-size:10.5px;background:#eef2f7;color:#475569;border-radius:6px;padding:2px 7px">${jobMetaLabel(k,j.meta[k])}</span>`; };
   page.innerHTML=`
    <button class="gbtn primary" data-newpost style="width:100%;margin:2px 0 10px">💼 ${L().fab_jobs}</button>
    <div class="vbanner"><span class="em">🔒</span><div><b>${L().banner_t}</b><p>${L().banner_p}</p></div></div>
@@ -1951,12 +2019,15 @@ function viewJobs(){
      <button data-jseg="hire" class="${jseg==='hire'?'on':''}">💼 ${L().seg_hire}</button>
      <button data-jseg="seek" class="${jseg==='seek'?'on':''}">🙋 ${L().seg_seek}</button>
    </div>
+   <div style="margin:0 0 10px">${catFilter}</div>
    <div class="list">${data.map(j=>`
      <div class="card">
        <div class="thumb want"><span class="badge match">${j.kind==='hire'?L().seg_hire:L().seg_seek}</span>${j.emo}</div>
        <div class="cbody">
          <div class="ctitle">${tx(j.t)}</div>
+         ${j.sub?`<div style="margin:2px 0 1px"><span style="font-size:11px;font-weight:800;color:#0b7a3b;background:#e7f6ee;border-radius:7px;padding:2px 8px">${jobCatLabel(j.sub)}</span></div>`:''}
          <div class="cmeta">📍 ${tx(j.loc)} · ${tx(j.ago)}</div>
+         ${j.meta?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px">${['employ','pay','shift','thai','eng','kor','visa','housing'].map(k=>metaChip(j,k)).join('')}</div>`:''}
          <div class="price" style="color:var(--green)">${tx(j.pr)}</div>
          <div class="actions"><button class="abtn chat" data-jobchat="${j.id||''}">💬 ${L().btn_apply}</button>${j.chats?`<span class="live-mini">💬 ${j.chats}</span>`:''}</div>
        </div>
@@ -3199,7 +3270,8 @@ document.addEventListener('click',e=>{
     const desc=((document.getElementById('wDesc')||{}).value||'').trim();
     const rc=(city!=='all'?city:'bkk'), hid=hood?hood.id:null, locStr=hood?tx(hood):(L()['city_'+rc]||''), ago={ko:'방금 전',en:'just now',th:'เมื่อกี้'};
     if(writeType<=2){const kind=['sell','buy','give'][writeType];
-      sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:(kind==='give'?'무료':(price||null)), body:desc||null, hood_id:hoodDbId(hid), status:'selling'}).then(({error})=>{ if(error){toast(error.message);} else {loadListings();} });
+      const subcat=((document.getElementById('wSubcat')||{}).value||'')||null;
+      sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:(kind==='give'?'무료':(price||null)), body:desc||null, subcat, hood_id:hoodDbId(hid), status:'selling'}).then(({error})=>{ if(error){toast(error.message);} else {loadListings();} });
       tab='market'; mseg=kind; listingOpen=null;
     }else if(writeType===6){
       snapStore();
@@ -3220,7 +3292,9 @@ document.addEventListener('click',e=>{
       resetStore();
       tab='shop'; shopCat=0;
     }else if(writeType===3||writeType===4){const kind=writeType===3?'hire':'seek';
-      sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:price||null, hood_id:hoodDbId(hid), status:'selling'}).then(({error})=>{ if(error){toast(error.message);} else {loadJobs();} });
+      const subcat=((document.getElementById('wJobCat')||{}).value||'')||null;
+      const meta={}; JOB_META_FIELDS.forEach(f=>{ const v=(document.getElementById('wMeta_'+f.key)||{}).value; if(v)meta[f.key]=v; });
+      sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:price||null, body:desc||null, subcat, meta:Object.keys(meta).length?meta:null, hood_id:hoodDbId(hid), status:'selling'}).then(({error})=>{ if(error){toast(error.message);} else {loadJobs();} });
       tab='jobs'; jseg=kind;
     }else if(writeType===5){
       sb.from('posts').insert({author_id:uid, category:'0', is_official:false, title:subj||L().w_subject, body:desc||null, hood_id:hoodDbId(hid)}).then(({error})=>{ if(error){toast(error.message);} else {loadPosts();} });
