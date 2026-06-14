@@ -13,7 +13,21 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="ThaiMate" />
-<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}</script>
+<script>if('serviceWorker' in navigator){
+  // 새 서비스워커가 제어를 넘겨받으면(=새 버전 배포) 자동 새로고침 → 설치형 PWA도 옛 코드에 갇히지 않음
+  var __swReloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',function(){ if(__swReloaded)return; __swReloaded=true; location.reload(); });
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('/sw.js').then(function(reg){
+      try{ reg.update(); }catch(e){}
+      // 대기 중인 새 워커가 있으면 즉시 활성화
+      if(reg.waiting){ try{ reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch(e){} }
+      reg.addEventListener('updatefound',function(){ var nw=reg.installing; if(!nw)return;
+        nw.addEventListener('statechange',function(){ if(nw.state==='installed' && navigator.serviceWorker.controller){ try{ nw.postMessage({type:'SKIP_WAITING'}); }catch(e){} } });
+      });
+    }).catch(function(){});
+  });
+}</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -3214,6 +3228,7 @@ function render(){
   else if(tab==='me') viewMe();
   renderPicker(); renderPay(); renderGmGate(); renderGmFrame(); renderVerify(); renderWrite(); renderReport(); renderReview(); renderFsView();
   saveNav();
+  try{ if(window.__syncTrap) window.__syncTrap(); }catch(e){}   // 깊어진 화면이면 뒤로가기 트랩 미리 적재
 }
 
 /* ===================== events ===================== */
@@ -3497,9 +3512,38 @@ document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter')
 
 applyBrand();
 (async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} try{ restoreNav(); }catch(e){} render(); loadListings(); loadStores(); loadPosts(); loadJobs(); loadClubs(); })();
-/* 뒤로가기: 서브화면이면 한 단계 앱 내 뒤로, 메인화면이면 종료 확인(실수 방지) */
-let __mateAllowExit=false;
-function __pushBackTrap(){ try{ history.pushState({mateTrap:1},''); }catch(e){} }
+/* 뒤로가기: 서브화면이면 한 단계 앱 내 뒤로, 메인화면이면 종료 확인(실수 방지)
+   설계: 들어갈 때(깊어질 때) 미리 history 트랩을 쌓는다(=프로액티브).
+   popstate 안에서 트랩을 다시 심지 않으므로 모바일에서도 안정적. */
+function __navDepth(){ try{
+  if(typeof screen==='undefined'||screen!=='app') return 0;
+  var d=0;
+  if(typeof tab!=='undefined'&&tab!=='shop') d++;
+  if(typeof storeOpen!=='undefined'&&storeOpen) d++;
+  if(typeof listingOpen!=='undefined'&&listingOpen!==null) d++;
+  if(typeof chatOpen!=='undefined'&&chatOpen!==null) d++;
+  if(typeof golfOpen!=='undefined'&&golfOpen) d++;
+  if(typeof golfSub!=='undefined'&&golfSub) d++;
+  if(typeof clubOpen!=='undefined'&&clubOpen) d++;
+  if(typeof evOpen!=='undefined'&&evOpen) d++;
+  if(typeof golfMatchOpen!=='undefined'&&golfMatchOpen) d++;
+  if(typeof myStores!=='undefined'&&myStores) d++;
+  if(typeof myClubsOpen!=='undefined'&&myClubsOpen) d++;
+  if(typeof writeOpen!=='undefined'&&writeOpen) d++;
+  if(typeof verifyOpen!=='undefined'&&verifyOpen) d++;
+  if(typeof payOpen!=='undefined'&&payOpen) d++;
+  if(typeof locPickerOpen!=='undefined'&&locPickerOpen) d++;
+  if(typeof fsView!=='undefined'&&fsView) d++;
+  return d;
+}catch(e){ return 0; } }
+let __trapN=0;
+function __syncTrap(){ try{
+  if(typeof screen==='undefined'||screen!=='app'){ return; }
+  var target=__navDepth()+1;            // 홈(깊이0)에서도 트랩 1개 → 메인 뒤로도 가로채 종료확인
+  while(__trapN<target){ history.pushState({mateTrap:1},''); __trapN++; }   // 깊어짐 → 미리 트랩 적재
+  if(__trapN>target) __trapN=target;    // 얕아짐 → 카운트만 줄임(트랩은 뒤로가기가 소비)
+}catch(e){} }
+window.__syncTrap=__syncTrap;            // render() 끝에서 호출
 function __appGoBack(){ try{
   // 화면에 떠 있는 '뒤로/닫기' 버튼을 우선순위(모달·오버레이 먼저)로 찾아 클릭 → 앱의 원래 뒤로 로직 그대로 사용
   var sels=['[data-wclose]','[data-repclose]','[data-rvclose]','[data-raffleclose]','[data-evaddmemclose]','[data-clubclose]','[data-close]','.pclose',
@@ -3523,15 +3567,16 @@ function __appGoBack(){ try{
 }catch(e){ return false; } }
 let __backArmed=false, __backTimer=null;
 window.addEventListener('popstate', function(){
-  if(__appGoBack()){ __pushBackTrap(); __backArmed=false; return; }   // 하부메뉴 → 실제로 한 단계 뒤로(메시지 없음)
+  if(__trapN>0) __trapN--;              // 뒤로가기로 트랩 1개 소비됨
+  if(__appGoBack()){ __syncTrap(); __backArmed=false; return; }   // 하부메뉴 → 실제로 한 단계 뒤로(메시지 없음)
   // 상점(홈)에 도달 → 종료 물어보기(한 번 더 누르면 나가기)
   if(__backArmed){ __backArmed=false; history.back(); return; }
   __backArmed=true;
   try{ toast(lang==='ko'?'한 번 더 누르면 앱을 나가요':lang==='th'?'กดย้อนกลับอีกครั้งเพื่อออก':'Press back again to exit'); }catch(e){}
-  __pushBackTrap();
+  __syncTrap();                          // 홈 트랩 복구(머무름)
   clearTimeout(__backTimer); __backTimer=setTimeout(function(){ __backArmed=false; }, 2000);
 });
-__pushBackTrap();
+__syncTrap();
 </script>
 <script>
 /* 설치 유도 배너 — 앱 렌더와 독립. ①일반 브라우저: 설치 버튼 ②카톡/라인 인앱: 외부 브라우저 ③iOS Safari: 홈 화면 추가 안내 */
