@@ -751,6 +751,7 @@ async function openInquiry(){
     toast(L().inquiry_sent);
   }catch(e){ toast(String(e.message||e)); }
 }
+window.__inquiry=function(){ try{ var o=document.getElementById('termsView'); if(o)o.remove(); }catch(e){} openInquiry(); };  // 약관 모달 등에서 '관리자에게 문의' 호출
 function vErrMsg(code){ const m={ email_taken:L().e_email_taken, bad_email:L().v_bad_email, too_soon:L().v_too_soon, no_key:L().v_no_key, no_request:L().v_expired, expired:L().v_expired, too_many:L().v_too_many, wrong_code:L().v_wrong, not_authed:L().v_need_login }; return m[code]||(code||'error'); }
 async function reqEmailCode(em){
   try{ const {data,error}=await sb.rpc('request_email_code',{p_email:em});
@@ -1868,15 +1869,16 @@ const TERMS={
 const TERMS_VERSION='2026-06-14';
 function __showTerms(key){
   var d=(TERMS[key]&&TERMS[key][lang])||(TERMS[key]&&TERMS[key].ko); if(!d)return;
-  var foot=(lang==='ko')?'시행일: 2026.06.14\n운영자: ThaiMate · 문의: kamja07@gmail.com'
-          :(lang==='th')?'มีผล: 2026-06-14\nผู้ให้บริการ: ThaiMate · ติดต่อ: kamja07@gmail.com'
-          :'Effective: 2026-06-14\nOperator: ThaiMate · Contact: kamja07@gmail.com';
+  var fL=(lang==='ko')?['시행일: 2026.06.14 · 운영자: ThaiMate','문의:','관리자에게 문의 →']
+        :(lang==='th')?['มีผล: 2026-06-14 · ผู้ให้บริการ: ThaiMate','ติดต่อ:','ติดต่อผู้ดูแล →']
+        :['Effective: 2026-06-14 · Operator: ThaiMate','Contact:','Contact admin →'];
+  var foot=fL[0]+'<br>'+fL[1]+' <button onclick="window.__inquiry&&window.__inquiry()" style="border:none;background:var(--pri-soft);color:var(--pri);font-weight:700;font-size:11.5px;border-radius:7px;padding:3px 9px;cursor:pointer">'+fL[2]+'</button>';
   var dev=document.querySelector('.device')||document.body;
   var ov=document.createElement('div'); ov.id='termsView';
   ov.style.cssText='position:fixed;inset:0;z-index:100000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5)';
   ov.innerHTML='<div style="background:#fff;width:100%;max-width:430px;max-height:82vh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;overflow:hidden">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;padding:15px 16px;border-bottom:1px solid var(--line)"><b style="font-size:15.5px">'+d.t+'</b><button id="__tmClose" style="border:none;background:#f0f1f4;border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer">✕</button></div>'
-    +'<div style="padding:16px;overflow-y:auto;font-size:13px;line-height:1.7;color:#33373b;white-space:pre-wrap">'+d.body.replace(/</g,'&lt;')+'<div style="margin-top:16px;padding-top:12px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--sub)">'+foot+'</div></div>'
+    +'<div style="padding:16px;overflow-y:auto;font-size:13px;line-height:1.7;color:#33373b;white-space:pre-wrap">'+d.body.replace(/</g,'&lt;')+'<div style="margin-top:16px;padding-top:12px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--sub);white-space:normal;line-height:1.9">'+foot+'</div></div>'
     +'<div style="padding:11px 16px;border-top:1px solid var(--line)"><button id="__tmOk" class="gbtn primary" style="width:100%">'+L().ag_close+'</button></div>'
     +'</div>';
   dev.appendChild(ov);
