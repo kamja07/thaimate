@@ -1869,10 +1869,9 @@ const TERMS={
 const TERMS_VERSION='2026-06-14';
 function __showTerms(key){
   var d=(TERMS[key]&&TERMS[key][lang])||(TERMS[key]&&TERMS[key].ko); if(!d)return;
-  var fL=(lang==='ko')?['시행일: 2026.06.14 · 운영자: ThaiMate','문의:','관리자에게 문의 →']
-        :(lang==='th')?['มีผล: 2026-06-14 · ผู้ให้บริการ: ThaiMate','ติดต่อ:','ติดต่อผู้ดูแล →']
-        :['Effective: 2026-06-14 · Operator: ThaiMate','Contact:','Contact admin →'];
-  var foot=fL[0]+'<br>'+fL[1]+' <button onclick="window.__inquiry&&window.__inquiry()" style="border:none;background:var(--pri-soft);color:var(--pri);font-weight:700;font-size:11.5px;border-radius:7px;padding:3px 9px;cursor:pointer">'+fL[2]+'</button>';
+  var foot=(lang==='ko')?'시행일: 2026.06.14 · 운영자: ThaiMate · 문의: kamja07@gmail.com'
+          :(lang==='th')?'มีผล: 2026-06-14 · ผู้ให้บริการ: ThaiMate · ติดต่อ: kamja07@gmail.com'
+          :'Effective: 2026-06-14 · Operator: ThaiMate · Contact: kamja07@gmail.com';
   var dev=document.querySelector('.device')||document.body;
   var ov=document.createElement('div'); ov.id='termsView';
   ov.style.cssText='position:fixed;inset:0;z-index:100000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5)';
