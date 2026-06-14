@@ -1,7 +1,7 @@
 /* ThaiMate Service Worker — 설치형 PWA (홈 화면에 추가)
    원칙: 앱 셸만 캐시. Supabase/CDN 등 외부 요청은 절대 건드리지 않음.
    네비게이션은 네트워크 우선(항상 최신) → 오프라인일 때만 캐시 폴백. */
-const CACHE = 'thaimate-v2';
+const CACHE = 'thaimate-v3';
 const SHELL = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest'];
 
 /* 닫힌 앱/화면 꺼짐에서도 채팅 'mate' 알림 — 웹푸시 수신(소리는 폰 기본음, 진동 패턴 적용) */

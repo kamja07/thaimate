@@ -3184,6 +3184,21 @@ function renderFab(){
   if(tab==='shop')lbl=L().fab_shop; else if(tab==='jobs')lbl=L().fab_jobs; else if(tab==='community')lbl=L().fab_info;
   fab.innerHTML=`✏️ ${lbl}`;
 }
+// 현재 화면(탭·세그·상세) 저장·복원 — 당겨서 새로고침해도 현재 화면 유지
+function saveNav(){ try{ if(screen!=='app')return; sessionStorage.setItem('tmNav', JSON.stringify({
+  tab:tab, shopCat:shopCat, storeOpen:storeOpen, mseg:mseg, listingOpen:listingOpen, mktSubFilter:mktSubFilter,
+  jseg:jseg, jobCatFilter:jobCatFilter, commSeg:commSeg, golfOpen:!!golfOpen, golfSub:golfSub,
+  clubOpen:clubOpen, evOpen:evOpen, golfMatchOpen:(typeof golfMatchOpen!=='undefined'?golfMatchOpen:null),
+  myStores:!!myStores, myClubsOpen:!!myClubsOpen })); }catch(e){} }
+function restoreNav(){ try{ var s=JSON.parse(sessionStorage.getItem('tmNav')||'null'); if(!s)return;
+  if(s.tab) tab=s.tab; if(s.shopCat) shopCat=s.shopCat; if(s.storeOpen) storeOpen=s.storeOpen;
+  if(s.mseg) mseg=s.mseg; if(s.listingOpen) listingOpen=s.listingOpen; if(s.mktSubFilter) mktSubFilter=s.mktSubFilter;
+  if(s.jseg) jseg=s.jseg; if(s.jobCatFilter) jobCatFilter=s.jobCatFilter; if(s.commSeg) commSeg=s.commSeg;
+  golfOpen=!!s.golfOpen; if(s.golfSub) golfSub=s.golfSub;
+  myStores=!!s.myStores; myClubsOpen=!!s.myClubsOpen;
+  if(s.golfMatchOpen&&typeof golfMatchOpen!=='undefined') golfMatchOpen=s.golfMatchOpen;
+  if(s.clubOpen){ try{ openClub(s.clubOpen); if(s.evOpen) setTimeout(function(){ try{ openEvent(s.evOpen); }catch(e){} },300); }catch(e){} }
+}catch(e){} }
 function render(){
   if(screen==='gate'){
     gateEl.style.display='flex'; topEl.style.display='none'; page.style.display='none'; fab.style.display='none'; navEl.style.display='none';
@@ -3198,6 +3213,7 @@ function render(){
   else if(tab==='community') viewCommunity();
   else if(tab==='me') viewMe();
   renderPicker(); renderPay(); renderGmGate(); renderGmFrame(); renderVerify(); renderWrite(); renderReport(); renderReview(); renderFsView();
+  saveNav();
 }
 
 /* ===================== events ===================== */
@@ -3480,7 +3496,7 @@ document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter')
   if(e.target.id==='clubcin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendClubMsg(clubOpen,v);e.target.value='';}}});
 
 applyBrand();
-(async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} render(); loadListings(); loadStores(); loadPosts(); loadJobs(); loadClubs(); })();
+(async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} try{ restoreNav(); }catch(e){} render(); loadListings(); loadStores(); loadPosts(); loadJobs(); loadClubs(); })();
 /* 뒤로가기: 서브화면이면 한 단계 앱 내 뒤로, 메인화면이면 종료 확인(실수 방지) */
 let __mateAllowExit=false;
 function __pushBackTrap(){ try{ history.pushState({mateTrap:1},''); }catch(e){} }
@@ -3503,13 +3519,15 @@ function __appGoBack(){ try{
   if(typeof golfOpen!=='undefined'&&golfOpen){golfOpen=false;if(typeof golfSub!=='undefined')golfSub=null;render();return true;}
   return false;
 }catch(e){ return false; } }
+let __backArmed=false, __backTimer=null;
 window.addEventListener('popstate', function(){
-  if(__mateAllowExit) return;
-  if(__appGoBack()){ __pushBackTrap(); return; }   // 서브화면 닫음 → 머무름
-  if(typeof screen!=='undefined' && screen==='app'){   // 메인 탭(아무것도 안 열림)
-    if(confirm(lang==='ko'?'ThaiMate를 나가시겠어요?':lang==='th'?'ออกจาก ThaiMate ไหม?':'Exit ThaiMate?')){ __mateAllowExit=true; history.back(); }
-    else { __pushBackTrap(); }
-  } else { __pushBackTrap(); }
+  if(__appGoBack()){ __pushBackTrap(); __backArmed=false; return; }   // 서브화면 → 한 단계 뒤로(머무름)
+  // 메인 탭 — 한 번 더 누르면 나가기(네이티브 앱 방식)
+  if(__backArmed){ __backArmed=false; history.back(); return; }   // 두 번째 → 트랩 안 심음 → OS가 종료/최소화
+  __backArmed=true;
+  try{ toast(lang==='ko'?'한 번 더 누르면 나가요':lang==='th'?'กดย้อนกลับอีกครั้งเพื่อออก':'Press back again to exit'); }catch(e){}
+  __pushBackTrap();
+  clearTimeout(__backTimer); __backTimer=setTimeout(function(){ __backArmed=false; }, 2000);
 });
 __pushBackTrap();
 </script>
