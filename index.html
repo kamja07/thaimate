@@ -1743,7 +1743,7 @@ function renderWrite(){
   }
   writeEl2.innerHTML=`<div class="pscrim" data-wclose></div><div class="psheet">
     <div class="phead" style="position:relative"><b>✏️ ${L().w_title}</b><button class="pclose" data-wclose style="position:absolute;right:0">✕</button></div>
-    <div class="wtypes">${types.map((t,i)=>`<button class="wtype ${writeType===i?'on':''}" data-wtype="${i}">${t}</button>`).join('')}<button class="wtype ${isStore?'on':''}" data-wtype="6">🏪 ${L().w_store}</button></div>
+    ${(()=>{const tabIdx=isMkt?[0,1,2]:(isJob?[3,4]:(writeType===5?[5]:[]));return tabIdx.length>1?`<div class="wtypes">${tabIdx.map(i=>`<button class="wtype ${writeType===i?'on':''}" data-wtype="${i}">${types[i]}</button>`).join('')}</div>`:'';})()}
     ${isStore?storeForm():`<div class="gfield"><label>${L().w_subject}</label><input id="wSubject" placeholder="${L().w_subject_ph}"></div>
     ${extraFields}
     ${noPrice?'':`<div class="gfield"><label>${L().w_price}</label><input id="wPrice" placeholder="${L().w_price_ph}"></div>`}
@@ -3481,6 +3481,41 @@ document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter')
 
 applyBrand();
 (async()=>{ try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} render(); loadListings(); loadStores(); loadPosts(); loadJobs(); loadClubs(); })();
+/* 뒤로가기: 서브화면이면 한 단계 앱 내 뒤로, 메인화면이면 종료 확인(실수 방지) */
+let __mateAllowExit=false;
+function __pushBackTrap(){ try{ history.pushState({mateTrap:1},''); }catch(e){} }
+function __appGoBack(){ try{
+  if(typeof writeOpen!=='undefined'&&writeOpen){writeOpen=false;render();return true;}
+  if(typeof verifyOpen!=='undefined'&&verifyOpen){verifyOpen=false;render();return true;}
+  if(typeof payOpen!=='undefined'&&payOpen){payOpen=false;render();return true;}
+  if(typeof reviewOpen!=='undefined'&&reviewOpen){reviewOpen=false;render();return true;}
+  if(typeof reportOpen!=='undefined'&&reportOpen){reportOpen=false;render();return true;}
+  if(typeof locPickerOpen!=='undefined'&&locPickerOpen){locPickerOpen=false;render();return true;}
+  if(typeof fsView!=='undefined'&&fsView){fsView=null;render();return true;}
+  if(typeof gmFrameOpen!=='undefined'&&gmFrameOpen){gmFrameOpen=false;render();return true;}
+  if(typeof gmGateOpen!=='undefined'&&gmGateOpen){gmGateOpen=false;render();return true;}
+  if(typeof raffleOpen!=='undefined'&&raffleOpen){raffleOpen=false;render();return true;}
+  if(typeof evOpen!=='undefined'&&evOpen){evOpen=null;if(typeof evData!=='undefined')evData=null;render();return true;}
+  if(typeof golfMatchOpen!=='undefined'&&golfMatchOpen){golfMatchOpen=null;render();return true;}
+  if(typeof clubOpen!=='undefined'&&clubOpen){clubOpen=null;if(typeof clubData!=='undefined')clubData=null;render();return true;}
+  if(typeof golfSub!=='undefined'&&golfSub){golfSub=null;render();return true;}
+  if(typeof golfOpen!=='undefined'&&golfOpen){golfOpen=false;render();return true;}
+  if(typeof chatOpen!=='undefined'&&chatOpen!==null){chatOpen=null;render();return true;}
+  if(typeof listingOpen!=='undefined'&&listingOpen!==null){listingOpen=null;render();return true;}
+  if(typeof storeOpen!=='undefined'&&storeOpen!==null){storeOpen=null;render();return true;}
+  if(typeof myStores!=='undefined'&&myStores){myStores=false;render();return true;}
+  if(typeof myClubsOpen!=='undefined'&&myClubsOpen){myClubsOpen=false;render();return true;}
+  return false;
+}catch(e){ return false; } }
+window.addEventListener('popstate', function(){
+  if(__mateAllowExit) return;
+  if(__appGoBack()){ __pushBackTrap(); return; }   // 서브화면 닫음 → 머무름
+  if(typeof screen!=='undefined' && screen==='app'){   // 메인 탭(아무것도 안 열림)
+    if(confirm(lang==='ko'?'ThaiMate를 나가시겠어요?':lang==='th'?'ออกจาก ThaiMate ไหม?':'Exit ThaiMate?')){ __mateAllowExit=true; history.back(); }
+    else { __pushBackTrap(); }
+  } else { __pushBackTrap(); }
+});
+__pushBackTrap();
 </script>
 <script>
 /* 설치 유도 배너 — 앱 렌더와 독립. ①일반 브라우저: 설치 버튼 ②카톡/라인 인앱: 외부 브라우저 ③iOS Safari: 홈 화면 추가 안내 */
