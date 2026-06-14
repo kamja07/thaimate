@@ -1932,6 +1932,8 @@ function renderPay(){
 /* ===================== top ===================== */
 function renderTop(){
   if((tab==='chat'&&chatOpen!==null)||(tab==='shop'&&storeOpen)||(tab==='market'&&listingOpen)){topEl.innerHTML='';return;}
+  const navMap={shop:'nav_shop',market:'nav_market',jobs:'nav_jobs',chat:'nav_chat',community:'nav_community',me:'nav_me'};
+  const menuName=L()[navMap[tab]]||'';
   topEl.innerHTML=`
    <div class="top-row">
      <button class="locpill" id="locpill"><span class="lpin">📍</span>${locShort()}${verified?'<span style="color:var(--green);font-size:13px">✓</span>':''}<span class="lcv">▾</span></button>
@@ -1940,6 +1942,7 @@ function renderTop(){
      <button class="icon-btn" data-noti>🔔${(()=>{const u=NOTI.filter(n=>n.unread).length;return u?`<span class="nb">${u}</span>`:'';})()}</button>
      ${langToggle()}
    </div>
+   <div style="font-size:20px;font-weight:800;letter-spacing:-.3px;padding:1px 2px 9px">${menuName}</div>
    ${(authed&&!emailVerified)?`<div class="vbanner2"><span>✉️</span><span class="vt">${L().v_banner}</span><button class="vb" data-verify>${L().v_btn}</button></div>`:''}`;
 }
 
@@ -2005,13 +2008,13 @@ function viewMarket(){
   const selSty='width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:13.5px;background:#fff';
   const subFilter=`<select onchange="window.__mktSubF(this.value)" style="${selSty}"><option value="">${lang==='ko'?'전체 분류':lang==='th'?'ทุกหมวด':'All categories'}</option>${MKT_SUBCATS.map(s=>`<option value="${s.c}" ${mktSubFilter===s.c?'selected':''}>${tcc(s)}</option>`).join('')}</select>`;
   page.innerHTML=`
-   <button class="gbtn primary" data-newpost style="width:100%;margin:2px 0 10px">📝 ${L().nav_market} ${lang==='ko'?'글쓰기':lang==='th'?'โพสต์':'Post'}</button>
    <div class="vbanner"><span class="em">🔒</span><div><b>${L().banner_t}</b><p>${L().banner_p}</p></div></div>
    <div class="seg">
      <button data-mseg="sell" class="${mseg==='sell'?'on':''}">🛍️ ${L().seg_sell}</button>
      <button data-mseg="buy" class="${mseg==='buy'?'on':''}">🙋 ${L().seg_buy}</button>
      <button data-mseg="give" class="${mseg==='give'?'on':''}">💚 ${L().seg_give}</button>
    </div>
+   <button class="gbtn primary" data-newpost style="width:100%;margin:2px 0 10px">📝 ${L().nav_market} ${lang==='ko'?'글쓰기':lang==='th'?'โพสต์':'Post'}</button>
    <div style="margin:0 0 10px">${subFilter}</div>
    ${rangeChipHtml()}
    ${mseg==='sell'?matchBannerHtml():''}
@@ -2027,12 +2030,12 @@ function viewJobs(){
   const catFilter=`<select onchange="window.__jobCatF(this.value)" style="${selSty}"><option value="">${lang==='ko'?'전체 직종':lang==='th'?'ทุกประเภทงาน':'All job types'}</option>${JOB_CATS.map(s=>`<option value="${s.c}" ${jobCatFilter===s.c?'selected':''}>${tcc(s)}</option>`).join('')}</select>`;
   const metaChip=(j,k)=>{ if(!j.meta||!j.meta[k])return''; return `<span style="font-size:10.5px;background:#eef2f7;color:#475569;border-radius:6px;padding:2px 7px">${jobMetaLabel(k,j.meta[k])}</span>`; };
   page.innerHTML=`
-   <button class="gbtn primary" data-newpost style="width:100%;margin:2px 0 10px">💼 ${L().fab_jobs}</button>
    <div class="vbanner"><span class="em">🔒</span><div><b>${L().banner_t}</b><p>${L().banner_p}</p></div></div>
    <div class="seg">
      <button data-jseg="hire" class="${jseg==='hire'?'on':''}">💼 ${L().seg_hire}</button>
      <button data-jseg="seek" class="${jseg==='seek'?'on':''}">🙋 ${L().seg_seek}</button>
    </div>
+   <button class="gbtn primary" data-newpost style="width:100%;margin:2px 0 10px">💼 ${L().fab_jobs}</button>
    <div style="margin:0 0 10px">${catFilter}</div>
    <div class="list">${data.map(j=>`
      <div class="card">
@@ -2092,10 +2095,10 @@ function viewShop(){
   if(shopCat>0) data=data.filter(x=>x.cat===shopCat-1);
   data=data.sort((a,b)=>itemDist(a)-itemDist(b));
   page.innerHTML=`
-   <button class="gbtn primary" data-newstore style="width:100%;margin:2px 0 10px">🏪 ${L().fab_shop}</button>
    <div class="vbanner" style="background:linear-gradient(100deg,#eafaf0,#f4fdf8);border-color:#bfe9cf">
      <span class="em">🏪</span><div><b>${L().shop_banner_t}</b><p style="color:#0d8a47">${L().shop_banner_p}</p></div></div>
    <div class="cities" style="padding:0 0 12px;margin:0;flex-wrap:wrap;gap:6px;overflow:visible">${chips.map((c,i)=>`<button class="city ${shopCat===i?'on':''}" data-shopcat="${i}">${c}</button>`).join('')}</div>
+   <button class="gbtn primary" data-newstore style="width:100%;margin:2px 0 10px">🏪 ${L().fab_shop}</button>
    ${rangeChipHtml()}
    <div>${data.map(storeCard).join('')||`<div class="empty">—</div>`}</div>`;
 }
