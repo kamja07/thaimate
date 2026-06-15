@@ -179,7 +179,7 @@ const sb=window.supabase.createClient(SB_URL,SB_KEY);
 const NAV=[
  ['dash','📊','대시보드',0],['rev','📈','분석·수익화',0],['settle','🧾','정산·인보이스',0],['cohort','🔁','코호트·리텐션',0],
  ['orders','🛒','주문 관리',0],['bookings','📅','예약 관리',0],['deals','🤝','직거래 모니터링',1],
- ['biz','🏪','업체·광고',1],['ads','📢','광고 상품',0],['members','👥','회원 관리',0],['tickets','📩','문의·신고',6]
+ ['biz','🏪','업체·광고',1],['ads','📢','광고 상품',0],['members','👥','회원 관리',0],['clubmgr','🏘️','모임·활동',0],['tickets','📩','문의·신고',6]
 ];
 /* 업체별 월간 거래 데이터 — 향후 수수료/광고료 산정의 기반 (체계적 분석의 원천) */
 const MERCH=[
@@ -293,6 +293,7 @@ let TICKETS=[
  ['T-499','문의','오세훈','골프투어 예약 변경 가능한가요?','답변완료','2시간 전'],
  ['T-498','문의','Wanida','결제 QR이 안 떠요','답변완료','3시간 전']
 ];
+let CLUBS=[], ACTS=[];   // 모임·활동 관리 (실데이터)
 
 /* ============ helpers ============ */
 const $=id=>document.getElementById(id);
@@ -371,6 +372,40 @@ function secTickets(){
      TICKETS.map(t=>`<tr style="${t[4]==='미처리'?'background:#fffdf6':''}"><td class="mono">${t[0]}</td><td>${badge(t[1])}</td><td>${t[2]}</td><td>${t[3]}</td><td>${badge(t[4])}</td><td style="color:var(--sub)">${t[5]}</td>
        <td><button class="act pri" onclick="toast('${t[0]} 답변하기')">답변</button><button class="act" onclick="toast('${t[0]} 처리완료')">완료</button></td></tr>`).join(''))}`;
 }
+const CCAT={golf:'골프',hobby:'취미',sports:'스포츠',study:'스터디',social:'친목',food:'맛집',etc:'기타'};
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function secClubMgr(){
+  const clubRows = CLUBS.length ? CLUBS.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td>${badge(CCAT[c.category]||c.category||'기타')}</td><td>${esc(c.leader||'-')}</td><td class="mono">${(c.created_at||'').slice(0,10)}</td>
+       <td><button class="act danger" onclick="adminDelClub('${c.id}',this)">삭제</button></td></tr>`).join('')
+     : `<tr><td colspan="5" style="text-align:center;color:var(--sub);padding:22px">모임이 없습니다</td></tr>`;
+  const actRows = ACTS.length ? ACTS.map(a=>`<tr><td><b>${esc(a.title)}</b></td><td>${esc(a.club||'-')}</td><td class="mono">${(a.created_at||'').slice(0,10)}</td>
+       <td><button class="act danger" onclick="adminDelAct('${a.id}',this)">삭제</button></td></tr>`).join('')
+     : `<tr><td colspan="4" style="text-align:center;color:var(--sub);padding:22px">활동이 없습니다</td></tr>`;
+  return `<p class="sec-sub">슈퍼관리자 전용 — 모든 <b>모임(동호회)</b>과 <b>활동</b>을 삭제합니다. <b style="color:var(--red)">모임 삭제 시 소속 멤버·활동·공지가 함께 삭제</b>되며 되돌릴 수 없습니다.</p>
+   <h3 style="margin:6px 0 10px;font-size:15px">🏘️ 모임 (${CLUBS.length})</h3>
+   ${table(['모임명','분류','방장','개설일','관리'], clubRows)}
+   <h3 style="margin:20px 0 10px;font-size:15px">📣 활동 (${ACTS.length})</h3>
+   ${table(['활동명','소속 모임','등록일','관리'], actRows)}`;
+}
+async function adminDelClub(id,btn){
+  const c=CLUBS.find(x=>x.id===id); const nm=c?c.name:'';
+  if(!confirm('모임 "'+nm+'" 을(를) 삭제할까요?\n소속 멤버·활동·공지도 함께 삭제되며 되돌릴 수 없습니다.')) return;
+  if(btn){btn.disabled=true;btn.textContent='삭제중…';}
+  const {error}=await sb.from('clubs').delete().eq('id',id);
+  if(error){ toast('삭제 실패: '+error.message); if(btn){btn.disabled=false;btn.textContent='삭제';} return; }
+  CLUBS=CLUBS.filter(x=>x.id!==id); ACTS=ACTS.filter(a=>a.club_id!==id);
+  toast('모임 "'+nm+'" 삭제됨'); render();
+}
+async function adminDelAct(id,btn){
+  const a=ACTS.find(x=>x.id===id); const nm=a?a.title:'';
+  if(!confirm('활동 "'+nm+'" 을(를) 삭제할까요? 되돌릴 수 없습니다.')) return;
+  if(btn){btn.disabled=true;btn.textContent='삭제중…';}
+  const {error}=await sb.from('club_activities').delete().eq('id',id);
+  if(error){ toast('삭제 실패: '+error.message); if(btn){btn.disabled=false;btn.textContent='삭제';} return; }
+  ACTS=ACTS.filter(x=>x.id!==id);
+  toast('활동 "'+nm+'" 삭제됨'); render();
+}
+window.adminDelClub=adminDelClub; window.adminDelAct=adminDelAct;
 
 /* ===== 분석·수익화 ===== */
 let monMode='free', commRate=3;
@@ -551,7 +586,7 @@ function secCohort(){
 
 const SECT={dash:['대시보드','오늘의 운영 현황을 한눈에',secDash],rev:['분석·수익화','거래액 분석과 수수료 시뮬레이션',secAnalytics],settle:['정산·인보이스','월별 수수료/광고비 정산서 발행',secSettle],cohort:['코호트·리텐션','가입 코호트·동네 리텐션·전환 분석',secCohort],orders:['주문 관리','식당·마트 주문 모니터링',secOrders],
  bookings:['예약 관리','서비스·여행 예약 현황',secBookings],deals:['직거래 모니터링','장터·나눔·구인 개인 거래',secDeals],
- biz:['업체·광고','교민 업체 등록 및 광고 관리',secBiz],ads:['광고 상품','광고 상품·단가·캠페인 관리',secAds],members:['회원 관리','신뢰도·인증·신고 관리',secMembers],tickets:['문의·신고','관리자 문의함 및 신고 접수',secTickets]};
+ biz:['업체·광고','교민 업체 등록 및 광고 관리',secBiz],ads:['광고 상품','광고 상품·단가·캠페인 관리',secAds],members:['회원 관리','신뢰도·인증·신고 관리',secMembers],clubmgr:['모임·활동 관리','모든 모임·활동 조회 및 삭제 (슈퍼관리자)',secClubMgr],tickets:['문의·신고','관리자 문의함 및 신고 접수',secTickets]};
 let cur='dash';
 function renderNav(){
   $('nav').innerHTML=NAV.map(([k,ic,lb,n])=>`<button data-s="${k}" class="${cur===k?'on':''}"><span class="ic">${ic}</span><span class="lbl">${lb}</span>${n?`<span class="badge-n">${n}</span>`:''}</button>`).join('');
@@ -572,12 +607,13 @@ const TYNM={sell:'장터',buy:'장터',give:'나눔',hire:'구인',seek:'구직'
 const STNM={selling:'거래중',reserved:'예약중',done:'완료'};
 async function loadAdminData(){
   try{
-    const [nb,pf,st,ls,ps]=await Promise.all([
+    const [nb,pf,st,ls,ps,cl]=await Promise.all([
       sb.from('neighborhoods').select('id,name_ko'),
       sb.from('profiles').select('username,nickname,hood_id,hood_verified,email_verified,manner_temp').limit(300),
       sb.from('stores').select('id,name,category,hood_id,ad_tier,rating').order('ad_priority',{ascending:false}),
       sb.from('listings').select('id,kind,title,status,hood_id,author_id,created_at').order('created_at',{ascending:false}).limit(300),
-      sb.from('posts').select('id').limit(1000)
+      sb.from('posts').select('id').limit(1000),
+      sb.from('clubs').select('id,name,category,leader_id,created_at').order('created_at',{ascending:false})
     ]);
     const hn={}; (nb.data||[]).forEach(n=>hn[n.id]=n.name_ko);
     if(Array.isArray(pf.data)) MEMBERS=pf.data.map(p=>[p.nickname||p.username||'-', hn[p.hood_id]||'-', !!(p.email_verified||p.hood_verified), (p.manner_temp||36.5)+'°C', '-', '0', '정상']);
@@ -585,6 +621,13 @@ async function loadAdminData(){
     let nameMap={}; const aIds=[...new Set((ls.data||[]).map(l=>l.author_id).filter(Boolean))];
     if(aIds.length){ const {data:au}=await sb.from('profiles').select('id,username,nickname').in('id',aIds); (au||[]).forEach(a=>nameMap[a.id]=a.nickname||a.username); }
     if(Array.isArray(ls.data)) DEALS=ls.data.map(l=>['L-'+String(l.id).slice(0,4), TYNM[l.kind]||'장터', l.title||'-', nameMap[l.author_id]||'-', '-', hn[l.hood_id]||'-', l.kind==='buy'?'매칭':(STNM[l.status]||'거래중'), false]);
+    // 모임·활동 (슈퍼관리자 삭제 대상)
+    const clubNm={}; (cl.data||[]).forEach(c=>clubNm[c.id]=c.name);
+    const lIds=[...new Set((cl.data||[]).map(c=>c.leader_id).filter(Boolean))];
+    let lname={}; if(lIds.length){ try{ const {data:lu}=await sb.from('profiles').select('id,username,nickname').in('id',lIds); (lu||[]).forEach(u=>lname[u.id]=u.nickname||u.username); }catch(e){} }
+    CLUBS=(cl.data||[]).map(c=>({id:c.id,name:c.name,category:c.category,leader:lname[c.leader_id]||'-',created_at:c.created_at}));
+    try{ const {data:ad}=await sb.from('club_activities').select('id,club_id,title,created_at').order('created_at',{ascending:false}).limit(300);
+      ACTS=(ad||[]).map(a=>({id:a.id,title:a.title,club_id:a.club_id,club:clubNm[a.club_id]||'-',created_at:a.created_at})); }catch(e){ ACTS=[]; }
     const memC=(pf.data||[]).length, lsC=(ls.data||[]).length, bizC=(st.data||[]).length, psC=(ps.data||[]).length, verC=(pf.data||[]).filter(p=>p.email_verified).length, adC=(st.data||[]).filter(s=>s.ad_tier).length;
     // 보호 테이블 (관리자 권한) — 주문·예약·신고
     let ordC='—', repC='—';
