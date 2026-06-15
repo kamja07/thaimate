@@ -3429,7 +3429,7 @@ document.addEventListener('click',e=>{
       const menuItems=(wStore.menu||[]).filter(m=>(m.name||'').trim()).map(m=>({name:m.name.trim(), price:(parseInt(m.price)||null), photo:m.photo||null}));
       const editId=wStoreEditId;
       const writeMenu=(sid)=>{const doIns=()=>{ if(menuItems.length){ sb.from('menu_items').insert(menuItems.map(m=>({store_id:sid,name:m.name,price:m.price,photo_url:m.photo}))).then(()=>loadStores()); } else { loadStores(); } }; if(editId){ sb.from('menu_items').delete().eq('store_id',sid).then(()=>doIns()); } else { doIns(); }};
-      if(editId){ const urow=Object.assign({},srow); delete urow.owner_id; sb.from('stores').update(urow).eq('id',editId).then(({error})=>{ if(error){toast(error.message);return;} writeMenu(editId); }); }
+      if(editId){ const urow=Object.assign({},srow); delete urow.owner_id; sb.from('stores').update(urow).eq('id',editId).select('id').then(({data,error})=>{ if(error){toast(error.message);return;} if(!data||!data.length){ toast(lang==='ko'?'수정 권한이 없어요 (소유자/관리자만 가능)':lang==='th'?'ไม่มีสิทธิ์แก้ไข (เฉพาะเจ้าของ/แอดมิน)':'No permission to edit (owner/admin only)'); return; } writeMenu(editId); }); }
       else { sb.from('stores').insert(srow).select('id').single().then(({data,error})=>{ if(error){toast(error.message);return;} writeMenu(data.id); }); }
       resetStore();
       tab='shop'; shopCat=0;
