@@ -2283,13 +2283,56 @@ function infoCard(p){
       <span class="iviews">👁 ${p.view.toLocaleString()}</span>
     </div></div>`;
 }
+/* 소식 최상단 고정 — 관리자 명의 사용 가이드(선택 언어에 맞게 자동 변경) */
+const GUIDE={
+  ko:{ t:'ThaiMate 사용 안내', by:'운영자', pin:'고정 공지',
+    intro:'환영합니다! 모든 기능은 우리 동네 기반이에요. 이렇게 쓰면 됩니다:',
+    rows:[['🏬','타운몰','동네 가게·서비스(식당·카페·법률·미용 등) 찾고 주문·예약·문의'],
+          ['🛍️','장터·나눔','중고 사고팔기 · 필요 없는 물건 무료 나눔'],
+          ['💼','구인구직','일자리 구하고, 사람 구하기'],
+          ['💬','채팅','상대와 1:1 비공개 대화 — 공개 댓글 싸움 없이 깔끔하게'],
+          ['🏘️','커뮤니티','소식 나누고 모임(동호회) 참여 · ⛳ 골프메이트']],
+    tip:'📍 먼저 우측 상단에서 내 동네를 설정하세요 — 주변 정보가 딱 맞게 떠요!',
+    foot:'거래·약속은 직접 만나 안전하게. 분쟁·책임은 거래 당사자에게 있습니다.' },
+  en:{ t:'How to use ThaiMate', by:'Admin', pin:'Pinned',
+    intro:'Welcome! Everything is based on your neighborhood. Here’s how:',
+    rows:[['🏬','Town Mall','Find local shops & services (food, cafe, legal, beauty…) — order, book, ask'],
+          ['🛍️','Flea Market','Buy & sell used items · give away for free'],
+          ['💼','Jobs','Find work, or hire people'],
+          ['💬','Chat','Private 1:1 with the other person — no public comment fights'],
+          ['🏘️','Community','Share news & join clubs · ⛳ Golf Mate']],
+    tip:'📍 Set your neighborhood (top right) first — for the best nearby results!',
+    foot:'Meet safely for any deal. Disputes are between the parties involved.' },
+  th:{ t:'วิธีใช้ ThaiMate', by:'ผู้ดูแล', pin:'ปักหมุด',
+    intro:'ยินดีต้อนรับ! ทุกอย่างอิงตามละแวกของคุณ ใช้แบบนี้:',
+    rows:[['🏬','Town Mall','หาร้าน·บริการในละแวก (อาหาร คาเฟ่ กฎหมาย เสริมสวย ฯลฯ) สั่ง·จอง·สอบถาม'],
+          ['🛍️','ตลาดนัด','ซื้อขายมือสอง · แจกของฟรี'],
+          ['💼','หางาน','หางานหรือหาคนทำงาน'],
+          ['💬','แชท','คุย 1:1 ส่วนตัวกับอีกฝ่าย — ไม่มีคอมเมนต์สาธารณะ'],
+          ['🏘️','คอมมูนิตี้','แชร์ข่าวและเข้าร่วมชมรม · ⛳ Golf Mate']],
+    tip:'📍 ตั้งละแวกของคุณ (มุมขวาบน) ก่อน เพื่อผลลัพธ์ใกล้ตัวที่ดีที่สุด!',
+    foot:'นัดเจอกันอย่างปลอดภัย ข้อพิพาทเป็นความรับผิดชอบของคู่กรณี' }
+};
+function pinnedGuideCard(){
+  const g=GUIDE[lang]||GUIDE.ko;
+  return `<div style="border:1.5px solid #ffd9a8;background:linear-gradient(135deg,#fff7ee,#fffdfa);border-radius:14px;padding:14px 15px;margin:0 0 12px;box-shadow:0 2px 10px rgba(255,122,51,.08)">
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
+      <span style="background:#ff7a33;color:#fff;font-size:10.5px;font-weight:800;border-radius:6px;padding:2px 8px">📌 ${g.pin}</span>
+      <span style="font-size:11.5px;color:var(--sub)">${g.by}</span>
+    </div>
+    <div style="font-size:15.5px;font-weight:800;margin-bottom:3px;color:var(--ink)">${g.t}</div>
+    <div style="font-size:12.5px;color:#555;line-height:1.5;margin-bottom:10px">${g.intro}</div>
+    ${g.rows.map(r=>`<div style="display:flex;gap:9px;align-items:flex-start;margin:7px 0;font-size:12.5px;line-height:1.45"><span style="font-size:16px;flex:none;width:20px;text-align:center">${r[0]}</span><span><b>${r[1]}</b> · ${r[2]}</span></div>`).join('')}
+    <div style="font-size:12px;color:#0d8a47;background:#eafaf0;border-radius:9px;padding:8px 11px;margin-top:10px;line-height:1.45">${g.tip}</div>
+    <div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.4">${g.foot}</div>
+  </div>`;
+}
 function infoInner(){
   const cats=L().info_cats;
   let data=byCity(info);
   if(icat>0) data=data.filter(x=>x.cat===icat);
   return `
-   <div class="vbanner" style="background:linear-gradient(100deg,#eaf2ff,#f6f9ff);border-color:#cfe0ff">
-     <span class="em">📰</span><div><b>${L().info_banner_t}</b><p style="color:#2f6df0">${L().info_banner_p}</p></div></div>
+   ${pinnedGuideCard()}
    <div class="cities" style="padding:0 0 12px;margin:0">${cats.map((c,i)=>`<button class="city ${icat===i?'on':''}" data-icat="${i}">${c}</button>`).join('')}</div>
    <div class="list">${data.map(infoCard).join('')||`<div class="empty">—</div>`}</div>`;
 }
