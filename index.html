@@ -2185,10 +2185,11 @@ function storeInfoSection(s){
 function viewStore(){
   const s=stores.find(x=>x.id===storeOpen);
   const isOwner=!!(s.owner&&uid&&s.owner===uid);
+  const canManage=isOwner||isAdmin;   // 슈퍼관리자도 모든 가게 관리·수정 가능
   const statusText = s.holiday
     ? `<span style="font-weight:800;font-size:13.5px;color:#d33">🚫 ${L().holiday_badge} — ${s.holiday}</span>`
     : `<span style="font-weight:800;font-size:13.5px;color:${s.open?'#15a05a':'#d33'}">${s.open?'🟢 '+L().shop_open:'⛔ '+L().shop_closed}</span>`;
-  const ownerBtns = isOwner ? `<div style="display:flex;gap:6px">
+  const ownerBtns = canManage ? `<div style="display:flex;gap:6px">
     <button class="gbtn line" data-storetoggle style="padding:6px 10px;font-size:12px">${s.open?L().shop_set_closed:L().shop_set_open}</button>
     <button class="gbtn line" data-holiday style="padding:6px 10px;font-size:12px${s.holiday?';color:#d33':''}">${s.holiday?L().holiday_clear:L().holiday_set}</button></div>` : '';
   const statusRow=`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap">${statusText}${ownerBtns}</div>`;
@@ -2202,7 +2203,7 @@ function viewStore(){
       ${statusRow}
       ${storeInfoSection(s)}
       <div style="padding:6px 14px 16px">
-        ${isOwner?`<div style="display:flex;gap:8px;margin-bottom:10px"><button class="gbtn line" data-storeedit style="flex:1">✏️ ${L().store_edit}</button><button class="gbtn line" data-closedown style="flex:0 0 auto;color:#d33;padding:0 14px">🗑️ ${L().closedown}</button></div>`:''}
+        ${canManage?`<div style="display:flex;gap:8px;margin-bottom:10px"><button class="gbtn line" data-storeedit style="flex:1">✏️ ${L().store_edit}</button><button class="gbtn line" data-closedown style="flex:0 0 auto;color:#d33;padding:0 14px">🗑️ ${L().closedown}</button></div>`:''}
         <div class="secure" style="border-radius:11px">🔒 ${L().chat_secure}</div>
         <button class="bigbtn" id="sinq">💬 ${L().btn_inquire}</button>
         ${s.payQr?'':`<button class="gbtn line" id="spay" style="width:100%;margin-top:10px">📷 ${L().pay_info}</button>`}
@@ -2226,7 +2227,7 @@ function viewStore(){
     <div class="storebanner">${s.emo}</div>
     ${statusRow}
     ${storeInfoSection(s)}
-    ${isOwner?`<div style="padding:0 14px 4px;display:flex;gap:8px"><button class="gbtn line" data-storeedit style="flex:1">✏️ ${L().store_edit}</button><button class="gbtn line" data-closedown style="flex:0 0 auto;color:#d33;padding:0 14px">🗑️ ${L().closedown}</button></div>`:''}
+    ${canManage?`<div style="padding:0 14px 4px;display:flex;gap:8px"><button class="gbtn line" data-storeedit style="flex:1">✏️ ${L().store_edit}</button><button class="gbtn line" data-closedown style="flex:0 0 auto;color:#d33;padding:0 14px">🗑️ ${L().closedown}</button></div>`:''}
     <div style="padding:2px 14px 12px">
       <div class="msec">${s.product?L().products_label:L().menu_label}</div>${rows}
     </div>
