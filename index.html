@@ -441,7 +441,7 @@ async function loadListings(){
   }catch(e){}
 }
 const SEMO={restaurant:'🍲',cafe:'🥐',mart:'🛒',beauty:'💇',service:'🧹',etc:'🏪',golf:'⛳'};
-const SCAT={restaurant:0,cafe:1,mart:2,beauty:3,service:4,etc:5,golf:6};
+const SCAT={restaurant:0,cafe:1,golf:2,mart:3,beauty:4,service:5,etc:6};  // STORE_CATS/shop_cats 순서와 일치(골프 index 2)
 function dbToStore(row){
   const h=hoodByDbId(row.hood_id);
   const menu=(row.menu_items||[]).slice().sort((a,b)=>a.price-b.price).map(m=>({id:m.id,emo:m.emoji||'🍽️',pr:m.price,nm:m.name||'',photo:m.photo_url||null}));
