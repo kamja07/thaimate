@@ -357,13 +357,13 @@ function secBiz(){
   return `<p class="sec-sub">교민 업체 등록·광고 관리. <b>광고비(상단노출)</b>가 주 수익원입니다. 신규 업체는 승인 후 노출됩니다.</p>
    ${table(['업체명','분류','동네','광고상태','광고비/월','평점','상태','관리'],
      BIZ.map(b=>`<tr><td><b>${b[0]}</b></td><td>${b[1]}</td><td>📍${b[2]}</td><td>${b[3]==='-'?'<span style="color:var(--sub)">미광고</span>':badge(b[3])}</td><td class="mono">${b[4]}</td><td>⭐${b[5]}</td><td>${badge(b[6])}</td>
-       <td>${b[6]==='심사중'?`<button class="act pri" onclick="toast('${b[0]} 승인')">승인</button>`:`<button class="act" onclick="toast('${b[0]} 관리')">관리</button>`}<button class="act danger" onclick="toast('${b[0]} 노출중지')">중지</button></td></tr>`).join(''))}`;
+       <td>${b[6]==='심사중'?`<button class="act pri" onclick="toast('승인')">승인</button>`:`<button class="act" onclick="toast('관리')">관리</button>`}${b[7]?`<button class="act danger" onclick="adminDelStore('${b[7]}',this)">강퇴</button>`:''}</td></tr>`).join(''))}`;
 }
 function secMembers(){
   return `<p class="sec-sub">회원 관리. <b>매너온도·동네인증·신고이력</b>으로 신뢰도를 관리합니다.</p>
    ${table(['닉네임','동네','동네인증','매너온도','거래','신고','상태','관리'],
      MEMBERS.map(m=>`<tr style="${m[6]==='정지검토'?'background:#fff7f6':''}"><td><b>${m[0]}</b></td><td>📍${m[1]}</td><td>${m[2]?'<span class="vchk">✓ 인증</span>':'<span style="color:var(--sub)">미인증</span>'}</td><td>🌡️ ${m[3]}</td><td>${m[4]}회</td><td>${+m[5]>0?`<span style="color:var(--red);font-weight:800">${m[5]}</span>`:'0'}</td><td>${badge(m[6])}</td>
-       <td>${m[6]==='정지검토'?`<button class="act danger" onclick="toast('${m[0]} 정지')">정지</button>`:`<button class="act" onclick="toast('${m[0]} 상세')">상세</button>`}</td></tr>`).join(''))}`;
+       <td>${m[7]?`<button class="act danger" onclick="adminKickUser('${m[7]}',this)">강퇴</button>`:`<button class="act" onclick="toast('상세')">상세</button>`}</td></tr>`).join(''))}`;
 }
 function secTickets(){
   return `<p class="sec-sub">앱의 <b>‘관리자에게 문의’</b> 및 신고 접수함. 미처리 항목을 우선 처리하세요.</p>
@@ -406,6 +406,25 @@ async function adminDelAct(id,btn){
   toast('활동 "'+nm+'" 삭제됨'); render();
 }
 window.adminDelClub=adminDelClub; window.adminDelAct=adminDelAct;
+async function adminKickUser(id,btn){
+  const m=MEMBERS.find(x=>x[7]===id); const nm=m?m[0]:'';
+  if(!confirm('회원 "'+nm+'" 을(를) 강퇴할까요?\n계정과 작성한 글·채팅·동호회 가입이 모두 삭제되며 되돌릴 수 없습니다.')) return;
+  if(btn){btn.disabled=true;btn.textContent='처리중…';}
+  const {error}=await sb.rpc('admin_kick_user',{p_user:id});
+  if(error){ toast('강퇴 실패: '+error.message); if(btn){btn.disabled=false;btn.textContent='강퇴';} return; }
+  MEMBERS=MEMBERS.filter(x=>x[7]!==id);
+  toast('회원 "'+nm+'" 강퇴됨'); render();
+}
+async function adminDelStore(id,btn){
+  const b=BIZ.find(x=>x[7]===id); const nm=b?b[0]:'';
+  if(!confirm('업체 "'+nm+'" 을(를) 삭제(강퇴)할까요? 메뉴·주문 연결도 함께 삭제되며 되돌릴 수 없습니다.')) return;
+  if(btn){btn.disabled=true;btn.textContent='처리중…';}
+  const {error}=await sb.from('stores').delete().eq('id',id);
+  if(error){ toast('삭제 실패: '+error.message); if(btn){btn.disabled=false;btn.textContent='강퇴';} return; }
+  BIZ=BIZ.filter(x=>x[7]!==id);
+  toast('업체 "'+nm+'" 삭제됨'); render();
+}
+window.adminKickUser=adminKickUser; window.adminDelStore=adminDelStore;
 
 /* ===== 분석·수익화 ===== */
 let monMode='free', commRate=3;
@@ -609,15 +628,15 @@ async function loadAdminData(){
   try{
     const [nb,pf,st,ls,ps,cl]=await Promise.all([
       sb.from('neighborhoods').select('id,name_ko'),
-      sb.from('profiles').select('username,nickname,hood_id,hood_verified,email_verified,manner_temp').limit(300),
+      sb.from('profiles').select('id,username,nickname,hood_id,hood_verified,email_verified,manner_temp').limit(300),
       sb.from('stores').select('id,name,category,hood_id,ad_tier,rating').order('ad_priority',{ascending:false}),
       sb.from('listings').select('id,kind,title,status,hood_id,author_id,created_at').order('created_at',{ascending:false}).limit(300),
       sb.from('posts').select('id').limit(1000),
       sb.from('clubs').select('id,name,category,leader_id,created_at').order('created_at',{ascending:false})
     ]);
     const hn={}; (nb.data||[]).forEach(n=>hn[n.id]=n.name_ko);
-    if(Array.isArray(pf.data)) MEMBERS=pf.data.map(p=>[p.nickname||p.username||'-', hn[p.hood_id]||'-', !!(p.email_verified||p.hood_verified), (p.manner_temp||36.5)+'°C', '-', '0', '정상']);
-    if(Array.isArray(st.data)) BIZ=st.data.map(s=>[s.name||'-', CATNM[s.category]||s.category||'기타업종', hn[s.hood_id]||'-', s.ad_tier?'노출중':'-', s.ad_tier?'฿—':'-', (+(s.rating||5)).toFixed(1), '정상']);
+    if(Array.isArray(pf.data)) MEMBERS=pf.data.map(p=>[p.nickname||p.username||'-', hn[p.hood_id]||'-', !!(p.email_verified||p.hood_verified), (p.manner_temp||36.5)+'°C', '-', '0', '정상', p.id]);
+    if(Array.isArray(st.data)) BIZ=st.data.map(s=>[s.name||'-', CATNM[s.category]||s.category||'기타업종', hn[s.hood_id]||'-', s.ad_tier?'노출중':'-', s.ad_tier?'฿—':'-', (+(s.rating||5)).toFixed(1), '정상', s.id]);
     let nameMap={}; const aIds=[...new Set((ls.data||[]).map(l=>l.author_id).filter(Boolean))];
     if(aIds.length){ const {data:au}=await sb.from('profiles').select('id,username,nickname').in('id',aIds); (au||[]).forEach(a=>nameMap[a.id]=a.nickname||a.username); }
     if(Array.isArray(ls.data)) DEALS=ls.data.map(l=>['L-'+String(l.id).slice(0,4), TYNM[l.kind]||'장터', l.title||'-', nameMap[l.author_id]||'-', '-', hn[l.hood_id]||'-', l.kind==='buy'?'매칭':(STNM[l.status]||'거래중'), false]);
