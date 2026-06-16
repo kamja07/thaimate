@@ -1579,7 +1579,7 @@ listings.forEach((x,i)=>x.id=x.id||('L'+i));
 info.forEach((x,i)=>x.id=x.id||('I'+i));
 
 /* ===================== state ===================== */
-let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gmFrameOpen=false, gmFrameSrc="", gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null,
+let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gmFrameOpen=false, gmFrameSrc="", gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null, postOpen=null,
     wStore={cat:0,delivery:false,pickup:false,menu:[]}, wStoreEditId=null, myStores=false,
     dbClubs=[], myClubMem={}, clubCounts={}, clubOpen=null, clubData=null, clubBusy=false, actFormOpen=false, clubCreateOpen=false, clubEditId=null,
     myClubsOpen=false, noticeEditOpen=false, clubPending={}, rosterOpen=false, actEditId=null,
@@ -2311,8 +2311,11 @@ function viewChatDetail(){
 function infoCard(p){
   return `<div class="ipost">
     <div class="imeta">${p.official?`<span class="otag">📢 ${L().official}</span>`:`<span class="itag">${L().info_cats[p.cat]}</span>`}<span class="idot">📍 ${tx(p.loc)} · ${tx(p.ago)}</span></div>
-    <h3 class="ititle">${tx(p.t)}</h3>
-    <p class="iexc">${tx(p.e)}</p>
+    <div data-postopen="${p.id}" style="cursor:pointer">
+      <h3 class="ititle">${tx(p.t)}</h3>
+      <p class="iexc">${tx(p.e)}</p>
+      ${(tx(p.e)||'').length>60?`<span style="font-size:12px;color:var(--pri);font-weight:700">${lang==='ko'?'더보기 ›':lang==='th'?'ดูเพิ่ม ›':'More ›'}</span>`:''}
+    </div>
     <div class="ireact">
       <button class="rb ${p.rHelp?'on':''}" data-react="${p.id}:helpful"><span>👍</span> ${L().r_help} <b>${p.help}</b></button>
       <button class="rb ${p.rSave?'on':''}" data-react="${p.id}:save"><span>🔖</span> ${L().r_save} <b>${p.save}</b></button>
@@ -3290,9 +3293,28 @@ function golfClubsView(){
   const note=(authed&&!clubCreateOpen)?`<div style="font-size:11.5px;color:var(--sub);text-align:center;margin-bottom:12px">${lang==='ko'?'골프 동호회는 관리자 승인 후 공개됩니다':lang==='th'?'ชมรมกอล์ฟจะเปิดหลังแอดมินอนุมัติ':'Golf clubs go live after admin approval'}</div>`:'';
   return back+`<h2 class="sech" style="margin:6px 0 10px">⛳ ${lang==='ko'?'골프 동호회':lang==='th'?'ชมรมกอล์ฟ':'Golf clubs'}</h2>`+adminSec+createUI+note+clubCards;
 }
+function viewPostDetail(){
+  const p=info.find(x=>x.id===postOpen);
+  if(!p){ postOpen=null; return infoInner(); }
+  const title=(p.t&&typeof p.t==='object')?tx(p.t):(p.t||''), body=(p.e&&typeof p.e==='object')?tx(p.e):(p.e||'');
+  return `<div class="detail-head">
+     <button class="back" data-postback>‹</button>
+     <div style="flex:1"><div class="hn">${p.official?'📢 '+L().official:L().info_cats[p.cat]}</div></div>
+   </div>
+   <div style="padding:14px 16px">
+     <h2 style="font-size:18px;font-weight:800;line-height:1.45;margin:0 0 8px">${escT(title)}</h2>
+     <div style="font-size:12px;color:var(--sub);margin:0 0 14px;padding-bottom:13px;border-bottom:1px solid var(--line)">📍 ${tx(p.loc)} · ${tx(p.ago)}</div>
+     <div style="font-size:14.5px;line-height:1.75;white-space:pre-wrap;word-break:break-word;color:#222">${escT(body)}</div>
+     <div class="ireact" style="margin-top:20px">
+       <button class="rb ${p.rHelp?'on':''}" data-react="${p.id}:helpful"><span>👍</span> ${L().r_help} <b>${p.help}</b></button>
+       <button class="rb ${p.rSave?'on':''}" data-react="${p.id}:save"><span>🔖</span> ${L().r_save} <b>${p.save}</b></button>
+     </div>
+   </div>`;
+}
 function viewCommunity(){
   if(commSeg==='clubs'&&clubOpen!==null){page.innerHTML=viewClubHub();return;}
   if(commSeg==='clubs'&&golfOpen){page.innerHTML=viewGolfHub();return;}
+  if(commSeg==='info'&&postOpen!==null){page.innerHTML=viewPostDetail();return;}
   page.innerHTML=`
    <div class="seg">
      <button data-comm="info" class="${commSeg==='info'?'on':''}">📰 ${L().comm_info}</button>
@@ -3652,6 +3674,8 @@ document.addEventListener('click',e=>{
   const lk=e.target.closest('[data-like]'); if(lk){const it=listings.find(x=>x.id===lk.dataset.like);if(it)it.liked=!it.liked;render();return;}
   if(e.target.closest('[data-ldback]')){listingOpen=null;render();page.scrollTo(0,0);return;}
   const ldl=e.target.closest('[data-ldel]'); if(ldl){delListing(ldl.dataset.ldel);return;}
+  const pop=e.target.closest('[data-postopen]'); if(pop){postOpen=pop.dataset.postopen;render();page.scrollTo(0,0);return;}
+  if(e.target.closest('[data-postback]')){postOpen=null;render();page.scrollTo(0,0);return;}
   const lch=e.target.closest('[data-lchat]'); if(lch){if(!canAct())return;const it=listings.find(x=>x.id===lch.dataset.lchat); openOrCreateChat(it); return;}
   const lo=e.target.closest('[data-listing]'); if(lo){listingOpen=lo.dataset.listing;render();page.scrollTo(0,0);return;}
   const cr=e.target.closest('[data-chat]'); if(cr){openChat(+cr.dataset.chat);return;}
@@ -3714,6 +3738,7 @@ function __appGoBack(){ try{
   if(typeof locPickerOpen!=='undefined'&&locPickerOpen){locPickerOpen=false;render();return true;}
   if(typeof fsView!=='undefined'&&fsView){fsView=null;render();return true;}
   if(typeof storeOpen!=='undefined'&&storeOpen!==null){storeOpen=null;render();return true;}
+  if(typeof postOpen!=='undefined'&&postOpen!==null){postOpen=null;render();return true;}
   if(typeof listingOpen!=='undefined'&&listingOpen!==null){listingOpen=null;render();return true;}
   if(typeof chatOpen!=='undefined'&&chatOpen!==null){chatOpen=null;render();return true;}
   if(typeof golfOpen!=='undefined'&&golfOpen){golfOpen=false;if(typeof golfSub!=='undefined')golfSub=null;render();return true;}
