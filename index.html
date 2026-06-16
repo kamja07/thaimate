@@ -2087,7 +2087,19 @@ function viewListingDetail(){
    <div class="ldbar">
      <button class="ldlike ${it.liked?'on':''}" data-like="${it.id}">${it.liked?'❤️':'🤍'}</button>
      <button class="ldchat" data-lchat="${it.id}">💬 ${L().btn_chat}</button>
-   </div>`;
+   </div>
+   ${((it.author_id&&uid&&it.author_id===uid)||isAdmin)?`<button class="gbtn line" data-ldel="${it.id}" style="width:100%;margin-top:10px;color:#d33;border-color:#f6c9c4">🗑️ ${lang==='ko'?'이 글 삭제':lang==='th'?'ลบโพสต์นี้':'Delete this post'}</button>`:''}`;
+}
+async function delListing(id){
+  if(!window.confirm(lang==='ko'?'이 글을 삭제할까요? 되돌릴 수 없습니다.':lang==='th'?'ลบโพสต์นี้? ย้อนกลับไม่ได้':'Delete this post? Cannot be undone.')) return;
+  try{
+    const {data,error}=await sb.from('listings').delete().eq('id',id).select('id');
+    if(error){ toast(error.message); return; }
+    if(!data||!data.length){ toast(lang==='ko'?'삭제 권한이 없어요 (작성자/관리자만)':lang==='th'?'ไม่มีสิทธิ์ลบ':'No permission (author/admin only)'); return; }
+    listingOpen=null;
+    toast(lang==='ko'?'삭제했어요':lang==='th'?'ลบแล้ว':'Deleted');
+    loadListings(); loadJobs(); render();
+  }catch(e){ toast(String(e.message||e)); }
 }
 function viewMarket(){
   let data=byCity(listings).filter(x=>x.kind===mseg&&inRange(x)).sort((a,b)=>itemDist(a)-itemDist(b));
@@ -3639,6 +3651,7 @@ document.addEventListener('click',e=>{
   const rb=e.target.closest('.rb'); if(rb){rb.classList.toggle('on');return;}
   const lk=e.target.closest('[data-like]'); if(lk){const it=listings.find(x=>x.id===lk.dataset.like);if(it)it.liked=!it.liked;render();return;}
   if(e.target.closest('[data-ldback]')){listingOpen=null;render();page.scrollTo(0,0);return;}
+  const ldl=e.target.closest('[data-ldel]'); if(ldl){delListing(ldl.dataset.ldel);return;}
   const lch=e.target.closest('[data-lchat]'); if(lch){if(!canAct())return;const it=listings.find(x=>x.id===lch.dataset.lchat); openOrCreateChat(it); return;}
   const lo=e.target.closest('[data-listing]'); if(lo){listingOpen=lo.dataset.listing;render();page.scrollTo(0,0);return;}
   const cr=e.target.closest('[data-chat]'); if(cr){openChat(+cr.dataset.chat);return;}

@@ -423,8 +423,9 @@ async function adminDelListing(id,btn){
   const d=DEALS.find(x=>x[8]===id); const nm=d?d[2]:'';
   if(!confirm('매물/구인 "'+nm+'" 을(를) 삭제할까요? 되돌릴 수 없습니다.')) return;
   if(btn){btn.disabled=true;btn.textContent='삭제중…';}
-  const {error}=await sb.from('listings').delete().eq('id',id);
+  const {data,error}=await sb.from('listings').delete().eq('id',id).select('id');
   if(error){ toast('삭제 실패: '+error.message); if(btn){btn.disabled=false;btn.textContent='삭제';} return; }
+  if(!data||!data.length){ toast('삭제 권한이 없어요 — admin_listings_del.sql 적용 필요'); if(btn){btn.disabled=false;btn.textContent='삭제';} return; }
   DEALS=DEALS.filter(x=>x[8]!==id);
   toast('"'+nm+'" 삭제됨'); render();
 }
