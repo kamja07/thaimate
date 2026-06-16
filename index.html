@@ -463,13 +463,13 @@ async function loadStores(){
 }
 function dbToPost(row){
   const h=hoodByDbId(row.hood_id);
-  return { id:row.id, official:!!row.is_official, cat:(parseInt(row.category)||0), city:h?h.region:'all',
+  return { id:row.id, author_id:row.author_id, official:!!row.is_official, pinned:!!row.pinned, cat:(parseInt(row.category)||0), city:h?h.region:'all',
     help:row.helpful_count||0, save:row.save_count||0, view:row.view_count||0,
     t:row.title||'', e:row.body||'', loc:h?tx(h):'', ago:relTime(row.created_at) };
 }
 async function loadPosts(){
   try{ const {data,error}=await sb.from('posts').select('*').order('created_at',{ascending:false}).limit(100);
-    if(!error && Array.isArray(data)){ info.length=0; data.forEach(r=>info.push(dbToPost(r))); if(screen==='app') render(); loadMyReactions(); }
+    if(!error && Array.isArray(data)){ info.length=0; data.forEach(r=>info.push(dbToPost(r))); info.sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)); if(screen==='app') render(); loadMyReactions(); }   // 고정글 먼저(stable sort로 최신순 유지)
   }catch(e){}
 }
 function dbToJob(row){
@@ -2309,8 +2309,8 @@ function viewChatDetail(){
 
 /* ===================== community (소식 + 모임) ===================== */
 function infoCard(p){
-  return `<div class="ipost">
-    <div class="imeta">${p.official?`<span class="otag">📢 ${L().official}</span>`:`<span class="itag">${L().info_cats[p.cat]}</span>`}<span class="idot">📍 ${tx(p.loc)} · ${tx(p.ago)}</span></div>
+  return `<div class="ipost"${p.pinned?' style="border:1.5px solid #ffd9a8;background:linear-gradient(135deg,#fff8f0,#fff)"':''}>
+    <div class="imeta">${p.pinned?`<span class="otag" style="background:#ff7a33">📌 ${lang==='ko'?'고정':lang==='th'?'ปักหมุด':'Pinned'}</span>`:''}${p.official?`<span class="otag">📢 ${L().official}</span>`:`<span class="itag">${L().info_cats[p.cat]}</span>`}<span class="idot">📍 ${tx(p.loc)} · ${tx(p.ago)}</span></div>
     <div data-postopen="${p.id}" style="cursor:pointer">
       <h3 class="ititle">${tx(p.t)}</h3>
       <p class="iexc">${tx(p.e)}</p>
@@ -3297,19 +3297,32 @@ function viewPostDetail(){
   const p=info.find(x=>x.id===postOpen);
   if(!p){ postOpen=null; return infoInner(); }
   const title=(p.t&&typeof p.t==='object')?tx(p.t):(p.t||''), body=(p.e&&typeof p.e==='object')?tx(p.e):(p.e||'');
+  const canPin=(p.author_id&&uid&&p.author_id===uid)||isAdmin;
   return `<div class="detail-head">
      <button class="back" data-postback>‹</button>
-     <div style="flex:1"><div class="hn">${p.official?'📢 '+L().official:L().info_cats[p.cat]}</div></div>
+     <div style="flex:1"><div class="hn">${p.pinned?'📌 ':''}${p.official?'📢 '+L().official:L().info_cats[p.cat]}</div></div>
    </div>
    <div style="padding:14px 16px">
      <h2 style="font-size:18px;font-weight:800;line-height:1.45;margin:0 0 8px">${escT(title)}</h2>
      <div style="font-size:12px;color:var(--sub);margin:0 0 14px;padding-bottom:13px;border-bottom:1px solid var(--line)">📍 ${tx(p.loc)} · ${tx(p.ago)}</div>
      <div style="font-size:14.5px;line-height:1.75;white-space:pre-wrap;word-break:break-word;color:#222">${escT(body)}</div>
-     <div class="ireact" style="margin-top:20px">
+     ${canPin?`<button class="gbtn line" data-postpin="${p.id}" style="width:100%;margin-top:16px;${p.pinned?'color:#c2410c;border-color:#ffd9a8;background:#fff8f0':''}">${p.pinned?(lang==='ko'?'📌 상단 고정 해제':lang==='th'?'📌 เลิกปักหมุด':'📌 Unpin'):(lang==='ko'?'📌 상단에 고정':lang==='th'?'📌 ปักหมุดบนสุด':'📌 Pin to top')}</button>`:''}
+     <div class="ireact" style="margin-top:14px">
        <button class="rb ${p.rHelp?'on':''}" data-react="${p.id}:helpful"><span>👍</span> ${L().r_help} <b>${p.help}</b></button>
        <button class="rb ${p.rSave?'on':''}" data-react="${p.id}:save"><span>🔖</span> ${L().r_save} <b>${p.save}</b></button>
      </div>
    </div>`;
+}
+async function togglePostPin(id){
+  const p=info.find(x=>x.id===id); if(!p) return;
+  const nv=!p.pinned;
+  try{
+    const {data,error}=await sb.from('posts').update({pinned:nv}).eq('id',id).select('id');
+    if(error){ toast(/pinned/.test(error.message)?(lang==='ko'?'고정 기능 준비중 (DB 컬럼 필요)':'Pin column missing'):error.message); return; }
+    if(!data||!data.length){ toast(lang==='ko'?'고정 권한이 없어요 (작성자/관리자만)':lang==='th'?'ไม่มีสิทธิ์':'No permission (author/admin only)'); return; }
+    p.pinned=nv; toast(nv?(lang==='ko'?'상단에 고정했어요':lang==='th'?'ปักหมุดแล้ว':'Pinned to top'):(lang==='ko'?'고정을 해제했어요':lang==='th'?'เลิกปักหมุดแล้ว':'Unpinned'));
+    loadPosts(); render();
+  }catch(e){ toast(String(e.message||e)); }
 }
 function viewCommunity(){
   if(commSeg==='clubs'&&clubOpen!==null){page.innerHTML=viewClubHub();return;}
@@ -3676,6 +3689,7 @@ document.addEventListener('click',e=>{
   const ldl=e.target.closest('[data-ldel]'); if(ldl){delListing(ldl.dataset.ldel);return;}
   const pop=e.target.closest('[data-postopen]'); if(pop){postOpen=pop.dataset.postopen;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-postback]')){postOpen=null;render();page.scrollTo(0,0);return;}
+  const ppin=e.target.closest('[data-postpin]'); if(ppin){togglePostPin(ppin.dataset.postpin);return;}
   const lch=e.target.closest('[data-lchat]'); if(lch){if(!canAct())return;const it=listings.find(x=>x.id===lch.dataset.lchat); openOrCreateChat(it); return;}
   const lo=e.target.closest('[data-listing]'); if(lo){listingOpen=lo.dataset.listing;render();page.scrollTo(0,0);return;}
   const cr=e.target.closest('[data-chat]'); if(cr){openChat(+cr.dataset.chat);return;}
