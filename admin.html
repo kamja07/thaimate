@@ -344,8 +344,8 @@ function secDeals(){
   return `<p class="sec-sub">장터·나눔·구인 등 <b>개인 간 직거래</b> 모니터링. 모든 대화는 1:1 비공개이며, 운영자는 메타데이터(신고·상태)만 봅니다.</p>
    <div class="filters"><button class="on">전체</button><button onclick="toast('필터: 장터')">장터</button><button onclick="toast('필터: 나눔')">나눔</button><button onclick="toast('필터: 구인')">구인</button><button onclick="toast('필터: 신고')">🚨 신고</button></div>
    ${table(['거래ID','유형','대상','판매/등록','구매/지원','동네','상태','관리'],
-     DEALS.length?DEALS.map(d=>`<tr style="${d[7]?'background:#fff7f6':''}"><td class="mono">${d[0]}</td><td>${badge(d[1])}</td><td><b>${d[2]}</b></td><td>${d[3]}</td><td>${d[4]}</td><td>📍${d[5]}</td><td>${badge(d[6])}</td>
-       <td>${d[7]?`<button class="act danger" onclick="toast('${d[0]} 거래중지·조치')">조치</button>`:`<button class="act" onclick="toast('${d[0]} 상세')">상세</button>`}</td></tr>`).join(''):`<tr><td colspan="8" style="text-align:center;color:var(--sub);padding:26px">진행 중인 직거래가 없습니다</td></tr>`)}`;
+     DEALS.length?DEALS.map(d=>`<tr style="${d[7]?'background:#fff7f6':''}"><td class="mono">${d[0]}</td><td>${badge(d[1])}</td><td><b>${esc(d[2])}</b></td><td>${esc(d[3])}</td><td>${d[4]}</td><td>📍${esc(d[5])}</td><td>${badge(d[6])}</td>
+       <td>${d[8]?`<button class="act danger" onclick="adminDelListing('${d[8]}',this)">삭제</button>`:`<button class="act" onclick="toast('상세')">상세</button>`}</td></tr>`).join(''):`<tr><td colspan="8" style="text-align:center;color:var(--sub);padding:26px">진행 중인 직거래가 없습니다</td></tr>`)}`;
 }
 function secBiz(){
   return `<p class="sec-sub">교민 업체 등록·광고 관리. <b>광고비(상단노출)</b>가 주 수익원입니다. 신규 업체는 승인 후 노출됩니다.</p>
@@ -419,6 +419,16 @@ async function adminDelStore(id,btn){
   toast('업체 "'+nm+'" 삭제됨'); render();
 }
 window.adminKickUser=adminKickUser; window.adminDelStore=adminDelStore;
+async function adminDelListing(id,btn){
+  const d=DEALS.find(x=>x[8]===id); const nm=d?d[2]:'';
+  if(!confirm('매물/구인 "'+nm+'" 을(를) 삭제할까요? 되돌릴 수 없습니다.')) return;
+  if(btn){btn.disabled=true;btn.textContent='삭제중…';}
+  const {error}=await sb.from('listings').delete().eq('id',id);
+  if(error){ toast('삭제 실패: '+error.message); if(btn){btn.disabled=false;btn.textContent='삭제';} return; }
+  DEALS=DEALS.filter(x=>x[8]!==id);
+  toast('"'+nm+'" 삭제됨'); render();
+}
+window.adminDelListing=adminDelListing;
 
 /* ===== 분석·수익화 ===== */
 let monMode='free', commRate=3;
@@ -633,7 +643,7 @@ async function loadAdminData(){
     if(Array.isArray(st.data)) BIZ=st.data.map(s=>[s.name||'-', CATNM[s.category]||s.category||'기타업종', hn[s.hood_id]||'-', s.ad_tier?'노출중':'-', s.ad_tier?'฿—':'-', (+(s.rating||5)).toFixed(1), '정상', s.id]);
     let nameMap={}; const aIds=[...new Set((ls.data||[]).map(l=>l.author_id).filter(Boolean))];
     if(aIds.length){ const {data:au}=await sb.from('profiles').select('id,username,nickname').in('id',aIds); (au||[]).forEach(a=>nameMap[a.id]=a.nickname||a.username); }
-    DEALS=[];   // 직거래 모니터링 비움 (시드 매물 표시 안 함) — 실데이터 모니터링 재개하려면 위 매핑 복구
+    if(Array.isArray(ls.data)) DEALS=ls.data.map(l=>['L-'+String(l.id).slice(0,4), TYNM[l.kind]||'장터', l.title||'-', nameMap[l.author_id]||'-', '-', hn[l.hood_id]||'-', l.kind==='buy'?'매칭':(STNM[l.status]||'거래중'), false, l.id]);
     // 모임·활동 (슈퍼관리자 삭제 대상)
     const clubNm={}; (cl.data||[]).forEach(c=>clubNm[c.id]=c.name);
     const lIds=[...new Set((cl.data||[]).map(c=>c.leader_id).filter(Boolean))];
