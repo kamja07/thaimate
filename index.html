@@ -780,7 +780,7 @@ const T = {
   info_banner_t:"정보·소식도 댓글싸움 없이 깔끔하게", info_banner_p:"공개 댓글 대신 도움돼요·저장 · 질문은 작성자에게 1:1로",
   info_cats:["공지","비자·행정","생활·꿀팁","맛집·플레이스","부동산","환전·송금"],
   shop_cats:["식당","카페·베이커리","골프","마트·식자재","뷰티·헬스","생활서비스","기타업종"],
-  live:"명이 지금 거래 중", status_sale:"판매중", status_resv:"예약중", status_done:"거래완료", status_match:"매칭대기", status_give:"나눔중", status_give_done:"나눔완료",
+  live:"건 거래중", status_sale:"판매중", status_resv:"예약중", status_done:"거래완료", status_match:"매칭대기", status_give:"나눔중", status_give_done:"나눔완료",
   btn_like:"관심", btn_chat:"채팅하기", btn_apply:"문의하기", budget:"예산",
   ad_badge:"광고", btn_order:"주문하기", btn_menu:"메뉴보기", btn_inquire:"예약·문의", min_order:"최소주문", delivery:"배달", pickup:"포장",
   shop_open:"영업중", shop_closed:"영업종료", shop_set_open:"🟢 영업 시작", shop_set_closed:"⛔ 영업 종료", shop_closed_msg:"지금은 영업종료 상태예요",
@@ -837,7 +837,7 @@ const T = {
   info_banner_t:"News & info — clean, no comment wars", info_banner_p:"Helpful & Save instead of public comments · ask the author 1:1",
   info_cats:["Notice","Visa·Admin","Life tips","Food·Places","Real estate","Exchange"],
   shop_cats:["Restaurant","Cafe·Bakery","Golf","Mart·Grocery","Beauty·Health","Services","Other"],
-  live:"people trading now", status_sale:"For sale", status_resv:"Reserved", status_done:"Sold", status_match:"Matching", status_give:"Available", status_give_done:"Gone",
+  live:" on sale now", status_sale:"For sale", status_resv:"Reserved", status_done:"Sold", status_match:"Matching", status_give:"Available", status_give_done:"Gone",
   btn_like:"Save", btn_chat:"Chat", btn_apply:"Apply", budget:"Budget",
   ad_badge:"AD", btn_order:"Order", btn_menu:"Menu", btn_inquire:"Book·Ask", min_order:"Min", delivery:"Delivery", pickup:"Pickup",
   shop_open:"Open", shop_closed:"Closed", shop_set_open:"🟢 Open now", shop_set_closed:"⛔ Close", shop_closed_msg:"This store is currently closed",
@@ -894,7 +894,7 @@ const T = {
   info_banner_t:"ข่าวสารแบบสะอาด ไม่มีดราม่าคอมเมนต์", info_banner_p:"ใช้ 'มีประโยชน์' และบันทึก แทนคอมเมนต์ · ถามผู้โพสต์ 1:1",
   info_cats:["ประกาศ","วีซ่า","เคล็ดลับ","ร้าน·สถานที่","อสังหา","แลกเงิน"],
   shop_cats:["ร้านอาหาร","คาเฟ่·เบเกอรี่","กอล์ฟ","มาร์ท·ของชำ","บิวตี้·สุขภาพ","บริการ","อื่นๆ"],
-  live:"คนกำลังซื้อขายอยู่", status_sale:"ขายอยู่", status_resv:"จองแล้ว", status_done:"ขายแล้ว", status_match:"รอจับคู่", status_give:"แจกอยู่", status_give_done:"หมดแล้ว",
+  live:" รายการขายอยู่", status_sale:"ขายอยู่", status_resv:"จองแล้ว", status_done:"ขายแล้ว", status_match:"รอจับคู่", status_give:"แจกอยู่", status_give_done:"หมดแล้ว",
   btn_like:"บันทึก", btn_chat:"แชท", btn_apply:"สอบถาม", budget:"งบ",
   ad_badge:"โฆษณา", btn_order:"สั่งซื้อ", btn_menu:"ดูเมนู", btn_inquire:"จอง·สอบถาม", min_order:"ขั้นต่ำ", delivery:"เดลิเวอรี", pickup:"รับเอง",
   shop_open:"เปิด", shop_closed:"ปิด", shop_set_open:"🟢 เปิดร้าน", shop_set_closed:"⛔ ปิดร้าน", shop_closed_msg:"ร้านปิดอยู่ในขณะนี้",
@@ -2081,7 +2081,7 @@ function viewListingDetail(){
    <div class="ldphoto ${phCls}"><span class="badge ${stCls}">${stTxt}</span>${it.emo}</div>
    <div class="ldseller"><div class="avatar">😀</div><div><b>${acctId||tx(L().me_name)}</b><div class="lds">🌡️ 36.5°C · 📍 ${tx(it.loc)}${mine?` · <b class="myhood">${L().my_hood}</b>`:''}</div></div></div>
    <h2 class="ldtitle">${tx(it.t)}</h2>
-   <div class="ldmeta">${tx(it.ago)} · 👁 ${(it.like||0)*7+13}</div>
+   <div class="ldmeta">${tx(it.ago)}</div>
    <div class="ldprice" style="${give?'color:var(--green)':''}">${tx(it.pr)}</div>
    <p class="lddesc">${tx(it.desc)||(buy?'이 물건 갖고 계신 분 채팅 주세요 🙏':give?'필요하신 분 채팅 주세요. 나눔합니다 💚':'직거래 환영합니다. 채팅 주세요 :)')}</p>
    <div class="ldbar">
@@ -2104,7 +2104,7 @@ async function delListing(id){
 function viewMarket(){
   let data=byCity(listings).filter(x=>x.kind===mseg&&inRange(x)).sort((a,b)=>itemDist(a)-itemDist(b));
   if(mktSubFilter) data=data.filter(x=>x.sub===mktSubFilter);
-  const liveN=byCity(listings).filter(x=>x.live).length+9;
+  const liveN=byCity(listings).filter(x=>x.kind==='sell'&&x.st!=='done'&&inRange(x)).length;   // 실제 거래중(판매중) 매물 수
   const selSty='width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:13.5px;background:#fff';
   const subFilter=`<select onchange="window.__mktSubF(this.value)" style="${selSty}"><option value="">${lang==='ko'?'전체 분류':lang==='th'?'ทุกหมวด':'All categories'}</option>${MKT_SUBCATS.map(s=>`<option value="${s.c}" ${mktSubFilter===s.c?'selected':''}>${tcc(s)}</option>`).join('')}</select>`;
   page.innerHTML=`
@@ -2118,7 +2118,7 @@ function viewMarket(){
    <div style="margin:0 0 10px">${subFilter}</div>
    ${rangeChipHtml()}
    ${mseg==='sell'?matchBannerHtml():''}
-   ${mseg==='sell'?`<div class="livebar"><span class="dot"></span>${liveN}${L().live}</div>`:''}
+   ${mseg==='sell'&&liveN?`<div class="livebar"><span class="dot"></span>${liveN}${L().live}</div>`:''}
    <div class="list">${data.map(listingCard).join('')||`<div class="empty">—</div>`}</div>`;
 }
 
@@ -2172,7 +2172,7 @@ function storeCard(s){
     <div class="sthumb">${s.ad?`<span class="adb">${L().ad_badge}</span>`:''}${s.emo}</div>
     <div class="sbody">
       <div class="snm">${tx(s.nm)}</div>
-      <div class="smeta">⭐ ${s.rating} <span class="sgray">(${s.reviews})</span> · ${L().shop_cats[s.cat]}</div>
+      <div class="smeta">${s.reviews>0?`⭐ ${s.rating} <span class="sgray">(${s.reviews})</span>`:`<span style="color:#0d8a47;font-weight:700">🆕 ${lang==='ko'?'신규':lang==='th'?'ใหม่':'New'}</span>`} · ${L().shop_cats[s.cat]}</div>
       <div class="spills">${status}${dpill}${optPills}${hoursPill}</div>
       ${promoLine}
     </div>
@@ -2232,7 +2232,7 @@ function viewStore(){
   const head=`<div class="detail-head">
     <button class="back" id="sback">‹</button>
     <div class="avatar" style="width:42px;height:42px;flex:0 0 42px;border-radius:12px;font-size:22px;background:#fff1e8">${s.emo}</div>
-    <div><div class="hn">${tx(s.nm)} <span class="dbadge">🤝 ${L().direct_badge}</span></div><div class="hs">⭐ ${s.rating} (${s.reviews}) · ${L().shop_cats[s.cat]}</div></div></div>`;
+    <div><div class="hn">${tx(s.nm)} <span class="dbadge">🤝 ${L().direct_badge}</span></div><div class="hs">${s.reviews>0?`⭐ ${s.rating} (${s.reviews})`:(lang==='ko'?'🆕 신규':lang==='th'?'🆕 ใหม่':'🆕 New')} · ${L().shop_cats[s.cat]}</div></div></div>`;
   if(s.service){
     page.innerHTML=head+`
       <div class="storebanner">${s.emo}</div>
