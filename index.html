@@ -719,7 +719,7 @@ async function oauthLogin(provider){   // 'google' | 'kakao'
 }
 function lineLogin(){
   if(!LINE_CHANNEL_ID){ toast(lang==='ko'?'LINE 로그인 준비 중이에요 (곧 지원)':lang==='th'?'LINE กำลังเตรียม':'LINE login coming soon'); return; }
-  const st=Math.random().toString(36).slice(2)+Date.now(); try{ sessionStorage.setItem('lineState',st); }catch(e){}
+  const st=Math.random().toString(36).slice(2)+Date.now(); try{ localStorage.setItem('lineState',st); sessionStorage.setItem('lineState',st); }catch(e){}   // 모바일 컨텍스트 전환(LINE앱↔브라우저)에도 살아남게 localStorage 병행
   location.href='https://access.line.me/oauth2/v2.1/authorize?response_type=code'
     +'&client_id='+encodeURIComponent(LINE_CHANNEL_ID)
     +'&redirect_uri='+encodeURIComponent(location.origin+'/')
@@ -727,18 +727,23 @@ function lineLogin(){
 }
 async function handleLineCallback(){   // LINE 콜백(?code&state)만 처리 — Google/Kakao(PKCE)는 supabase-js가 자동 처리
   try{
-    let saved=null; try{ saved=sessionStorage.getItem('lineState'); }catch(e){}
-    if(!saved) return false;
     const q=new URLSearchParams(location.search); const code=q.get('code'), state=q.get('state');
-    if(!code || state!==saved) return false;
-    try{ sessionStorage.removeItem('lineState'); }catch(e){}
+    if(!code) return false;   // 콜백 아님
+    let saved=null; try{ saved=localStorage.getItem('lineState')||sessionStorage.getItem('lineState'); }catch(e){}
+    if(!saved) return false;  // LINE state 없으면 우리 플로우 아님(구글/카카오 PKCE는 supabase-js가 처리)
+    if(state && state!==saved) return false;   // CSRF: state 불일치 시 무시
+    try{ localStorage.removeItem('lineState'); sessionStorage.removeItem('lineState'); }catch(e){}
     const r=await fetch(LINE_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code, redirect_uri:location.origin+'/'})});
     const j=await r.json().catch(()=>null);
-    if(j&&j.token_hash){ try{ await sb.auth.verifyOtp({type:'magiclink', token_hash:j.token_hash}); }catch(e){ toast(String(e.message||e)); } }
-    else if(j&&j.error){ toast('LINE: '+j.error); }
     try{ history.replaceState({},'',location.origin+'/'); }catch(e){}
+    if(j&&j.token_hash){
+      const {data:vd,error:ve}=await sb.auth.verifyOtp({type:'magiclink', token_hash:j.token_hash});
+      if(ve){ toast('LINE 로그인 실패: '+(ve.message||ve)); return true; }
+      const sess=(vd&&vd.session)||(await sb.auth.getSession()).data.session;
+      if(sess){ gateMode='home'; await applySession(sess); render(); toast(L().e_login_ok); }
+    } else { toast('LINE: '+((j&&j.error)||'응답 오류')); }
     return true;
-  }catch(e){ return false; }
+  }catch(e){ toast('LINE 콜백 오류: '+(e.message||e)); return false; }
 }
 async function doAuth(mode){
   const id=((document.getElementById('auId')||{}).value||'').trim();
@@ -3751,6 +3756,10 @@ document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter')
   if(e.target.id==='clubcin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendClubMsg(clubOpen,v);e.target.value='';}}});
 
 applyBrand();
+// 안전망: 어떤 경로(LINE verifyOtp·Google/Kakao OAuth)로든 세션이 생기면 게이트를 닫고 앱으로 전환
+try{ sb.auth.onAuthStateChange((event,session)=>{
+  if((event==='SIGNED_IN'||event==='TOKEN_REFRESHED') && session && screen!=='app'){ gateMode='home'; applySession(session).then(()=>render()); }
+}); }catch(e){}
 (async()=>{ try{ await handleLineCallback(); }catch(e){} try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} try{ restoreNav(); }catch(e){} render(); loadListings(); loadStores(); loadPosts(); loadJobs(); loadClubs(); })();
 /* 뒤로가기: 서브화면이면 한 단계 앱 내 뒤로, 메인화면이면 종료 확인(실수 방지)
    설계: 들어갈 때(깊어질 때) 미리 history 트랩을 쌓는다(=프로액티브).
