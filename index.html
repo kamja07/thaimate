@@ -708,6 +708,12 @@ async function applySession(session){
 const LINE_CHANNEL_ID='';   // ← LINE Developers 채널 ID 입력 시 LINE 로그인 활성화 (비어있으면 '준비중')
 const LINE_FN_URL='https://jhtsncdeoulanvytfwrl.functions.supabase.co/line-login';
 async function oauthLogin(provider){   // 'google' | 'kakao'
+  // 구글은 카톡/라인 등 인앱 브라우저에서 거부됨 → 외부 브라우저로 보냄(카카오 로그인은 카톡 안에서 정상이라 예외)
+  if(provider==='google' && window.__inApp){
+    toast(lang==='ko'?'구글 로그인은 외부 브라우저에서만 돼요 — 브라우저로 열게요':lang==='th'?'Google ต้องเปิดในเบราว์เซอร์ภายนอก':'Google needs an external browser — opening it');
+    try{ if(window.__pwaExternal) window.__pwaExternal(); }catch(e){}
+    return;
+  }
   try{ const {error}=await sb.auth.signInWithOAuth({ provider, options:{ redirectTo: location.origin+'/' } }); if(error) toast(error.message); }
   catch(e){ toast(String(e.message||e)); }
 }
@@ -3852,6 +3858,7 @@ __syncTrap();
     var ua=navigator.userAgent||'';
     var isKakao=/KAKAOTALK/i.test(ua), isLine=/\bLine\//i.test(ua), isFB=/FBAN|FBAV|FB_IAB/i.test(ua), isInsta=/Instagram/i.test(ua), isNaver=/NAVER/i.test(ua);
     var inApp=isKakao||isLine||isFB||isInsta||isNaver;
+    window.__inApp=inApp; window.__inAppKakao=isKakao; window.__inAppLine=isLine;   // 구글 로그인 가드용(인앱 브라우저면 구글 거부됨)
     var iOS=/iPhone|iPad|iPod/i.test(ua), iosSafari=iOS&&!/CriOS|FxiOS|EdgiOS/i.test(ua)&&!inApp;
     var standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone===true;
     if(standalone) return;
@@ -3885,6 +3892,13 @@ __syncTrap();
         try{ navigator.clipboard.writeText(url); }catch(e){}
         alert(T().copyAlert);
       };
+      // 카톡/라인 인앱 브라우저면 자동으로 1회 외부 브라우저로 튕겨내기(구글 로그인·설치 위해). 실패 시 아래 배너가 폴백.
+      if((isKakao||isLine) && !sessionStorage.getItem('extBounce')){
+        try{ sessionStorage.setItem('extBounce','1'); }catch(e){}
+        var bu=location.href;
+        if(isKakao){ location.href='kakaotalk://web/openExternal?url='+encodeURIComponent(bu); }
+        else if(isLine && bu.indexOf('openExternalBrowser=1')<0){ location.replace(bu+(bu.indexOf('?')>=0?'&':'?')+'openExternalBrowser=1'); }
+      }
       build=function(){ var L=T(); var ti=(isKakao||isLine)
         ?'<b style="font-size:13.5px">'+L.inappT+'</b><br><span style="font-size:11.5px;color:#666">'+L.inappSub+'</span>'
         :'<b style="font-size:13.5px">'+L.inappOtherT+'</b><br><span style="font-size:11.5px;color:#666">'+L.inappOtherSub+'</span>';
