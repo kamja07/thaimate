@@ -3837,6 +3837,10 @@ window.addEventListener('popstate', function(){
   if(__trapN>0) __trapN--;                                  // 뒤로가기로 트랩 1개 소비됨
   if(__exitOpen){ __doStay(); return; }                     // 카드 떠있을 때 popstate(드묾) → 닫고 머무름
   if(__appGoBack()){ __syncTrap(); return; }                // 하부메뉴 → 실제로 한 단계 위로(메시지 없음)
+  if(typeof screen!=='undefined' && screen!=='app'){        // 게이트/로그인 화면(OAuth 왕복 등)에선 종료확인 X
+    try{ if(typeof gateMode!=='undefined' && gateMode && gateMode!=='home'){ gateMode='home'; render(); } }catch(e){}
+    return;
+  }
   __showExitConfirm();                                      // 상점 홈 → 종료 안내 카드(트랩 미적재 = 시작 엔트리)
 });
 __syncTrap();
