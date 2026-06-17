@@ -705,7 +705,7 @@ async function applySession(session){
   loadChats(); loadClubs(); subscribeGlobalChat();
 }
 /* ===== 소셜 로그인 (Google·Kakao = Supabase 기본 지원 / LINE = Edge Function 브리지) ===== */
-const LINE_CHANNEL_ID='';   // ← LINE Developers 채널 ID 입력 시 LINE 로그인 활성화 (비어있으면 '준비중')
+const LINE_CHANNEL_ID='2010431744';   // ← LINE Developers 채널 ID (입력됨 → LINE 로그인 활성화)
 const LINE_FN_URL='https://jhtsncdeoulanvytfwrl.functions.supabase.co/line-login';
 async function oauthLogin(provider){   // 'google' | 'kakao'
   // 구글은 카톡/라인 등 인앱 브라우저에서 거부됨 → 외부 브라우저로 보냄(카카오 로그인은 카톡 안에서 정상이라 예외)
