@@ -719,6 +719,15 @@ async function oauthLogin(provider){   // 'google' | 'kakao'
 }
 function lineLogin(){
   if(!LINE_CHANNEL_ID){ toast(lang==='ko'?'LINE 로그인 준비 중이에요 (곧 지원)':lang==='th'?'LINE กำลังเตรียม':'LINE login coming soon'); return; }
+  // 인앱 브라우저(특히 LINE 자체 인앱)에선 LINE 앱 로그인(app-to-app)이 막혀 웹폼 "로그인 불가"가 뜸
+  //  → 누르는 즉시 외부 브라우저(Safari/Chrome)로 튕기고, 거기서 goline=1로 LINE 로그인 자동 재개 (extBounce 무시: 명시적 클릭)
+  if(window.__inAppLine || window.__inAppKakao){
+    const rs=location.origin+'/?goline=1';
+    toast(lang==='ko'?'외부 브라우저로 열어 LINE 로그인을 진행할게요':lang==='th'?'กำลังเปิดในเบราว์เซอร์เพื่อเข้าสู่ระบบ LINE':'Opening in your browser for LINE login');
+    if(window.__inAppKakao){ location.href='kakaotalk://web/openExternal?url='+encodeURIComponent(rs); }
+    else { try{ location.replace(rs+'&openExternalBrowser=1'); }catch(e){ location.href=rs+'&openExternalBrowser=1'; } }
+    return;
+  }
   const st=Math.random().toString(36).slice(2)+Date.now(); try{ localStorage.setItem('lineState',st); sessionStorage.setItem('lineState',st); }catch(e){}   // 모바일 컨텍스트 전환(LINE앱↔브라우저)에도 살아남게 localStorage 병행
   location.href='https://access.line.me/oauth2/v2.1/authorize?response_type=code'
     +'&client_id='+encodeURIComponent(LINE_CHANNEL_ID)
@@ -3760,7 +3769,10 @@ applyBrand();
 try{ sb.auth.onAuthStateChange((event,session)=>{
   if((event==='SIGNED_IN'||event==='TOKEN_REFRESHED') && session && screen!=='app'){ gateMode='home'; applySession(session).then(()=>render()); }
 }); }catch(e){}
-(async()=>{ try{ await handleLineCallback(); }catch(e){} try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){} try{ restoreNav(); }catch(e){} render(); loadListings(); loadStores(); loadPosts(); loadJobs(); loadClubs(); })();
+(async()=>{ try{ await handleLineCallback(); }catch(e){} try{ const {data}=await sb.auth.getSession(); await applySession(data.session); }catch(e){}
+  // 인앱→외부 브라우저로 튕겨온 직후면 LINE 로그인 자동 재개(여기선 인앱 아님 → app-to-app 정상)
+  try{ const qp=new URLSearchParams(location.search); if(qp.get('goline')==='1'){ try{ history.replaceState({},'',location.origin+'/'); }catch(e){} if(!authed && !window.__inApp){ lineLogin(); return; } } }catch(e){}
+  try{ restoreNav(); }catch(e){} render(); loadListings(); loadStores(); loadPosts(); loadJobs(); loadClubs(); })();
 /* 뒤로가기: 서브화면이면 한 단계 앱 내 뒤로, 메인화면이면 종료 확인(실수 방지)
    설계: 들어갈 때(깊어질 때) 미리 history 트랩을 쌓는다(=프로액티브).
    popstate 안에서 트랩을 다시 심지 않으므로 모바일에서도 안정적. */
