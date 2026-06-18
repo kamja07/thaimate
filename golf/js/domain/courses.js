@@ -45,9 +45,9 @@ export async function createCourse({ name, region, district, holes, courseNames,
     }
     if (ok) row.pars = pars;
   }
-  // 중앙(공용) 골프장 DB로 기여 — id를 클라이언트에서 생성(async 전달이라 즉시 알아야 함)
-  row.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined;
-  const { error } = await sb.rpc('contribute_course', { p_course: row });
+  // EMBED: ThaiMate golf_courses에 직접 insert (RLS: is_admin/이메일인증 허용). id는 DB default(gen_random_uuid) 사용 가능하나 즉시 알기 위해 클라 생성.
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) row.id = crypto.randomUUID();
+  const { error } = await sb.from('golf_courses').insert(row);
   return { data: error ? null : row, error };
 }
 export async function updateCourse({ id, name, region, district, holes, courseNames, pars }) {
@@ -90,11 +90,11 @@ export async function updateCourse({ id, name, region, district, holes, courseNa
   if (Object.keys(row).length === 0) {
     return { data: null, error: { message: '변경된 항목이 없습니다.' } };
   }
-  const payload = Object.assign({ id }, row);
-  const { error } = await sb.rpc('contribute_course', { p_course: payload });
-  return { data: error ? null : payload, error };
+  const { error } = await sb.from('golf_courses').update(row).eq('id', id);
+  return { data: error ? null : Object.assign({ id }, row), error };
 }
 export async function deleteCourse(id) {
-  const { data, error } = await sb.rpc('contribute_delete_course', { p_id: id });
-  return { data, error };
+  // EMBED: ThaiMate golf_courses에서 직접 삭제 (course_id FK는 on delete set null → 활동·라운드 row는 보존).
+  const { error } = await sb.from('golf_courses').delete().eq('id', id);
+  return { data: { events_affected: 0 }, error };
 }

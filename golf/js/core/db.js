@@ -13,17 +13,11 @@ export const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, storageKey: 'sb-jhtsncdeoulanvytfwrl-auth-token' }
 });
 
-// ── CENTRAL golf-course master ──────────────────────────────────────────────
-// Golf course data (name·region·홀별 pars) is a shared community asset across
-// ALL golf instances (this embed, standalone golfdong, future buyers). It lives
-// in the golfdong project and is READ here with its public anon key (no secret).
-// WRITES go through the local `contribute_course` RPC (checks email-verification
-// then forwards to the central DB) — see domain/courses.js.
-const COURSE_URL = 'https://bxhkcodvxtoacbozfhwx.supabase.co';
-const COURSE_ANON = 'sb_publishable_306uPiqTXeg7xZDqEL2MTw_2wPMr2VN';
-export const sbCourses = createClient(COURSE_URL, COURSE_ANON, {
-  auth: { persistSession: false, autoRefreshToken: false, storageKey: 'sb-courses-readonly' }
-});
+// ── 골프장 마스터 (EMBED) ────────────────────────────────────────────────────
+// 임베드 골프는 ThaiMate Supabase의 golf_courses(119개 실데이터)를 그대로 사용.
+// 읽기·쓰기 모두 같은 프로젝트(sb) → 추가/수정/삭제는 golf_courses RLS(is_admin/이메일인증)로 허용.
+// (독립 golfdong/바이어용은 중앙 프로젝트 B를 공유하지만, 임베드는 자체 golf_courses로 통일)
+export const sbCourses = sb;
 
 // Standard query helper — always returns { data, error, rls }
 export async function query(builder) {
