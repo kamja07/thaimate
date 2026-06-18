@@ -692,7 +692,7 @@ async function applySession(session){
   emailVerified=true;   // 소셜 로그인(Google/LINE)만 받으므로 항상 인증 완료로 간주 — 이메일 인증 게이팅 없음
   try{ if(session.access_token) sb.realtime.setAuth(session.access_token); }catch(e){}
   screen='app';
-  try{ await sb.from('profiles').upsert({id:u.id, username:acctId},{onConflict:'id'}); }catch(e){}
+  try{ await sb.from('profiles').upsert({id:u.id, username:acctId, email_verified:true},{onConflict:'id'}); }catch(e){}   // 소셜 로그인=인증 완료 → DB에도 반영(is_email_verified_user() 통과, 골프 RLS 등)
   try{ const {data:p}=await sb.from('profiles').select('email_verified,nickname').eq('id',u.id).single();
        if(p && p.nickname){ acctId=p.nickname; }
        else { const m=u.user_metadata||{}; const nm=(m.full_name||m.name||m.nickname||acctId||'').toString().trim();   // 소셜로그인: 제공자 이름으로 닉네임 세팅
