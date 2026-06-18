@@ -689,12 +689,11 @@ async function applySession(session){
   if(!session||!session.user){authed=false;uid=null;return;}
   const u=session.user; authed=true; uid=u.id;
   acctId=(u.email||'').split('@')[0];
-  emailVerified=false;
+  emailVerified=true;   // 소셜 로그인(Google/LINE)만 받으므로 항상 인증 완료로 간주 — 이메일 인증 게이팅 없음
   try{ if(session.access_token) sb.realtime.setAuth(session.access_token); }catch(e){}
   screen='app';
   try{ await sb.from('profiles').upsert({id:u.id, username:acctId},{onConflict:'id'}); }catch(e){}
   try{ const {data:p}=await sb.from('profiles').select('email_verified,nickname').eq('id',u.id).single();
-       emailVerified=!!(p && p.email_verified);
        if(p && p.nickname){ acctId=p.nickname; }
        else { const m=u.user_metadata||{}; const nm=(m.full_name||m.name||m.nickname||acctId||'').toString().trim();   // 소셜로그인: 제공자 이름으로 닉네임 세팅
          if(nm){ acctId=nm; try{ await sb.from('profiles').upsert({id:u.id, nickname:nm, name:nm},{onConflict:'id'}); }catch(e){} } }
@@ -1858,7 +1857,7 @@ function renderWrite(){
   </div>`;
   const _wns=writeEl2.querySelector('.psheet'); if(_wns&&_wsc) _wns.scrollTop=_wsc;
 }
-function canAct(){ if(authed&&emailVerified)return true; verifyOpen=true; verifySent=false; render(); return false; }
+function canAct(){ if(authed)return true; screen='gate'; gateMode='home'; render(); return false; }   // 소셜 로그인만 — 인증 게이팅 없음. 미로그인 시 로그인 게이트로
 function renderVerify(){
   if(!verifyOpen){verifyEl.classList.add('hidden');verifyEl.innerHTML='';return;}
   verifyEl.classList.remove('hidden');
@@ -2017,10 +2016,6 @@ function renderGate(){
      <div style="position:relative;margin-bottom:3px"><span style="position:absolute;top:-8px;right:12px;z-index:1;background:#4285F4;color:#fff;font-size:10px;font-weight:800;padding:2px 9px;border-radius:999px;box-shadow:0 2px 6px rgba(66,133,244,.45)">${lang==='ko'?'추천':lang==='th'?'แนะนำ':'Recommended'}</span><button class="gbtn" data-oauth="google" style="width:100%;background:#fff;border:2px solid #4285F4;color:#3c4043;font-weight:800;font-size:14.5px;padding:13px 12px;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 4px 16px rgba(66,133,244,.22)"><svg width="19" height="19" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.3 0 24 0 14.6 0 6.4 5.4 2.5 13.3l7.9 6.1C12.2 13.7 17.6 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.1-3.8 6.5-9.4 6.5-16z"/><path fill="#FBBC05" d="M10.4 28.6c-.5-1.4-.7-2.9-.7-4.6s.3-3.2.7-4.6l-7.9-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.3 0 11.6-2.1 15.5-5.6l-7.1-5.5c-2 1.3-4.6 2.1-8.4 2.1-6.4 0-11.8-4.2-13.6-10l-7.9 6.1C6.4 42.6 14.6 48 24 48z"/></svg>${lang==='ko'?'Google로 시작':lang==='th'?'เริ่มด้วย Google':'Continue with Google'}</button></div>
      <button class="gbtn" data-oauth="line" style="width:100%;background:#06C755;border:none;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px">🟢 ${lang==='ko'?'LINE으로 시작':lang==='th'?'เริ่มด้วย LINE':'Continue with LINE'}</button>
      <div style="text-align:center;color:var(--sub);font-size:11px;line-height:1.45;margin:1px 2px 2px">${lang==='ko'?'📱 아이폰에서 LINE이 잘 안 열리면 위 Google로 시작을 추천해요':lang==='th'?'📱 หาก LINE ไม่เปิดบน iPhone แนะนำให้เริ่มด้วย Google ด้านบน':'📱 On iPhone, if LINE won’t open, use Continue with Google above'}</div>
-     <div style="display:flex;align-items:center;gap:10px;margin:6px 0 2px;color:var(--sub);font-size:11.5px"><span style="flex:1;height:1px;background:var(--line)"></span>${lang==='ko'?'또는 아이디로':lang==='th'?'หรือใช้ ID':'or with ID'}<span style="flex:1;height:1px;background:var(--line)"></span></div>
-     <button class="gbtn primary" data-gate="login">${L().g_login}</button>
-     <button class="gbtn line" data-gate="signup">${L().g_signup}</button>
-     <button class="gbtn ghost" data-gate="browse">${L().g_browse}</button>
    </div>`;
 }
 /* ===================== location picker ===================== */
