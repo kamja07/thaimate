@@ -3841,12 +3841,15 @@ function __navDepth(){ try{
   if(typeof fsView!=='undefined'&&fsView) d++;
   return d;
 }catch(e){ return 0; } }
-let __trapN=0;
+let __trapN=0, __suppressPop=0;
 function __syncTrap(){ try{
   if(typeof screen==='undefined'||screen!=='app'){ return; }
   var target=__navDepth()+1;            // 홈(깊이0)에서도 트랩 1개 → 메인 뒤로도 가로채 종료확인
   while(__trapN<target){ history.pushState({mateTrap:1},''); __trapN++; }   // 깊어짐 → 미리 트랩 적재
-  if(__trapN>target) __trapN=target;    // 얕아짐 → 카운트만 줄임(트랩은 뒤로가기가 소비)
+  if(__trapN>target){                   // 얕아짐(🏠·탭 점프 등) → 초과 트랩을 실제로 제거(히스토리·카운트 동기화)
+    var diff=__trapN-target; __trapN=target; __suppressPop+=diff;
+    try{ history.go(-diff); }catch(e){ __suppressPop-=diff; }
+  }
 }catch(e){} }
 window.__syncTrap=__syncTrap;            // render() 끝에서 호출
 function __appGoBack(){ try{
@@ -3905,6 +3908,7 @@ function __showExitConfirm(){
 }
 function __closeExitConfirm(){ var o=document.getElementById('exitConfirm'); if(o)o.remove(); __exitOpen=false; }
 window.addEventListener('popstate', function(){
+  if(__suppressPop>0){ __suppressPop--; return; }           // __syncTrap이 제거 중인 초과 트랩 → 무시
   if(__trapN>0) __trapN--;                                  // 뒤로가기로 트랩 1개 소비됨
   if(__exitOpen){ __doStay(); return; }                     // 카드 떠있을 때 popstate(드묾) → 닫고 머무름
   if(__appGoBack()){ __syncTrap(); return; }                // 하부메뉴 → 실제로 한 단계 위로(메시지 없음)
