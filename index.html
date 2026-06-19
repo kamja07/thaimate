@@ -3925,12 +3925,19 @@ __syncTrap();
     if(iosSafari){
       // iOS는 자동설치 불가(Apple 제약) → '방법' 버튼으로 단계별 안내 모달
       window.__pwaIosGuideClose=function(){ var o=document.getElementById('iosGuide'); if(o)o.remove(); };
+      window.__pwaCopyUrl=function(btn){
+        var lg=blang(); var u=location.origin+'/';
+        var done=(lg==='ko')?'✓ 복사됨! Safari에 붙여넣기':(lg==='th')?'✓ คัดลอกแล้ว — วางใน Safari':'✓ Copied! Paste in Safari';
+        function ok(){ if(btn){ btn.textContent=done; btn.style.background='#eafaf0'; btn.style.color='#1b9e54'; btn.style.borderColor='#1b9e54'; } }
+        try{ navigator.clipboard.writeText(u).then(ok, function(){ ok(); }); }
+        catch(e){ try{ var ta=document.createElement('textarea'); ta.value=u; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand('copy'); ta.remove(); }catch(_){} ok(); }
+      };
       window.__pwaIosGuide=function(){
         var lg=blang();
         var share='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007aff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px"><path d="M12 16V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
-        var t=(lg==='ko')?{h:'아이폰 홈 화면에 추가',s1:'Safari 맨 아래 공유 버튼',s1b:'탭',s2:'메뉴를 내려 “홈 화면에 추가” 선택',s3:'오른쪽 위 “추가” → 끝!',note:'※ 반드시 Safari에서 (Chrome·앱 안에선 안 돼요)',ok:'알겠어요'}
-               :(lg==='th')?{h:'เพิ่มลงหน้าจอหลัก',s1:'แตะปุ่มแชร์ด้านล่างของ Safari',s1b:'',s2:'เลื่อนหา “เพิ่มลงหน้าจอหลัก”',s3:'แตะ “เพิ่ม” มุมขวาบน',note:'※ ต้องทำใน Safari เท่านั้น',ok:'เข้าใจแล้ว'}
-               :{h:'Add to Home Screen',s1:'Tap the Share button at the bottom of Safari',s1b:'',s2:'Scroll and tap “Add to Home Screen”',s3:'Tap “Add” (top right) — done!',note:'※ Must be done in Safari (not Chrome / in-app)',ok:'Got it'};
+        var t=(lg==='ko')?{h:'아이폰 홈 화면에 추가',s1:'Safari 맨 아래 공유 버튼',s1b:'탭',s2:'메뉴를 내려 “홈 화면에 추가” 선택',s3:'오른쪽 위 “추가” → 끝!',note:'※ 미니 브라우저면, 아래 주소 복사 후 Safari에 붙여넣어 여세요',copy:'📋 주소 복사 (Safari에 붙여넣기)',ok:'알겠어요'}
+               :(lg==='th')?{h:'เพิ่มลงหน้าจอหลัก',s1:'แตะปุ่มแชร์ด้านล่างของ Safari',s1b:'',s2:'เลื่อนหา “เพิ่มลงหน้าจอหลัก”',s3:'แตะ “เพิ่ม” มุมขวาบน',note:'※ ถ้าเป็นมินิเบราว์เซอร์ ให้คัดลอกที่อยู่แล้ววางใน Safari',copy:'📋 คัดลอกที่อยู่',ok:'เข้าใจแล้ว'}
+               :{h:'Add to Home Screen',s1:'Tap the Share button at the bottom of Safari',s1b:'',s2:'Scroll and tap “Add to Home Screen”',s3:'Tap “Add” (top right) — done!',note:'※ In a mini-browser? Copy the address below and paste it in Safari',copy:'📋 Copy address (paste in Safari)',ok:'Got it'};
         var ov=document.createElement('div'); ov.id='iosGuide';
         ov.style.cssText='position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:20px;font-family:inherit';
         ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:330px;width:100%;padding:20px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3)">'
@@ -3941,7 +3948,8 @@ __syncTrap();
           +'<div><b>②</b> '+t.s2+'</div>'
           +'<div><b>③</b> '+t.s3+'</div></div>'
           +'<div style="font-size:11.5px;color:#e65100;margin-top:12px;line-height:1.5">'+t.note+'</div>'
-          +'<button onclick="window.__pwaIosGuideClose()" style="margin-top:16px;width:100%;border:none;background:linear-gradient(135deg,#ff7a33,#ffa869);color:#fff;font-weight:800;padding:11px;border-radius:10px;font-size:14px;cursor:pointer">'+t.ok+'</button>'
+          +'<button onclick="window.__pwaCopyUrl(this)" style="margin-top:14px;width:100%;border:1.5px solid #ff7a33;background:#fff7f2;color:#ff7a33;font-weight:800;padding:11px;border-radius:10px;font-size:13.5px;cursor:pointer">'+t.copy+'</button>'
+          +'<button onclick="window.__pwaIosGuideClose()" style="margin-top:8px;width:100%;border:none;background:linear-gradient(135deg,#ff7a33,#ffa869);color:#fff;font-weight:800;padding:11px;border-radius:10px;font-size:14px;cursor:pointer">'+t.ok+'</button>'
           +'</div>';
         ov.addEventListener('click',function(e){ if(e.target===ov) window.__pwaIosGuideClose(); });
         document.body.appendChild(ov);
