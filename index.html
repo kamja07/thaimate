@@ -3844,8 +3844,9 @@ function __navDepth(){ try{
 let __trapN=0;
 function __syncTrap(){ try{
   if(typeof screen==='undefined'||screen!=='app'){ return; }
-  // 깊이와 무관하게 항상 트랩 1개만 유지 → desync 불가. 다단계 뒤로가기는 __appGoBack가 한 단계씩 처리(매번 1개 재적재).
-  while(__trapN<1){ history.pushState({mateTrap:1},''); __trapN++; }
+  var target=__navDepth()+1;            // 홈(깊이0)에서도 트랩 1개 → 메인 뒤로도 가로채 종료확인
+  while(__trapN<target){ history.pushState({mateTrap:1},''); __trapN++; }   // 깊어짐 → 미리 트랩 적재
+  if(__trapN>target) __trapN=target;    // 얕아짐 → 카운트만 줄임(트랩은 뒤로가기가 소비)
 }catch(e){} }
 window.__syncTrap=__syncTrap;            // render() 끝에서 호출
 function __appGoBack(){ try{
@@ -3905,7 +3906,7 @@ function __showExitConfirm(){
 function __closeExitConfirm(){ var o=document.getElementById('exitConfirm'); if(o)o.remove(); __exitOpen=false; }
 window.addEventListener('popstate', function(){
   if(__trapN>0) __trapN--;                                  // 뒤로가기로 트랩 1개 소비됨
-  if(__exitOpen){ __closeExitConfirm(); return; }           // 카드 떠있을 때 또 뒤로 = 나가기 진행(재무장 안 함 → 다음 뒤로가 OS 종료/이탈)
+  if(__exitOpen){ __doStay(); return; }                     // 카드 떠있을 때 popstate → 닫고 머무름
   if(__appGoBack()){ __syncTrap(); return; }                // 하부메뉴 → 실제로 한 단계 위로(메시지 없음)
   if(typeof screen!=='undefined' && screen!=='app'){        // 게이트/로그인 화면(OAuth 왕복 등)에선 종료확인 X
     try{ if(typeof gateMode!=='undefined' && gateMode && gateMode!=='home'){ gateMode='home'; render(); } }catch(e){}
