@@ -3923,7 +3923,31 @@ __syncTrap();
       return;
     }
     if(iosSafari){
-      build=function(){ var L=T(); mkBar(logo()+'<div style="flex:1;min-width:0;line-height:1.35">'+langChips()+'<b style="font-size:13.5px">'+L.iosT+'</b><br><span style="font-size:11.5px;color:#666">'+L.iosSub+'</span></div>'+xbtn()); };
+      // iOS는 자동설치 불가(Apple 제약) → '방법' 버튼으로 단계별 안내 모달
+      window.__pwaIosGuideClose=function(){ var o=document.getElementById('iosGuide'); if(o)o.remove(); };
+      window.__pwaIosGuide=function(){
+        var lg=blang();
+        var share='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007aff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px"><path d="M12 16V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+        var t=(lg==='ko')?{h:'아이폰 홈 화면에 추가',s1:'Safari 맨 아래 공유 버튼',s1b:'탭',s2:'메뉴를 내려 “홈 화면에 추가” 선택',s3:'오른쪽 위 “추가” → 끝!',note:'※ 반드시 Safari에서 (Chrome·앱 안에선 안 돼요)',ok:'알겠어요'}
+               :(lg==='th')?{h:'เพิ่มลงหน้าจอหลัก',s1:'แตะปุ่มแชร์ด้านล่างของ Safari',s1b:'',s2:'เลื่อนหา “เพิ่มลงหน้าจอหลัก”',s3:'แตะ “เพิ่ม” มุมขวาบน',note:'※ ต้องทำใน Safari เท่านั้น',ok:'เข้าใจแล้ว'}
+               :{h:'Add to Home Screen',s1:'Tap the Share button at the bottom of Safari',s1b:'',s2:'Scroll and tap “Add to Home Screen”',s3:'Tap “Add” (top right) — done!',note:'※ Must be done in Safari (not Chrome / in-app)',ok:'Got it'};
+        var ov=document.createElement('div'); ov.id='iosGuide';
+        ov.style.cssText='position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:20px;font-family:inherit';
+        ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:330px;width:100%;padding:20px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3)">'
+          +'<div style="font-size:32px">📲</div>'
+          +'<div style="font-weight:800;font-size:16px;margin:4px 0 14px">'+t.h+'</div>'
+          +'<div style="text-align:left;font-size:13.5px;line-height:2;color:#333">'
+          +'<div><b>①</b> '+t.s1+' '+share+' '+t.s1b+'</div>'
+          +'<div><b>②</b> '+t.s2+'</div>'
+          +'<div><b>③</b> '+t.s3+'</div></div>'
+          +'<div style="font-size:11.5px;color:#e65100;margin-top:12px;line-height:1.5">'+t.note+'</div>'
+          +'<button onclick="window.__pwaIosGuideClose()" style="margin-top:16px;width:100%;border:none;background:linear-gradient(135deg,#ff7a33,#ffa869);color:#fff;font-weight:800;padding:11px;border-radius:10px;font-size:14px;cursor:pointer">'+t.ok+'</button>'
+          +'</div>';
+        ov.addEventListener('click',function(e){ if(e.target===ov) window.__pwaIosGuideClose(); });
+        document.body.appendChild(ov);
+      };
+      build=function(){ var L=T(); var btn=(blang()==='ko'?'방법':blang()==='th'?'วิธี':'How');
+        mkBar(logo()+'<div style="flex:1;min-width:0;line-height:1.35">'+langChips()+'<b style="font-size:13.5px">'+L.iosT+'</b><br><span style="font-size:11.5px;color:#666">'+L.iosSub+'</span></div><button onclick="window.__pwaIosGuide()" style="'+aBtn+'">'+btn+'</button>'+xbtn()); };
       setTimeout(function(){ if(!sessionStorage.getItem('pwaBarDismiss')) build(); },1500);
       return;
     }
