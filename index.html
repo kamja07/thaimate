@@ -449,6 +449,7 @@ function dbToStore(row){
   return { id:row.id, cat:(SCAT[row.category]!=null?SCAT[row.category]:5), ad:!!row.ad_tier, emo:SEMO[row.category]||'🏪',
     open:(row.is_open!==false), owner:row.owner_id||null, holiday:row.holiday||null,
     phone:row.phone||'', hours:row.hours||'', intro:row.intro||'', promo:row.promo||'', mapUrl:row.map_url||'', payQr:row.pay_qr||'', promptpay:row.promptpay||'', holder:row.holder||'',
+    logo:row.logo_url||'', photo:row.photo_url||'', web:row.website||'',
     delivery:!!row.delivery, pickup:!!row.pickup, dinein:!!row.dinein, visit:!!row.visit,
     hoursAll:!!row.hours_all, hoursDays:Array.isArray(row.hours_days)?row.hours_days:[], hoursOpen:row.hours_open||'', hoursClose:row.hours_close||'',
     city:h?h.region:'all', hoodId:h?h.id:null, rating:row.rating||5.0, reviews:row.reviews_count||0,
@@ -1760,7 +1761,7 @@ const WS={
 function ws(k){return (WS[lang]||WS.ko)[k]||(WS.ko[k]||k);}
 function escA(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 function escT(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
-function resetStore(){ wStoreEditId=null; wStore={cat:0,delivery:false,pickup:false,dinein:false,visit:false,menu:[],name:'',phone:'',intro:'',hoursAll:false,hoursDays:[],hoursOpen:'',hoursClose:'',mapUrl:'',promo:'',promptpay:'',holder:'',payQr:''}; }
+function resetStore(){ wStoreEditId=null; wStore={cat:0,delivery:false,pickup:false,dinein:false,visit:false,menu:[],name:'',phone:'',intro:'',hoursAll:false,hoursDays:[],hoursOpen:'',hoursClose:'',mapUrl:'',promo:'',promptpay:'',holder:'',payQr:'',logo:'',photo:'',web:''}; }
 function openStoreEdit(store){
   if(!store) return;
   wStore={
@@ -1769,6 +1770,7 @@ function openStoreEdit(store){
     mapUrl:store.mapUrl||'', promo:store.promo||'',
     delivery:!!store.delivery, pickup:!!store.pickup, dinein:!!store.dinein, visit:!!store.visit,
     promptpay:store.promptpay||'', holder:store.holder||'', payQr:store.payQr||'',
+    logo:store.logo||'', photo:store.photo||'', web:store.web||'',
     menu:(store.menu||[]).map(m=>({name:m.nm||'', price:(m.pr!=null?String(m.pr):''), photo:m.photo||null}))
   };
   wStoreEditId=store.id;
@@ -1776,7 +1778,7 @@ function openStoreEdit(store){
 }
 function snapStore(){
   const g=id=>(document.getElementById(id)||{}).value||'';
-  wStore.name=g('wSubject'); wStore.phone=g('wPhone'); wStore.intro=g('wDesc'); wStore.mapUrl=g('wMap');
+  wStore.name=g('wSubject'); wStore.phone=g('wPhone'); wStore.intro=g('wDesc'); wStore.mapUrl=g('wMap'); wStore.web=g('wWeb');
   wStore.hoursOpen=g('wHopen'); wStore.hoursClose=g('wHclose'); wStore.promo=g('wPromo'); wStore.promptpay=g('wPromptpay'); wStore.holder=g('wHolder');
   document.querySelectorAll('[data-mname]').forEach(el=>{const i=+el.dataset.mname; if(wStore.menu[i]) wStore.menu[i].name=el.value;});
   document.querySelectorAll('[data-mprice]').forEach(el=>{const i=+el.dataset.mprice; if(wStore.menu[i]) wStore.menu[i].price=el.value;});
@@ -1811,8 +1813,11 @@ function hoursField(){
 function storeForm(){
   const s=wStore, cat=STORE_CATS[s.cat]||STORE_CATS[0], cats=L().shop_cats;
   let h=`<div class="gfield"><label>${ws('name')}</label><input id="wSubject" placeholder="${ws('name_ph')}" value="${escA(s.name)}"></div>
+   <div class="gfield"><label>${lang==='ko'?'가게 로고 (선택)':lang==='th'?'โลโก้ร้าน (ไม่บังคับ)':'Store logo (optional)'}</label>
+     <label style="display:inline-flex;align-items:center;gap:10px;border:1px dashed var(--line);border-radius:10px;padding:8px 12px;cursor:pointer">${s.logo?`<img src="${escA(s.logo)}" style="width:48px;height:48px;object-fit:cover;border-radius:10px">`:'<span style="font-size:24px">🏷️</span>'}<span style="font-size:12.5px;color:var(--sub)">${s.logo?(lang==='ko'?'로고 변경':lang==='th'?'เปลี่ยนโลโก้':'Change logo'):(lang==='ko'?'로고 이미지 올리기':lang==='th'?'อัปโหลดโลโก้':'Upload logo')}</span><input type="file" accept="image/*" data-storelogo style="display:none"></label></div>
    <div class="gfield"><label>${ws('cat')}</label><div class="wtypes" style="margin:2px 0 2px">${cats.map((c,i)=>`<button class="wtype ${s.cat===i?'on':''}" data-scat="${i}">${c}</button>`).join('')}</div></div>
    <div class="gfield"><label>${ws('phone')}</label><input id="wPhone" placeholder="${ws('phone_ph')}" value="${escA(s.phone)}"></div>
+   <div class="gfield"><label>${lang==='ko'?'웹사이트 (선택)':lang==='th'?'เว็บไซต์ (ไม่บังคับ)':'Website (optional)'}</label><input id="wWeb" inputmode="url" placeholder="https://..." value="${escA(s.web)}"></div>
    <div class="gfield"><label>${ws('intro')}</label><textarea class="wta" id="wDesc" placeholder="${ws('intro_ph')}">${escT(s.intro)}</textarea></div>
    <div class="gfield"><label>${ws('map')}</label><input id="wMap" placeholder="${ws('map_ph')}" value="${escA(s.mapUrl)}">${s.mapUrl?`<iframe src="https://www.google.com/maps?q=${encodeURIComponent(s.mapUrl)}&output=embed" style="width:100%;height:140px;border:0;border-radius:8px;margin-top:6px" loading="lazy"></iframe>`:''}</div>
    <div class="gfield"><label>🎉 ${ws('promo')}</label><textarea class="wta" id="wPromo" placeholder="${ws('promo_ph')}" style="min-height:52px">${escT(s.promo)}</textarea></div>`;
@@ -1852,7 +1857,9 @@ function renderWrite(){
     ${extraFields}
     ${noPrice?'':`<div class="gfield"><label>${L().w_price}</label><input id="wPrice" placeholder="${L().w_price_ph}"></div>`}
     <div class="gfield"><label>${L().w_desc}${isJob?` <span style="font-size:10px;color:var(--sub)">(${lang==='ko'?'선택':lang==='th'?'ไม่บังคับ':'optional'})</span>`:''}</label><textarea class="wta" id="wDesc" placeholder="${isJob?(lang==='ko'?'추가 메모 (선택)':lang==='th'?'หมายเหตุ (ไม่บังคับ)':'Extra note (optional)'):L().w_desc_ph}"></textarea></div>`}
-    <div class="wrow"><button class="wphoto">📷 ${L().w_photo}</button><div class="wloc">📍 ${locShort()}</div></div>
+    <div class="wrow">${isStore
+      ? `<label class="wphoto" style="display:inline-flex;align-items:center;gap:8px">${wStore.photo?`<img src="${escA(wStore.photo)}" style="width:34px;height:34px;object-fit:cover;border-radius:7px">`:'📷'} ${wStore.photo?(lang==='ko'?'대표사진 변경':lang==='th'?'เปลี่ยนรูป':'Change photo'):(lang==='ko'?'대표사진 추가':lang==='th'?'เพิ่มรูปร้าน':'Add store photo')}<input type="file" accept="image/*" data-storephoto style="display:none"></label>`
+      : `<button class="wphoto">📷 ${L().w_photo}</button>`}<div class="wloc">📍 ${locShort()}</div></div>
     <button class="gbtn primary" data-wsubmit style="width:100%;margin-top:8px">${L().w_submit}</button>
   </div>`;
   const _wns=writeEl2.querySelector('.psheet'); if(_wns&&_wsc) _wns.scrollTop=_wsc;
@@ -2256,6 +2263,12 @@ function viewShop(){
    ${rangeChipHtml()}
    <div>${data.map(storeCard).join('')||`<div class="empty">—</div>`}</div>`;
 }
+// 텍스트 안의 URL을 클릭 가능한 링크로 (HTML 이스케이프 후 링크화 — XSS 방지)
+function linkify(t){
+  if(t==null) return '';
+  var esc=String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return esc.replace(/((?:https?:\/\/|www\.)[^\s<]+)/gi,function(u){ var href=/^https?:\/\//i.test(u)?u:('https://'+u); return '<a href="'+href+'" target="_blank" rel="noopener" style="color:#2f6df0;text-decoration:underline;word-break:break-all">'+u+'</a>'; });
+}
 function storeInfoSection(s){
   const flags=[];
   if(s.delivery) flags.push(s.service?'🚗 '+ws('visit_home'):'🛵 '+ws('delivery'));
@@ -2265,9 +2278,10 @@ function storeInfoSection(s){
   const badges=flags.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px">${flags.map(f=>`<span style="background:#fff1e8;color:#c2410c;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px">${f}</span>`).join('')}</div>`:'';
   const promoBanner=s.promo?`<div style="background:#fff8e1;border:1px solid #FFB300;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:13px;font-weight:700;color:#7a5b00">🎉 ${s.promo}</div>`:'';
   const lines=[];
-  if(s.intro) lines.push(`<div style="font-size:13.5px;color:#444;line-height:1.6;margin:6px 0">${s.intro}</div>`);
+  if(s.intro) lines.push(`<div style="font-size:13.5px;color:#444;line-height:1.6;margin:6px 0;white-space:pre-wrap">${linkify(s.intro)}</div>`);
   if(s.hours) lines.push(`<div style="font-size:13px;margin:3px 0;color:#333">🕒 ${s.hours}</div>`);
   if(s.phone) lines.push(`<div style="font-size:13px;margin:3px 0;color:#333">📞 ${s.phone}</div>`);
+  if(s.web){ var _wh=/^https?:\/\//i.test(s.web)?s.web:('https://'+s.web); lines.push(`<div style="font-size:13px;margin:3px 0;color:#333">🌐 <a href="${escA(_wh)}" target="_blank" rel="noopener" style="color:#2f6df0;text-decoration:underline;word-break:break-all">${escA(s.web)}</a></div>`); }
   const map=s.mapUrl?`<iframe src="https://www.google.com/maps?q=${encodeURIComponent(s.mapUrl)}&output=embed" style="width:100%;height:160px;border:0;border-radius:10px;margin:8px 0" loading="lazy"></iframe>`:'';
   const qr=s.payQr?`<div style="margin:10px 0 2px"><div style="font-size:12px;color:var(--sub);margin-bottom:5px">💳 ${ws('pay')}</div><img src="${s.payQr}" style="width:150px;border-radius:10px;border:1px solid var(--line)"></div>`:'';
   return `<div style="padding:8px 14px 2px">${promoBanner}${badges}${lines.join('')}${map}${qr}</div>`;
@@ -2285,11 +2299,11 @@ function viewStore(){
   const statusRow=`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap">${statusText}${ownerBtns}</div>`;
   const head=`<div class="detail-head">
     <button class="back" id="sback">‹</button>
-    <div class="avatar" style="width:42px;height:42px;flex:0 0 42px;border-radius:12px;font-size:22px;background:#fff1e8">${s.emo}</div>
+    <div class="avatar" style="width:42px;height:42px;flex:0 0 42px;border-radius:12px;font-size:22px;background:#fff1e8;overflow:hidden">${s.logo?`<img src="${escA(s.logo)}" style="width:100%;height:100%;object-fit:cover">`:s.emo}</div>
     <div><div class="hn">${tx(s.nm)} <span class="dbadge">🤝 ${L().direct_badge}</span></div><div class="hs">${s.reviews>0?`⭐ ${s.rating} (${s.reviews})`:(lang==='ko'?'🆕 신규':lang==='th'?'🆕 ใหม่':'🆕 New')} · ${L().shop_cats[s.cat]}</div></div></div>`;
   if(s.service){
     page.innerHTML=head+`
-      <div class="storebanner">${s.emo}</div>
+      <div class="storebanner"${s.photo?` style="padding:0;overflow:hidden"`:''}>${s.photo?`<img src="${escA(s.photo)}" style="width:100%;height:100%;object-fit:cover">`:s.emo}</div>
       ${statusRow}
       ${storeInfoSection(s)}
       <div style="padding:6px 14px 16px">
@@ -2314,7 +2328,7 @@ function viewStore(){
     </div>`;
   }).join('');
   page.innerHTML=head+`
-    <div class="storebanner">${s.emo}</div>
+    <div class="storebanner"${s.photo?` style="padding:0;overflow:hidden"`:''}>${s.photo?`<img src="${escA(s.photo)}" style="width:100%;height:100%;object-fit:cover">`:s.emo}</div>
     ${statusRow}
     ${storeInfoSection(s)}
     ${canManage?`<div style="padding:0 14px 4px;display:flex;gap:8px"><button class="gbtn line" data-storeedit style="flex:1">✏️ ${L().store_edit}</button><button class="gbtn line" data-closedown style="flex:0 0 auto;color:#d33;padding:0 14px">🗑️ ${L().closedown}</button></div>`:''}
@@ -3478,20 +3492,23 @@ function render(){
 document.addEventListener('change', async e=>{
   const isMenu=e.target&&e.target.matches&&e.target.matches('[data-mphoto]');
   const isQr=e.target&&e.target.matches&&e.target.matches('[data-payqr]');
-  if(!isMenu&&!isQr) return;
+  const isLogo=e.target&&e.target.matches&&e.target.matches('[data-storelogo]');
+  const isPhoto=e.target&&e.target.matches&&e.target.matches('[data-storephoto]');
+  if(!isMenu&&!isQr&&!isLogo&&!isPhoto) return;
   const file=e.target.files&&e.target.files[0]; if(!file) return;
   const mi=isMenu?+e.target.dataset.mphoto:-1;
   if(isMenu&&(!wStore.menu||!wStore.menu[mi])) return;
   if(!uid){toast(L().v_need_login);return;}
-  toast('사진 업로드 중…');
+  toast(lang==='ko'?'사진 업로드 중…':lang==='th'?'กำลังอัปโหลด…':'Uploading…');
   try{
     const ext=((file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg');
-    const path=uid+'/'+(isQr?'qr_':'m_')+Date.now()+(isMenu?('_'+mi):'')+'.'+ext;
+    const pre=isQr?'qr_':isLogo?'logo_':isPhoto?'cover_':'m_';
+    const path=uid+'/'+pre+Date.now()+(isMenu?('_'+mi):'')+'.'+ext;
     const up=await sb.storage.from('store-photos').upload(path,file,{upsert:true,contentType:file.type});
     if(up.error){toast(up.error.message);return;}
     const url=sb.storage.from('store-photos').getPublicUrl(path).data.publicUrl;
     snapStore();
-    if(isQr) wStore.payQr=url; else wStore.menu[mi].photo=url;
+    if(isQr) wStore.payQr=url; else if(isLogo) wStore.logo=url; else if(isPhoto) wStore.photo=url; else wStore.menu[mi].photo=url;
     renderWrite();
   }catch(err){ toast(String(err.message||err)); }
 });
@@ -3558,7 +3575,8 @@ document.addEventListener('click',e=>{
         hours:_hrs, hours_all:!!wStore.hoursAll, hours_days:(wStore.hoursDays||[]), hours_open:(wStore.hoursOpen||null), hours_close:(wStore.hoursClose||null),
         map_url:(wStore.mapUrl||'').trim()||null, promo:(wStore.promo||'').trim()||null,
         delivery:!!wStore.delivery, pickup:!!wStore.pickup, dinein:!!wStore.dinein, visit:!!wStore.visit,
-        promptpay:(wStore.promptpay||'').trim()||null, holder:(wStore.holder||'').trim()||null, pay_qr:(wStore.payQr||null)};
+        promptpay:(wStore.promptpay||'').trim()||null, holder:(wStore.holder||'').trim()||null, pay_qr:(wStore.payQr||null),
+        logo_url:(wStore.logo||null), photo_url:(wStore.photo||null), website:(wStore.web||'').trim()||null};
       const menuItems=(wStore.menu||[]).filter(m=>(m.name||'').trim()).map(m=>({name:m.name.trim(), price:(parseInt(m.price)||null), photo:m.photo||null}));
       const editId=wStoreEditId;
       const writeMenu=(sid)=>{const doIns=()=>{ if(menuItems.length){ sb.from('menu_items').insert(menuItems.map(m=>({store_id:sid,name:m.name,price:m.price,photo_url:m.photo}))).then(()=>loadStores()); } else { loadStores(); } }; if(editId){ sb.from('menu_items').delete().eq('store_id',sid).then(()=>doIns()); } else { doIns(); }};
