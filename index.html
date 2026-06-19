@@ -2232,11 +2232,28 @@ function viewJobs(){
 }
 
 /* ===================== shop (광고/주문) ===================== */
+// 영업시간 기준 현재 영업 여부(태국시각). 수동 종료(s.open=false)·휴무(s.holiday)면 닫힘. 영업시간 미설정이면 수동 상태 따름.
+function storeOpenNow(s){
+  if(!s) return false;
+  if(s.open===false) return false;
+  if(s.holiday) return false;
+  if(!s.hoursOpen || !s.hoursClose) return true;
+  try{
+    var th=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Bangkok'}));
+    var wsDay=(th.getDay()+6)%7;   // JS(일=0) → WS days(월=0) 변환
+    if(!s.hoursAll && Array.isArray(s.hoursDays) && s.hoursDays.length && s.hoursDays.indexOf(wsDay)<0) return false;  // 오늘은 영업일 아님
+    var pm=function(t){ var m=/^(\d{1,2}):(\d{2})/.exec(t||''); return m?(+m[1]*60+(+m[2])):null; };
+    var op=pm(s.hoursOpen), cl=pm(s.hoursClose); if(op==null||cl==null) return true;
+    var cur=th.getHours()*60+th.getMinutes();
+    return cl>op ? (cur>=op&&cur<cl) : (cur>=op||cur<cl);   // 자정 넘김(예 18:00~02:00) 지원
+  }catch(e){ return true; }
+}
 function storeCard(s){
   const dpill=(hood&&s.hoodId)?((s.hoodId===hood.id)?`<span class="pill" style="color:var(--green);background:#e7f7ee">📍 ${L().my_hood}</span>`:`<span class="pill" style="color:var(--pri);background:var(--pri-soft)">📍 ${itemDist(s).toFixed(1)}km</span>`):'';
+  const _on=storeOpenNow(s);
   const status = s.holiday
     ? `<span class="pill" style="color:#d33;background:#fdecec;font-weight:800">🚫 ${L().holiday_badge}</span>`
-    : (s.open ? `<span class="pill" style="color:#15a05a;background:#e7f7ee;font-weight:800">🟢 ${L().shop_open}</span>`
+    : (_on ? `<span class="pill" style="color:#15a05a;background:#e7f7ee;font-weight:800">🟢 ${L().shop_open}</span>`
               : `<span class="pill" style="color:#d33;background:#fdecec;font-weight:800">⛔ ${L().shop_closed}</span>`);
   const opts=[];
   if(s.delivery) opts.push(s.service?'🚗 '+ws('visit_home'):'🛵 '+L().delivery);
@@ -2247,7 +2264,7 @@ function storeCard(s){
   const optPills=opts.slice(0,2).map(o=>`<span class="pill">${o}</span>`).join('');
   const hoursPill = s.hours?`<span class="pill" style="color:var(--sub)">🕒 ${s.hours}</span>`:'';
   const promoLine = s.promo?`<div class="spills" style="margin-top:3px"><span class="pill" style="color:#c2410c;background:#fff1e8">🎉 ${s.promo.length>22?s.promo.slice(0,22)+'…':s.promo}</span></div>`:'';
-  const dim=(!s.open||s.holiday)?'opacity:.62':'';
+  const dim=(!_on)?'opacity:.62':'';
   return `<div class="scard" data-store="${s.id}" style="${dim}">
     <div class="sthumb">${s.ad?`<span class="adb">${L().ad_badge}</span>`:''}${s.emo}</div>
     <div class="sbody">
@@ -2309,9 +2326,10 @@ function viewStore(){
   const s=stores.find(x=>x.id===storeOpen);
   const isOwner=!!(s.owner&&uid&&s.owner===uid);
   const canManage=isOwner||isAdmin;   // 슈퍼관리자도 모든 가게 관리·수정 가능
+  const openNow=storeOpenNow(s);      // 영업시간 자동 반영(태국시각)
   const statusText = s.holiday
     ? `<span style="font-weight:800;font-size:13.5px;color:#d33">🚫 ${L().holiday_badge} — ${s.holiday}</span>`
-    : `<span style="font-weight:800;font-size:13.5px;color:${s.open?'#15a05a':'#d33'}">${s.open?'🟢 '+L().shop_open:'⛔ '+L().shop_closed}</span>`;
+    : `<span style="font-weight:800;font-size:13.5px;color:${openNow?'#15a05a':'#d33'}">${openNow?'🟢 '+L().shop_open:'⛔ '+L().shop_closed}${(!openNow&&s.open!==false&&s.hours)?` <span style="font-weight:600;color:var(--sub)">· ${s.hours}</span>`:''}</span>`;
   const ownerBtns = canManage ? `<div style="display:flex;gap:6px">
     <button class="gbtn line" data-storetoggle style="padding:6px 10px;font-size:12px">${s.open?L().shop_set_closed:L().shop_set_open}</button>
     <button class="gbtn line" data-holiday style="padding:6px 10px;font-size:12px${s.holiday?';color:#d33':''}">${s.holiday?L().holiday_clear:L().holiday_set}</button></div>` : '';
@@ -2354,7 +2372,7 @@ function viewStore(){
     <div style="padding:2px 14px 12px">
       <div class="msec">${s.product?L().products_label:L().menu_label}</div>${rows}
     </div>
-    ${count>0?`<div class="cartbar"><span class="cc">${count}</span><span>${L().cart}</span><span class="ct">${L().total} ฿${total.toLocaleString()}</span>${((s.open&&!s.holiday)||isOwner)?`<button class="orderfab" id="doorder">${L().btn_order}</button>`:`<button class="orderfab" style="background:#999" disabled>${s.holiday?'🚫 '+L().holiday_badge:'⛔ '+L().shop_closed}</button>`}</div>`:''}`;
+    ${count>0?`<div class="cartbar"><span class="cc">${count}</span><span>${L().cart}</span><span class="ct">${L().total} ฿${total.toLocaleString()}</span>${(openNow||isOwner)?`<button class="orderfab" id="doorder">${L().btn_order}</button>`:`<button class="orderfab" style="background:#999" disabled>${s.holiday?'🚫 '+L().holiday_badge:'⛔ '+L().shop_closed}</button>`}</div>`:''}`;
 }
 
 /* ===================== chat ===================== */
@@ -3773,7 +3791,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-myexit]')){myStores=false;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-storetoggle]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;const nv=!s.open;sb.from('stores').update({is_open:nv}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.open=nv;viewStore();toast(nv?L().shop_open:L().shop_closed);});return;}
   if(e.target.closest('[data-holiday]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;if(s.holiday){sb.from('stores').update({holiday:null}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.holiday=null;viewStore();toast(L().holiday_clear);});}else{const note=(window.prompt(L().holiday_prompt,L().holiday_default)||'').trim();if(!note)return;sb.from('stores').update({holiday:note}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.holiday=note;viewStore();toast('🚫 '+note);});}return;}
-  if(e.target.closest('#doorder')){if(!canAct())return;const s=stores.find(x=>x.id===storeOpen);if(s&&(!s.open||s.holiday)){toast(s.holiday?('🚫 '+s.holiday):L().shop_closed_msg);return;}payStore=storeOpen;payAmount=s.menu.reduce((t,m)=>t+(cart[m.id]||0)*m.pr,0);payOpen=true;render();return;}
+  if(e.target.closest('#doorder')){if(!canAct())return;const s=stores.find(x=>x.id===storeOpen);const _so=s&&(s.owner&&uid&&s.owner===uid);if(s&&!storeOpenNow(s)&&!_so&&!isAdmin){toast(s.holiday?('🚫 '+s.holiday):L().shop_closed_msg);return;}payStore=storeOpen;payAmount=s.menu.reduce((t,m)=>t+(cart[m.id]||0)*m.pr,0);payOpen=true;render();return;}
   if(e.target.closest('#spay')){payStore=storeOpen;payAmount=0;payOpen=true;render();return;}
   if(e.target.closest('#payscrim')||e.target.closest('#payclose')){payOpen=false;render();return;}
   if(e.target.closest('#paydone')){const s=stores.find(x=>x.id===payStore);const _cart=Object.assign({},cart);const _amt=payAmount;placeOrder(s,_amt,_cart);payOpen=false;cart={};const _names=(s&&s.menu||[]).filter(m=>_cart[m.id]).map(m=>tx(m.nm)+' x'+_cart[m.id]).join(', ');const _msg='🛒 '+(lang==='ko'?'송금 완료, 주문 확인 부탁드려요':lang==='th'?'โอนแล้ว ช่วยยืนยันออเดอร์ด้วย':'Paid — please confirm my order')+(_names?(' ('+_names+(_amt?' / ฿'+_amt.toLocaleString():'')+')'):'');openStoreChat(s,_msg);toast(L().order_done);return;}
