@@ -1633,7 +1633,7 @@ listings.forEach((x,i)=>x.id=x.id||('L'+i));
 info.forEach((x,i)=>x.id=x.id||('I'+i));
 
 /* ===================== state ===================== */
-let lang="ko", screen="gate", tab="shop", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gmFrameOpen=false, gmFrameSrc="", gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null, postOpen=null,
+let lang="ko", screen="gate", tab="home", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gmFrameOpen=false, gmFrameSrc="", gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null, postOpen=null,
     wStore={cat:0,delivery:false,pickup:false,menu:[]}, wStoreEditId=null, myStores=false,
     dbClubs=[], myClubMem={}, clubCounts={}, clubOpen=null, clubData=null, clubBusy=false, actFormOpen=false, clubCreateOpen=false, clubEditId=null,
     myClubsOpen=false, noticeEditOpen=false, clubPending={}, rosterOpen=false, actEditId=null,
@@ -2076,14 +2076,40 @@ function renderPay(){
    </div>`;
 }
 /* ===================== top ===================== */
+// 로그인 후 시작 허브 — 동네설정(전체폭) + 6개 카드(2열, 각 카드 아래 설명)
+function viewHome(){
+  const set=!(city==='all'||!hood);
+  const t=(ko,en,th)=>lang==='ko'?ko:lang==='th'?th:en;
+  const loc=`<div class="loccard" id="loccard" style="margin:2px 0 15px">
+     <span class="lchev">›</span>
+     <div class="ltext">
+       <div class="lh">📍 ${L().g_loc_title}</div>
+       <div class="lname ${set?'':'empty'}">${set?locFull():L().g_loc_empty}</div>
+       <div class="lsub">${set?`<span class="vbadge${verified?'':' no'}">${verified?'✓ '+L().v_done:'· '+L().v_none}</span>`:L().g_loc_sub}</div>
+     </div></div>`;
+  const card=(hub,emo,title,desc,grad,accent)=>`<button data-hub="${hub}" style="text-align:left;border:1px solid ${accent||'var(--line)'};border-radius:16px;padding:14px 13px;background:${grad||'#fff'};box-shadow:0 4px 14px rgba(0,0,0,.05);cursor:pointer;display:flex;flex-direction:column;gap:5px;min-height:108px">
+     <div style="font-size:27px;line-height:1">${emo}</div>
+     <div style="font-weight:800;font-size:14.5px;color:var(--ink)">${title}</div>
+     <div style="font-size:11px;color:var(--sub);line-height:1.45">${desc}</div></button>`;
+  const grid=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
+     ${card('shop','🏬',t('타운몰','Town Mall','ทาวน์มอลล์'),t('동네 가게·맛집·서비스 둘러보고 주문','Browse & order from local shops','ร้านค้าใกล้ตัว สั่งได้เลย'))}
+     ${card('market','🛍️',t('장터나눔','Flea Market','ตลาดมือสอง'),t('이웃과 중고거래·나눔','Buy·sell·give with neighbors','ซื้อขายแบ่งปันกับเพื่อนบ้าน'))}
+     ${card('jobs','💼',t('구인구직','Jobs','หางาน'),t('교민 일자리·알바 구하고 올리기','Find & post local jobs','หางาน·ลงประกาศ'))}
+     ${card('info','📰',t('공지·소식','Notices','ข่าวสาร'),t('운영 공지와 동네 소식','App notices & local news','ประกาศ·ข่าวในพื้นที่'))}
+     ${card('clubs','🏘️',t('모임방','Clubs','ชมรม'),t('관심사 모임·동호회 활동','Interest clubs & activities','ชมรมตามความสนใจ'))}
+     ${card('golf','⛳',t('Golf Mate','Golf Mate','Golf Mate'),t('동호회·동반자 모집·라운드 기록에 <b>신페리오 보정</b>과 <b>럭키드로우 룰렛</b>까지 — 다양하고 재밌는 시상! 🏆','Clubs·partner matching·rounds with <b>New Peoria</b> handicap & a <b>lucky-draw roulette</b> — fun awards! 🏆','ชมรม·หาเพื่อน·บันทึกรอบ พร้อม <b>New Peoria</b> และ <b>วงล้อลัคกี้ดรอว์</b> รางวัลสนุก! 🏆'),'linear-gradient(135deg,#e7f7ee,#d2f0e0)','#9fdcb8')}
+   </div>`;
+  page.innerHTML=`<div style="padding:12px 14px 22px">${loc}${grid}</div>`;
+}
 function renderTop(){
   if((tab==='chat'&&chatOpen!==null)||(tab==='shop'&&storeOpen)||(tab==='market'&&listingOpen)){topEl.innerHTML='';return;}
-  const navMeta={shop:['🏬','nav_shop'],market:['🛍️','nav_market'],jobs:['💼','nav_jobs'],chat:['💬','nav_chat'],community:['🏘️','nav_community'],me:['👤','nav_me']};
-  const nm=navMeta[tab]||['','']; const menuName=L()[nm[1]]||'';
+  const navMeta={home:['🏠',''],shop:['🏬','nav_shop'],market:['🛍️','nav_market'],jobs:['💼','nav_jobs'],chat:['💬','nav_chat'],community:['🏘️','nav_community'],me:['👤','nav_me']};
+  const nm=navMeta[tab]||['','']; const menuName=(tab==='home'?(lang==='ko'?'홈':lang==='th'?'หน้าหลัก':'Home'):(L()[nm[1]]||''));
   topEl.innerHTML=`
    <div class="top-row">
      <button class="locpill" id="locpill"><span class="lpin">📍</span>${locShort()}${verified?'<span style="color:var(--green);font-size:13px">✓</span>':''}<span class="lcv">▾</span></button>
      <div class="spacer"></div>
+     ${tab!=='home'?'<button class="icon-btn" data-gohome>🏠</button>':''}
      <button class="icon-btn" data-search>🔍</button>
      <button class="icon-btn" data-noti>🔔${(()=>{const u=NOTI.filter(n=>n.unread).length;return u?`<span class="nb">${u}</span>`:'';})()}</button>
      ${langToggle()}
@@ -3448,7 +3474,7 @@ function renderNav(){
     </button>`).join('');
 }
 function renderFab(){
-  const hide=(tab==='chat')||(tab==='me')||(tab==='shop'&&storeOpen)||(tab==='community'&&commSeg==='clubs')||(tab==='market'&&listingOpen);
+  const hide=(tab==='home')||(tab==='chat')||(tab==='me')||(tab==='shop'&&storeOpen)||(tab==='community'&&commSeg==='clubs')||(tab==='market'&&listingOpen);
   if(hide){fab.style.display='none';return;}
   fab.style.display='flex';
   let lbl=L().fab_market;
@@ -3477,7 +3503,8 @@ function render(){
   }
   gateEl.style.display='none'; topEl.style.display=''; page.style.display=''; navEl.style.display='';
   renderTop(); renderNav(); renderFab();
-  if(tab==='shop') storeOpen?viewStore():viewShop();
+  if(tab==='home') viewHome();
+  else if(tab==='shop') storeOpen?viewStore():viewShop();
   else if(tab==='market') listingOpen?viewListingDetail():viewMarket();
   else if(tab==='jobs') viewJobs();
   else if(tab==='chat') chatOpen!==null?viewChatDetail():viewChatList();
@@ -3623,6 +3650,15 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-pall]')){city='all';hood=null;verified=false;locPickerOpen=false;render();return;}
   if(e.target.closest('.rangechip')){locPickerOpen=true;pickRegion=(city!=='all'?city:'bkk');render();return;}
   const nv=e.target.closest('[data-tab]'); if(nv){tab=nv.dataset.tab;chatOpen=null;storeOpen=null;cart={};golfOpen=false;listingOpen=null;myStores=false;render();page.scrollTo(0,0);return;}
+  if(e.target.closest('[data-gohome]')){tab='home';chatOpen=null;storeOpen=null;cart={};golfOpen=false;listingOpen=null;myStores=false;clubOpen=null;render();page.scrollTo(0,0);return;}
+  const hb=e.target.closest('[data-hub]'); if(hb){const v=hb.dataset.hub;chatOpen=null;storeOpen=null;cart={};golfOpen=false;listingOpen=null;myStores=false;clubOpen=null;
+    if(v==='shop')tab='shop';
+    else if(v==='market')tab='market';
+    else if(v==='jobs')tab='jobs';
+    else if(v==='info'){tab='community';commSeg='info';}
+    else if(v==='clubs'){tab='community';commSeg='clubs';}
+    else if(v==='golf'){tab='community';commSeg='clubs';golfOpen=true;}
+    render();page.scrollTo(0,0);return;}
   /* Golf Mate 연동 — 입장하기 → 공유계정 핸드오프 시트 */
   if(e.target.closest('[data-golf]')){golfOpen=true;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-golfnewclub]')){wClub={emoji:'⛳',grad:'linear-gradient(120deg,#0b7a3b,#16a34a)',cat:'golf'};clubCreateOpen=true;render();return;}
