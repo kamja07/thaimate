@@ -450,6 +450,7 @@ function dbToStore(row){
     open:(row.is_open!==false), owner:row.owner_id||null, holiday:row.holiday||null,
     phone:row.phone||'', hours:row.hours||'', intro:row.intro||'', promo:row.promo||'', mapUrl:row.map_url||'', payQr:row.pay_qr||'', promptpay:row.promptpay||'', holder:row.holder||'',
     logo:row.logo_url||'', photo:row.photo_url||'', web:row.website||'',
+    photos:(Array.isArray(row.photos)&&row.photos.length)?row.photos:(row.photo_url?[row.photo_url]:[]), promoPhoto:row.promo_photo||'',
     delivery:!!row.delivery, pickup:!!row.pickup, dinein:!!row.dinein, visit:!!row.visit,
     hoursAll:!!row.hours_all, hoursDays:Array.isArray(row.hours_days)?row.hours_days:[], hoursOpen:row.hours_open||'', hoursClose:row.hours_close||'',
     city:h?h.region:'all', hoodId:h?h.id:null, rating:row.rating||5.0, reviews:row.reviews_count||0,
@@ -1763,7 +1764,7 @@ const WS={
 function ws(k){return (WS[lang]||WS.ko)[k]||(WS.ko[k]||k);}
 function escA(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 function escT(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
-function resetStore(){ wStoreEditId=null; wStore={cat:0,delivery:false,pickup:false,dinein:false,visit:false,menu:[],name:'',phone:'',intro:'',hoursAll:false,hoursDays:[],hoursOpen:'',hoursClose:'',mapUrl:'',promo:'',promptpay:'',holder:'',payQr:'',logo:'',photo:'',web:''}; }
+function resetStore(){ wStoreEditId=null; wStore={cat:0,delivery:false,pickup:false,dinein:false,visit:false,menu:[],name:'',phone:'',intro:'',hoursAll:false,hoursDays:[],hoursOpen:'',hoursClose:'',mapUrl:'',promo:'',promptpay:'',holder:'',payQr:'',logo:'',photo:'',web:'',photos:[],promoPhoto:''}; }
 function openStoreEdit(store){
   if(!store) return;
   wStore={
@@ -1772,7 +1773,7 @@ function openStoreEdit(store){
     mapUrl:store.mapUrl||'', promo:store.promo||'',
     delivery:!!store.delivery, pickup:!!store.pickup, dinein:!!store.dinein, visit:!!store.visit,
     promptpay:store.promptpay||'', holder:store.holder||'', payQr:store.payQr||'',
-    logo:store.logo||'', photo:store.photo||'', web:store.web||'',
+    logo:store.logo||'', photo:store.photo||'', web:store.web||'', photos:(store.photos||[]).slice(), promoPhoto:store.promoPhoto||'',
     menu:(store.menu||[]).map(m=>({name:m.nm||'', price:(m.pr!=null?String(m.pr):''), photo:m.photo||null}))
   };
   wStoreEditId=store.id;
@@ -1822,7 +1823,11 @@ function storeForm(){
    <div class="gfield"><label>${lang==='ko'?'웹사이트 (선택)':lang==='th'?'เว็บไซต์ (ไม่บังคับ)':'Website (optional)'}</label><input id="wWeb" inputmode="url" placeholder="https://..." value="${escA(s.web)}"></div>
    <div class="gfield"><label>${ws('intro')}</label><textarea class="wta" id="wDesc" placeholder="${ws('intro_ph')}">${escT(s.intro)}</textarea></div>
    <div class="gfield"><label>${ws('map')}</label><input id="wMap" placeholder="${ws('map_ph')}" value="${escA(s.mapUrl)}">${s.mapUrl?`<iframe src="https://www.google.com/maps?q=${encodeURIComponent(s.mapUrl)}&output=embed" style="width:100%;height:140px;border:0;border-radius:8px;margin-top:6px" loading="lazy"></iframe>`:''}</div>
-   <div class="gfield"><label>🎉 ${ws('promo')}</label><textarea class="wta" id="wPromo" placeholder="${ws('promo_ph')}" style="min-height:52px">${escT(s.promo)}</textarea></div>`;
+   <div class="gfield"><label>🎉 ${ws('promo')}</label><textarea class="wta" id="wPromo" placeholder="${ws('promo_ph')}" style="min-height:52px">${escT(s.promo)}</textarea>
+     <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+       <label style="display:inline-flex;align-items:center;gap:8px;border:1px dashed var(--line);border-radius:10px;padding:7px 11px;cursor:pointer">${s.promoPhoto?`<img src="${escA(s.promoPhoto)}" style="width:38px;height:38px;object-fit:cover;border-radius:7px">`:'<span style="font-size:18px">📷</span>'}<span style="font-size:11.5px;color:var(--sub)">${s.promoPhoto?(lang==='ko'?'사진 변경':lang==='th'?'เปลี่ยนรูป':'Change'):(lang==='ko'?'프로모션 사진 첨부 (선택)':lang==='th'?'แนบรูปโปรโมชั่น':'Attach promo photo')}</span><input type="file" accept="image/*" data-promophoto style="display:none"></label>
+       ${s.promoPhoto?`<button data-rmpromophoto style="border:none;background:#f0f1f4;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#d33">✕</button>`:''}
+     </div></div>`;
   h+=hoursField();
   if(cat.food){
     h+=`<div class="gfield"><label>${ws('order')}</label><div class="wtypes" style="margin:2px 0 2px"><button class="wtype ${s.delivery?'on':''}" data-stoggle="delivery">🛵 ${ws('delivery')}</button><button class="wtype ${s.pickup?'on':''}" data-stoggle="pickup">🥡 ${ws('pickup')}</button><button class="wtype ${s.dinein?'on':''}" data-stoggle="dinein">🍽️ ${ws('dinein')}</button></div></div>`+storePayHtml()+storeMenuHtml(ws('menu'),ws('addmenu'));
@@ -1834,6 +1839,13 @@ function storeForm(){
   } else {
     h+=`<div class="gfield"><label>${ws('order')}</label><div class="wtypes" style="margin:2px 0 2px"><button class="wtype ${s.visit?'on':''}" data-stoggle="visit">🏬 ${ws('visit_store')}</button></div></div>`;
   }
+  // 맨 아래: 매장 사진(여러 장)
+  h+=`<div class="gfield"><label>${lang==='ko'?'매장 사진 (여러 장 추가 가능)':lang==='th'?'รูปร้าน (เพิ่มได้หลายรูป)':'Store photos (add multiple)'}</label>
+     <div style="display:flex;gap:8px;flex-wrap:wrap">
+       ${(s.photos||[]).map((u,i)=>`<div style="position:relative;width:76px;height:76px;flex:none"><img src="${escA(u)}" style="width:100%;height:100%;object-fit:cover;border-radius:10px"><button data-rmphoto="${i}" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:none;background:#d33;color:#fff;font-size:12px;cursor:pointer;line-height:1">✕</button></div>`).join('')}
+       <label style="width:76px;height:76px;flex:none;border:1.5px dashed var(--line);border-radius:10px;display:grid;place-items:center;cursor:pointer;background:#fafbfc;font-size:26px;color:var(--sub)">＋<input type="file" accept="image/*" data-storephoto style="display:none"></label>
+     </div>
+     <div style="font-size:11px;color:var(--sub);margin-top:5px">${lang==='ko'?'※ 상세에서 사진은 잘리지 않고 전체가 보여요':lang==='th'?'※ แสดงทั้งรูป ไม่ถูกตัด':'※ Shown uncropped in the store page'}</div></div>`;
   return h;
 }
 function renderWrite(){
@@ -1859,9 +1871,7 @@ function renderWrite(){
     ${extraFields}
     ${noPrice?'':`<div class="gfield"><label>${L().w_price}</label><input id="wPrice" placeholder="${L().w_price_ph}"></div>`}
     <div class="gfield"><label>${L().w_desc}${isJob?` <span style="font-size:10px;color:var(--sub)">(${lang==='ko'?'선택':lang==='th'?'ไม่บังคับ':'optional'})</span>`:''}</label><textarea class="wta" id="wDesc" placeholder="${isJob?(lang==='ko'?'추가 메모 (선택)':lang==='th'?'หมายเหตุ (ไม่บังคับ)':'Extra note (optional)'):L().w_desc_ph}"></textarea></div>`}
-    <div class="wrow">${isStore
-      ? `<label class="wphoto" style="display:inline-flex;align-items:center;gap:8px">${wStore.photo?`<img src="${escA(wStore.photo)}" style="width:34px;height:34px;object-fit:cover;border-radius:7px">`:'📷'} ${wStore.photo?(lang==='ko'?'대표사진 변경':lang==='th'?'เปลี่ยนรูป':'Change photo'):(lang==='ko'?'대표사진 추가':lang==='th'?'เพิ่มรูปร้าน':'Add store photo')}<input type="file" accept="image/*" data-storephoto style="display:none"></label>`
-      : `<button class="wphoto">📷 ${L().w_photo}</button>`}<div class="wloc">📍 ${locShort()}</div></div>
+    <div class="wrow">${isStore?'':`<button class="wphoto">📷 ${L().w_photo}</button>`}<div class="wloc">📍 ${locShort()}</div></div>
     <button class="gbtn primary" data-wsubmit style="width:100%;margin-top:8px">${L().w_submit}</button>
   </div>`;
   const _wns=writeEl2.querySelector('.psheet'); if(_wns&&_wsc) _wns.scrollTop=_wsc;
@@ -2312,7 +2322,7 @@ function storeInfoSection(s){
   if(s.dinein) flags.push('🍽️ '+ws('dinein'));
   if(s.visit) flags.push('🏬 '+ws('visit_store'));
   const badges=flags.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px">${flags.map(f=>`<span style="background:#fff1e8;color:#c2410c;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px">${f}</span>`).join('')}</div>`:'';
-  const promoBanner=s.promo?`<div style="background:#fff8e1;border:1px solid #FFB300;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:13px;font-weight:700;color:#7a5b00">🎉 ${s.promo}</div>`:'';
+  const promoBanner=(s.promo||s.promoPhoto)?`<div style="background:#fff8e1;border:1px solid #FFB300;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:13px;font-weight:700;color:#7a5b00">${s.promo?`🎉 ${linkify(s.promo)}`:''}${s.promoPhoto?`<img src="${escA(s.promoPhoto)}" style="width:100%;border-radius:8px;margin-top:${s.promo?'8px':'0'};display:block">`:''}</div>`:'';
   const lines=[];
   if(s.intro) lines.push(`<div style="font-size:13.5px;color:#444;line-height:1.6;margin:6px 0;white-space:pre-wrap">${linkify(s.intro)}</div>`);
   if(s.hours) lines.push(`<div style="font-size:13px;margin:3px 0;color:#333">🕒 ${s.hours}</div>`);
@@ -2321,6 +2331,13 @@ function storeInfoSection(s){
   const map=s.mapUrl?`<iframe src="https://www.google.com/maps?q=${encodeURIComponent(s.mapUrl)}&output=embed" style="width:100%;height:160px;border:0;border-radius:10px;margin:8px 0" loading="lazy"></iframe>`:'';
   const qr=s.payQr?`<div style="margin:10px 0 2px"><div style="font-size:12px;color:var(--sub);margin-bottom:5px">💳 ${ws('pay')}</div><img src="${s.payQr}" style="width:150px;border-radius:10px;border:1px solid var(--line)"></div>`:'';
   return `<div style="padding:8px 14px 2px">${promoBanner}${badges}${lines.join('')}${map}${qr}</div>`;
+}
+// 상세 상단 사진 배너 — 여러 장 가로 스와이프, 잘리지 않게(contain) 전체 표시
+function storeBanner(s){
+  var ph=(s.photos&&s.photos.length)?s.photos:(s.photo?[s.photo]:[]);
+  if(!ph.length) return `<div class="storebanner">${s.emo}</div>`;
+  var dots=ph.length>1?`<div style="text-align:center;font-size:11px;color:var(--sub);padding:3px 0 0">${lang==='ko'?'← 옆으로 넘겨보세요 ('+ph.length+'장)':lang==='th'?'← เลื่อนดู ('+ph.length+' รูป)':'← swipe ('+ph.length+')'}</div>`:'';
+  return `<div class="storebanner" style="height:210px;padding:0;overflow-x:auto;display:flex;scroll-snap-type:x mandatory;background:#eceef1;border-radius:0">${ph.map(u=>`<img src="${escA(u)}" style="width:100%;height:100%;object-fit:contain;flex:none;scroll-snap-align:center">`).join('')}</div>${dots}`;
 }
 function viewStore(){
   const s=stores.find(x=>x.id===storeOpen);
@@ -2340,7 +2357,7 @@ function viewStore(){
     <div><div class="hn">${tx(s.nm)} <span class="dbadge">🤝 ${L().direct_badge}</span></div><div class="hs">${s.reviews>0?`⭐ ${s.rating} (${s.reviews})`:(lang==='ko'?'🆕 신규':lang==='th'?'🆕 ใหม่':'🆕 New')} · ${L().shop_cats[s.cat]}</div></div></div>`;
   if(s.service){
     page.innerHTML=head+`
-      <div class="storebanner"${s.photo?` style="padding:0;overflow:hidden"`:''}>${s.photo?`<img src="${escA(s.photo)}" style="width:100%;height:100%;object-fit:cover">`:s.emo}</div>
+      ${storeBanner(s)}
       ${statusRow}
       ${storeInfoSection(s)}
       <div style="padding:6px 14px 16px">
@@ -2365,7 +2382,7 @@ function viewStore(){
     </div>`;
   }).join('');
   page.innerHTML=head+`
-    <div class="storebanner"${s.photo?` style="padding:0;overflow:hidden"`:''}>${s.photo?`<img src="${escA(s.photo)}" style="width:100%;height:100%;object-fit:cover">`:s.emo}</div>
+    ${storeBanner(s)}
     ${statusRow}
     ${storeInfoSection(s)}
     ${canManage?`<div style="padding:0 14px 4px;display:flex;gap:8px"><button class="gbtn line" data-storeedit style="flex:1">✏️ ${L().store_edit}</button><button class="gbtn line" data-closedown style="flex:0 0 auto;color:#d33;padding:0 14px">🗑️ ${L().closedown}</button></div>`:''}
@@ -3532,7 +3549,8 @@ document.addEventListener('change', async e=>{
   const isQr=e.target&&e.target.matches&&e.target.matches('[data-payqr]');
   const isLogo=e.target&&e.target.matches&&e.target.matches('[data-storelogo]');
   const isPhoto=e.target&&e.target.matches&&e.target.matches('[data-storephoto]');
-  if(!isMenu&&!isQr&&!isLogo&&!isPhoto) return;
+  const isPromo=e.target&&e.target.matches&&e.target.matches('[data-promophoto]');
+  if(!isMenu&&!isQr&&!isLogo&&!isPhoto&&!isPromo) return;
   const file=e.target.files&&e.target.files[0]; if(!file) return;
   const mi=isMenu?+e.target.dataset.mphoto:-1;
   if(isMenu&&(!wStore.menu||!wStore.menu[mi])) return;
@@ -3540,13 +3558,13 @@ document.addEventListener('change', async e=>{
   toast(lang==='ko'?'사진 업로드 중…':lang==='th'?'กำลังอัปโหลด…':'Uploading…');
   try{
     const ext=((file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg');
-    const pre=isQr?'qr_':isLogo?'logo_':isPhoto?'cover_':'m_';
+    const pre=isQr?'qr_':isLogo?'logo_':isPhoto?'photo_':isPromo?'promo_':'m_';
     const path=uid+'/'+pre+Date.now()+(isMenu?('_'+mi):'')+'.'+ext;
     const up=await sb.storage.from('store-photos').upload(path,file,{upsert:true,contentType:file.type});
     if(up.error){toast(up.error.message);return;}
     const url=sb.storage.from('store-photos').getPublicUrl(path).data.publicUrl;
     snapStore();
-    if(isQr) wStore.payQr=url; else if(isLogo) wStore.logo=url; else if(isPhoto) wStore.photo=url; else wStore.menu[mi].photo=url;
+    if(isQr) wStore.payQr=url; else if(isLogo) wStore.logo=url; else if(isPromo) wStore.promoPhoto=url; else if(isPhoto){ wStore.photos=wStore.photos||[]; wStore.photos.push(url); } else wStore.menu[mi].photo=url;
     renderWrite();
   }catch(err){ toast(String(err.message||err)); }
 });
@@ -3593,6 +3611,8 @@ document.addEventListener('click',e=>{
   const hdayBtn=e.target.closest('[data-hday]'); if(hdayBtn){snapStore();wStore.hoursAll=false;wStore.hoursDays=wStore.hoursDays||[];const di=+hdayBtn.dataset.hday;const p=wStore.hoursDays.indexOf(di);if(p>=0)wStore.hoursDays.splice(p,1);else wStore.hoursDays.push(di);renderWrite();return;}
   if(e.target.closest('[data-addmenu]')){snapStore();(wStore.menu=wStore.menu||[]).push({name:'',price:''});renderWrite();return;}
   const rmmBtn=e.target.closest('[data-rmmenu]'); if(rmmBtn){snapStore();wStore.menu.splice(+rmmBtn.dataset.rmmenu,1);renderWrite();return;}
+  const rmpBtn=e.target.closest('[data-rmphoto]'); if(rmpBtn){snapStore();(wStore.photos=wStore.photos||[]).splice(+rmpBtn.dataset.rmphoto,1);renderWrite();return;}
+  if(e.target.closest('[data-rmpromophoto]')){snapStore();wStore.promoPhoto='';renderWrite();return;}
   if(e.target.closest('[data-wclose]')){writeOpen=false;render();return;}
   if(e.target.closest('[data-wsubmit]')){
     const subj=((document.getElementById('wSubject')||{}).value||'').trim();
@@ -3614,7 +3634,8 @@ document.addEventListener('click',e=>{
         map_url:(wStore.mapUrl||'').trim()||null, promo:(wStore.promo||'').trim()||null,
         delivery:!!wStore.delivery, pickup:!!wStore.pickup, dinein:!!wStore.dinein, visit:!!wStore.visit,
         promptpay:(wStore.promptpay||'').trim()||null, holder:(wStore.holder||'').trim()||null, pay_qr:(wStore.payQr||null),
-        logo_url:(wStore.logo||null), photo_url:(wStore.photo||null), website:(wStore.web||'').trim()||null};
+        logo_url:(wStore.logo||null), website:(wStore.web||'').trim()||null,
+        photos:(wStore.photos||[]), photo_url:((wStore.photos&&wStore.photos[0])||null), promo_photo:(wStore.promoPhoto||null)};
       const menuItems=(wStore.menu||[]).filter(m=>(m.name||'').trim()).map(m=>({name:m.name.trim(), price:(parseInt(m.price)||null), photo:m.photo||null}));
       const editId=wStoreEditId;
       const writeMenu=(sid)=>{const doIns=()=>{ if(menuItems.length){ sb.from('menu_items').insert(menuItems.map(m=>({store_id:sid,name:m.name,price:m.price,photo_url:m.photo}))).then(()=>loadStores()); } else { loadStores(); } }; if(editId){ sb.from('menu_items').delete().eq('store_id',sid).then(()=>doIns()); } else { doIns(); }};
