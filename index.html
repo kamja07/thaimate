@@ -2266,7 +2266,7 @@ function storeCard(s){
   const promoLine = s.promo?`<div class="spills" style="margin-top:3px"><span class="pill" style="color:#c2410c;background:#fff1e8">🎉 ${s.promo.length>22?s.promo.slice(0,22)+'…':s.promo}</span></div>`:'';
   const dim=(!_on)?'opacity:.62':'';
   return `<div class="scard" data-store="${s.id}" style="${dim}">
-    <div class="sthumb">${s.ad?`<span class="adb">${L().ad_badge}</span>`:''}${s.emo}</div>
+    <div class="sthumb">${s.logo?`<img src="${escA(s.logo)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:13px">`:s.emo}${s.ad?`<span class="adb">${L().ad_badge}</span>`:''}</div>
     <div class="sbody">
       <div class="snm">${tx(s.nm)}</div>
       <div class="smeta">${s.reviews>0?`⭐ ${s.rating} <span class="sgray">(${s.reviews})</span>`:`<span style="color:#0d8a47;font-weight:700">🆕 ${lang==='ko'?'신규':lang==='th'?'ใหม่':'New'}</span>`} · ${L().shop_cats[s.cat]}</div>
