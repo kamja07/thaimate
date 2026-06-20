@@ -2332,12 +2332,46 @@ function storeInfoSection(s){
   const qr=s.payQr?`<div style="margin:10px 0 2px"><div style="font-size:12px;color:var(--sub);margin-bottom:5px">💳 ${ws('pay')}</div><img src="${s.payQr}" style="width:150px;border-radius:10px;border:1px solid var(--line)"></div>`:'';
   return `<div style="padding:8px 14px 2px">${promoBanner}${badges}${lines.join('')}${map}${qr}</div>`;
 }
-// 상세 상단 사진 배너 — 여러 장 가로 스와이프, 잘리지 않게(contain) 전체 표시
+// 상세 상단 배너 — 이모지(사진은 맨 아래 그리드로 이동)
 function storeBanner(s){
+  return `<div class="storebanner">${s.emo}</div>`;
+}
+// 상세 맨 아래 사진 그리드 — 3열 작은 썸네일, 클릭 시 라이트박스로 크게(안 잘림)
+function storePhotoGrid(s){
   var ph=(s.photos&&s.photos.length)?s.photos:(s.photo?[s.photo]:[]);
-  if(!ph.length) return `<div class="storebanner">${s.emo}</div>`;
-  var dots=ph.length>1?`<div style="text-align:center;font-size:11px;color:var(--sub);padding:3px 0 0">${lang==='ko'?'← 옆으로 넘겨보세요 ('+ph.length+'장)':lang==='th'?'← เลื่อนดู ('+ph.length+' รูป)':'← swipe ('+ph.length+')'}</div>`:'';
-  return `<div class="storebanner" style="height:210px;padding:0;overflow-x:auto;display:flex;scroll-snap-type:x mandatory;background:#eceef1;border-radius:0">${ph.map(u=>`<img src="${escA(u)}" style="width:100%;height:100%;object-fit:contain;flex:none;scroll-snap-align:center">`).join('')}</div>${dots}`;
+  if(!ph.length) return '';
+  var title=lang==='ko'?'📷 매장 사진':lang==='th'?'📷 รูปร้าน':'📷 Photos';
+  return `<div style="padding:6px 14px 20px">
+    <div class="msec">${title} (${ph.length})</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+      ${ph.map((u,i)=>`<img src="${escA(u)}" data-lightbox="${i}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in">`).join('')}
+    </div></div>`;
+}
+// 사진 라이트박스(전체화면, 좌우 넘김, 안 잘림)
+function openLightbox(photos,idx){
+  if(!photos||!photos.length) return;
+  var cur=idx||0;
+  var ov=document.createElement('div');
+  ov.className='lightbox';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:99999;display:flex;align-items:center;justify-content:center';
+  function paint(){
+    ov.innerHTML=`<img src="${escA(photos[cur])}" style="max-width:96vw;max-height:84vh;object-fit:contain;border-radius:6px">`
+      +`<button data-lbx="close" style="position:absolute;top:14px;right:14px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:22px;cursor:pointer">✕</button>`
+      +(photos.length>1?`<button data-lbx="prev" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);width:48px;height:64px;border-radius:12px;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:30px;cursor:pointer">‹</button>`
+        +`<button data-lbx="next" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:48px;height:64px;border-radius:12px;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:30px;cursor:pointer">›</button>`
+        +`<div style="position:absolute;bottom:22px;left:0;right:0;text-align:center;color:#fff;font-size:14px;font-weight:700">${cur+1} / ${photos.length}</div>`:'');
+  }
+  paint();
+  ov.addEventListener('click',function(e){
+    var b=e.target.closest('[data-lbx]');
+    if(b){ var a=b.dataset.lbx;
+      if(a==='prev'){cur=(cur-1+photos.length)%photos.length;paint();return;}
+      if(a==='next'){cur=(cur+1)%photos.length;paint();return;}
+      ov.remove();return;
+    }
+    if(e.target===ov) ov.remove();   // 배경 클릭 시 닫기
+  });
+  document.body.appendChild(ov);
 }
 function viewStore(){
   const s=stores.find(x=>x.id===storeOpen);
@@ -2365,7 +2399,8 @@ function viewStore(){
         <div class="secure" style="border-radius:11px">🔒 ${L().chat_secure}</div>
         <button class="bigbtn" id="sinq">💬 ${L().btn_inquire}</button>
         ${s.payQr?'':`<button class="gbtn line" id="spay" style="width:100%;margin-top:10px">📷 ${L().pay_info}</button>`}
-      </div>`;
+      </div>
+      ${storePhotoGrid(s)}`;
     return;
   }
   const count=Object.values(cart).reduce((a,b)=>a+b,0);
@@ -2389,6 +2424,7 @@ function viewStore(){
     <div style="padding:2px 14px 12px">
       <div class="msec">${s.product?L().products_label:L().menu_label}</div>${rows}
     </div>
+    ${storePhotoGrid(s)}
     ${count>0?`<div class="cartbar"><span class="cc">${count}</span><span>${L().cart}</span><span class="ct">${L().total} ฿${total.toLocaleString()}</span>${(openNow||isOwner)?`<button class="orderfab" id="doorder">${L().btn_order}</button>`:`<button class="orderfab" style="background:#999" disabled>${s.holiday?'🚫 '+L().holiday_badge:'⛔ '+L().shop_closed}</button>`}</div>`:''}`;
 }
 
@@ -3805,6 +3841,7 @@ document.addEventListener('click',e=>{
   const st=e.target.closest('[data-store]'); if(st){storeOpen=st.dataset.store;cart={};render();page.scrollTo(0,0);return;}
   const add=e.target.closest('[data-add]'); if(add){cart[add.dataset.add]=(cart[add.dataset.add]||0)+1;viewStore();return;}
   const sub=e.target.closest('[data-sub]'); if(sub){const k=sub.dataset.sub;cart[k]=(cart[k]||0)-1;if(cart[k]<=0)delete cart[k];viewStore();return;}
+  {const lb=e.target.closest('[data-lightbox]');if(lb){const s=stores.find(x=>x.id===storeOpen);const ph=s?((s.photos&&s.photos.length)?s.photos:(s.photo?[s.photo]:[])):[];openLightbox(ph,+lb.dataset.lightbox);return;}}
   if(e.target.closest('[data-storeedit]')){const s=stores.find(x=>x.id===storeOpen);if(s)openStoreEdit(s);return;}
   if(e.target.closest('[data-closedown]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;if(!window.confirm(L().closedown_confirm))return;sb.from('stores').delete().eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}storeOpen=null;loadStores();myStores=true;tab='shop';render();page.scrollTo(0,0);toast(L().closedown_done);});return;}
   if(e.target.closest('[data-newstore]')){if(!canAct())return;resetStore();writeType=6;writeOpen=true;render();return;}
