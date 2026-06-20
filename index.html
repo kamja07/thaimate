@@ -450,7 +450,7 @@ function dbToStore(row){
     open:(row.is_open!==false), owner:row.owner_id||null, holiday:row.holiday||null,
     phone:row.phone||'', hours:row.hours||'', intro:row.intro||'', promo:row.promo||'', mapUrl:row.map_url||'', payQr:row.pay_qr||'', promptpay:row.promptpay||'', holder:row.holder||'',
     logo:row.logo_url||'', photo:row.photo_url||'', web:row.website||'',
-    photos:(Array.isArray(row.photos)&&row.photos.length)?row.photos:(row.photo_url?[row.photo_url]:[]), promoPhoto:row.promo_photo||'',
+    photos:(Array.isArray(row.photos)&&row.photos.length)?row.photos:(row.photo_url?[row.photo_url]:[]), promoPhoto:row.promo_photo||'', introPhoto:row.intro_photo||'',
     delivery:!!row.delivery, pickup:!!row.pickup, dinein:!!row.dinein, visit:!!row.visit,
     hoursAll:!!row.hours_all, hoursDays:Array.isArray(row.hours_days)?row.hours_days:[], hoursOpen:row.hours_open||'', hoursClose:row.hours_close||'',
     city:h?h.region:'all', hoodId:h?h.id:null, rating:row.rating||5.0, reviews:row.reviews_count||0,
@@ -1764,7 +1764,7 @@ const WS={
 function ws(k){return (WS[lang]||WS.ko)[k]||(WS.ko[k]||k);}
 function escA(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 function escT(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
-function resetStore(){ wStoreEditId=null; wStore={cat:0,delivery:false,pickup:false,dinein:false,visit:false,menu:[],name:'',phone:'',intro:'',hoursAll:false,hoursDays:[],hoursOpen:'',hoursClose:'',mapUrl:'',promo:'',promptpay:'',holder:'',payQr:'',logo:'',photo:'',web:'',photos:[],promoPhoto:''}; }
+function resetStore(){ wStoreEditId=null; wStore={cat:0,delivery:false,pickup:false,dinein:false,visit:false,menu:[],name:'',phone:'',intro:'',hoursAll:false,hoursDays:[],hoursOpen:'',hoursClose:'',mapUrl:'',promo:'',promptpay:'',holder:'',payQr:'',logo:'',photo:'',web:'',photos:[],promoPhoto:'',introPhoto:''}; }
 function openStoreEdit(store){
   if(!store) return;
   wStore={
@@ -1773,7 +1773,7 @@ function openStoreEdit(store){
     mapUrl:store.mapUrl||'', promo:store.promo||'',
     delivery:!!store.delivery, pickup:!!store.pickup, dinein:!!store.dinein, visit:!!store.visit,
     promptpay:store.promptpay||'', holder:store.holder||'', payQr:store.payQr||'',
-    logo:store.logo||'', photo:store.photo||'', web:store.web||'', photos:(store.photos||[]).slice(), promoPhoto:store.promoPhoto||'',
+    logo:store.logo||'', photo:store.photo||'', web:store.web||'', photos:(store.photos||[]).slice(), promoPhoto:store.promoPhoto||'', introPhoto:store.introPhoto||'',
     menu:(store.menu||[]).map(m=>({name:m.nm||'', price:(m.pr!=null?String(m.pr):''), photo:m.photo||null}))
   };
   wStoreEditId=store.id;
@@ -1821,7 +1821,11 @@ function storeForm(){
    <div class="gfield"><label>${ws('cat')}</label><div class="wtypes" style="margin:2px 0 2px">${cats.map((c,i)=>`<button class="wtype ${s.cat===i?'on':''}" data-scat="${i}">${c}</button>`).join('')}</div></div>
    <div class="gfield"><label>${ws('phone')}</label><input id="wPhone" placeholder="${ws('phone_ph')}" value="${escA(s.phone)}"></div>
    <div class="gfield"><label>${lang==='ko'?'웹사이트 (선택)':lang==='th'?'เว็บไซต์ (ไม่บังคับ)':'Website (optional)'}</label><input id="wWeb" inputmode="url" placeholder="https://..." value="${escA(s.web)}"></div>
-   <div class="gfield"><label>${ws('intro')}</label><textarea class="wta" id="wDesc" placeholder="${ws('intro_ph')}">${escT(s.intro)}</textarea></div>
+   <div class="gfield"><label>${ws('intro')}</label><textarea class="wta" id="wDesc" placeholder="${ws('intro_ph')}">${escT(s.intro)}</textarea>
+     <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+       <label style="display:inline-flex;align-items:center;gap:8px;border:1px dashed var(--line);border-radius:10px;padding:7px 11px;cursor:pointer">${s.introPhoto?`<img src="${escA(s.introPhoto)}" style="width:38px;height:38px;object-fit:cover;border-radius:7px">`:'<span style="font-size:18px">📷</span>'}<span style="font-size:11.5px;color:var(--sub)">${s.introPhoto?(lang==='ko'?'사진 변경':lang==='th'?'เปลี่ยนรูป':'Change'):(lang==='ko'?'소개 사진 첨부 (선택)':lang==='th'?'แนบรูปแนะนำร้าน':'Attach intro photo')}</span><input type="file" accept="image/*" data-introphoto style="display:none"></label>
+       ${s.introPhoto?`<button data-rmintrophoto style="border:none;background:#f0f1f4;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#d33">✕</button>`:''}
+     </div></div>
    <div class="gfield"><label>${ws('map')}</label><input id="wMap" placeholder="${ws('map_ph')}" value="${escA(s.mapUrl)}">${s.mapUrl?`<iframe src="https://www.google.com/maps?q=${encodeURIComponent(s.mapUrl)}&output=embed" style="width:100%;height:140px;border:0;border-radius:8px;margin-top:6px" loading="lazy"></iframe>`:''}</div>
    <div class="gfield"><label>🎉 ${ws('promo')}</label><textarea class="wta" id="wPromo" placeholder="${ws('promo_ph')}" style="min-height:52px">${escT(s.promo)}</textarea>
      <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
@@ -2325,6 +2329,7 @@ function storeInfoSection(s){
   const promoBanner=(s.promo||s.promoPhoto)?`<div style="background:#fff8e1;border:1px solid #FFB300;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:13px;font-weight:700;color:#7a5b00">${s.promo?`🎉 ${linkify(s.promo)}`:''}${s.promoPhoto?`<img src="${escA(s.promoPhoto)}" style="width:100%;border-radius:8px;margin-top:${s.promo?'8px':'0'};display:block">`:''}</div>`:'';
   const lines=[];
   if(s.intro) lines.push(`<div style="font-size:13.5px;color:#444;line-height:1.6;margin:6px 0;white-space:pre-wrap">${linkify(s.intro)}</div>`);
+  if(s.introPhoto) lines.push(`<img src="${escA(s.introPhoto)}" data-introbig style="width:100%;border-radius:10px;margin:6px 0 2px;display:block;cursor:zoom-in">`);
   if(s.hours) lines.push(`<div style="font-size:13px;margin:3px 0;color:#333">🕒 ${s.hours}</div>`);
   if(s.phone) lines.push(`<div style="font-size:13px;margin:3px 0;color:#333">📞 ${s.phone}</div>`);
   if(s.web){ var _wh=/^https?:\/\//i.test(s.web)?s.web:('https://'+s.web); lines.push(`<div style="font-size:13px;margin:3px 0;color:#333">🌐 <a href="${escA(_wh)}" target="_blank" rel="noopener" style="color:#2f6df0;text-decoration:underline;word-break:break-all">${escA(s.web)}</a></div>`); }
@@ -3586,7 +3591,8 @@ document.addEventListener('change', async e=>{
   const isLogo=e.target&&e.target.matches&&e.target.matches('[data-storelogo]');
   const isPhoto=e.target&&e.target.matches&&e.target.matches('[data-storephoto]');
   const isPromo=e.target&&e.target.matches&&e.target.matches('[data-promophoto]');
-  if(!isMenu&&!isQr&&!isLogo&&!isPhoto&&!isPromo) return;
+  const isIntro=e.target&&e.target.matches&&e.target.matches('[data-introphoto]');
+  if(!isMenu&&!isQr&&!isLogo&&!isPhoto&&!isPromo&&!isIntro) return;
   const file=e.target.files&&e.target.files[0]; if(!file) return;
   const mi=isMenu?+e.target.dataset.mphoto:-1;
   if(isMenu&&(!wStore.menu||!wStore.menu[mi])) return;
@@ -3594,13 +3600,13 @@ document.addEventListener('change', async e=>{
   toast(lang==='ko'?'사진 업로드 중…':lang==='th'?'กำลังอัปโหลด…':'Uploading…');
   try{
     const ext=((file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg');
-    const pre=isQr?'qr_':isLogo?'logo_':isPhoto?'photo_':isPromo?'promo_':'m_';
+    const pre=isQr?'qr_':isLogo?'logo_':isPhoto?'photo_':isPromo?'promo_':isIntro?'intro_':'m_';
     const path=uid+'/'+pre+Date.now()+(isMenu?('_'+mi):'')+'.'+ext;
     const up=await sb.storage.from('store-photos').upload(path,file,{upsert:true,contentType:file.type});
     if(up.error){toast(up.error.message);return;}
     const url=sb.storage.from('store-photos').getPublicUrl(path).data.publicUrl;
     snapStore();
-    if(isQr) wStore.payQr=url; else if(isLogo) wStore.logo=url; else if(isPromo) wStore.promoPhoto=url; else if(isPhoto){ wStore.photos=wStore.photos||[]; wStore.photos.push(url); } else wStore.menu[mi].photo=url;
+    if(isQr) wStore.payQr=url; else if(isLogo) wStore.logo=url; else if(isPromo) wStore.promoPhoto=url; else if(isIntro) wStore.introPhoto=url; else if(isPhoto){ wStore.photos=wStore.photos||[]; wStore.photos.push(url); } else wStore.menu[mi].photo=url;
     renderWrite();
   }catch(err){ toast(String(err.message||err)); }
 });
@@ -3649,6 +3655,7 @@ document.addEventListener('click',e=>{
   const rmmBtn=e.target.closest('[data-rmmenu]'); if(rmmBtn){snapStore();wStore.menu.splice(+rmmBtn.dataset.rmmenu,1);renderWrite();return;}
   const rmpBtn=e.target.closest('[data-rmphoto]'); if(rmpBtn){snapStore();(wStore.photos=wStore.photos||[]).splice(+rmpBtn.dataset.rmphoto,1);renderWrite();return;}
   if(e.target.closest('[data-rmpromophoto]')){snapStore();wStore.promoPhoto='';renderWrite();return;}
+  if(e.target.closest('[data-rmintrophoto]')){snapStore();wStore.introPhoto='';renderWrite();return;}
   if(e.target.closest('[data-wclose]')){writeOpen=false;render();return;}
   if(e.target.closest('[data-wsubmit]')){
     const subj=((document.getElementById('wSubject')||{}).value||'').trim();
@@ -3671,7 +3678,7 @@ document.addEventListener('click',e=>{
         delivery:!!wStore.delivery, pickup:!!wStore.pickup, dinein:!!wStore.dinein, visit:!!wStore.visit,
         promptpay:(wStore.promptpay||'').trim()||null, holder:(wStore.holder||'').trim()||null, pay_qr:(wStore.payQr||null),
         logo_url:(wStore.logo||null), website:(wStore.web||'').trim()||null,
-        photos:(wStore.photos||[]), photo_url:((wStore.photos&&wStore.photos[0])||null), promo_photo:(wStore.promoPhoto||null)};
+        photos:(wStore.photos||[]), photo_url:((wStore.photos&&wStore.photos[0])||null), promo_photo:(wStore.promoPhoto||null), intro_photo:(wStore.introPhoto||null)};
       const menuItems=(wStore.menu||[]).filter(m=>(m.name||'').trim()).map(m=>({name:m.name.trim(), price:(parseInt(m.price)||null), photo:m.photo||null}));
       const editId=wStoreEditId;
       const writeMenu=(sid)=>{const doIns=()=>{ if(menuItems.length){ sb.from('menu_items').insert(menuItems.map(m=>({store_id:sid,name:m.name,price:m.price,photo_url:m.photo}))).then(()=>loadStores()); } else { loadStores(); } }; if(editId){ sb.from('menu_items').delete().eq('store_id',sid).then(()=>doIns()); } else { doIns(); }};
@@ -3842,6 +3849,7 @@ document.addEventListener('click',e=>{
   const add=e.target.closest('[data-add]'); if(add){cart[add.dataset.add]=(cart[add.dataset.add]||0)+1;viewStore();return;}
   const sub=e.target.closest('[data-sub]'); if(sub){const k=sub.dataset.sub;cart[k]=(cart[k]||0)-1;if(cart[k]<=0)delete cart[k];viewStore();return;}
   {const lb=e.target.closest('[data-lightbox]');if(lb){const s=stores.find(x=>x.id===storeOpen);const ph=s?((s.photos&&s.photos.length)?s.photos:(s.photo?[s.photo]:[])):[];openLightbox(ph,+lb.dataset.lightbox);return;}}
+  if(e.target.closest('[data-introbig]')){const s=stores.find(x=>x.id===storeOpen);if(s&&s.introPhoto)openLightbox([s.introPhoto],0);return;}
   if(e.target.closest('[data-storeedit]')){const s=stores.find(x=>x.id===storeOpen);if(s)openStoreEdit(s);return;}
   if(e.target.closest('[data-closedown]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;if(!window.confirm(L().closedown_confirm))return;sb.from('stores').delete().eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}storeOpen=null;loadStores();myStores=true;tab='shop';render();page.scrollTo(0,0);toast(L().closedown_done);});return;}
   if(e.target.closest('[data-newstore]')){if(!canAct())return;resetStore();writeType=6;writeOpen=true;render();return;}
