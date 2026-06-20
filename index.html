@@ -2332,9 +2332,9 @@ function storeInfoSection(s){
   const qr=s.payQr?`<div style="margin:10px 0 2px"><div style="font-size:12px;color:var(--sub);margin-bottom:5px">💳 ${ws('pay')}</div><img src="${s.payQr}" style="width:150px;border-radius:10px;border:1px solid var(--line)"></div>`:'';
   return `<div style="padding:8px 14px 2px">${promoBanner}${badges}${lines.join('')}${map}${qr}</div>`;
 }
-// 상세 상단 배너 — 이모지(사진은 맨 아래 그리드로 이동)
+// 상세 상단 배너 — 제거(로고는 헤더 아바타에, 사진은 맨 아래 그리드에)
 function storeBanner(s){
-  return `<div class="storebanner">${s.emo}</div>`;
+  return '';
 }
 // 상세 맨 아래 사진 그리드 — 3열 작은 썸네일, 클릭 시 라이트박스로 크게(안 잘림)
 function storePhotoGrid(s){
