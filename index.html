@@ -433,7 +433,7 @@ function dbToListing(row){
   const h=hoodByDbId(row.hood_id), give=row.kind==='give', buy=row.kind==='buy';
   const st=buy?'match':(row.status==='reserved'?'resv':(row.status==='done'?'done':'sale'));
   return { id:row.id, author_id:row.author_id, kind:row.kind, st, emo:give?'🎁':(buy?'🔎':'🆕'), city:h?h.region:'all', hoodId:h?h.id:null, like:0, chats:0, live:false,
-    t:row.title||'', pr:give?{ko:'무료나눔',en:'Free',th:'แจกฟรี'}:(row.price_text||{ko:'가격문의',en:'Ask',th:'สอบถาม'}), loc:h?tx(h):'', desc:row.body||'', sub:row.subcat||'', photos:(Array.isArray(row.photos)&&row.photos.length)?row.photos:(row.photo_url?[row.photo_url]:[]), ago:relTime(row.created_at) };
+    t:row.title||'', pr:give?{ko:'무료나눔',en:'Free',th:'แจกฟรี'}:(row.price_text||{ko:'가격문의',en:'Ask',th:'สอบถาม'}), prRaw:(row.price_text||''), loc:h?tx(h):'', desc:row.body||'', sub:row.subcat||'', photos:(Array.isArray(row.photos)&&row.photos.length)?row.photos:(row.photo_url?[row.photo_url]:[]), ago:relTime(row.created_at) };
 }
 async function loadListings(){
   try{ const {data,error}=await sb.from('listings').select('*').in('kind',['sell','buy','give']).order('created_at',{ascending:false}).limit(100);
@@ -477,7 +477,7 @@ async function loadPosts(){
 function dbToJob(row){
   const h=hoodByDbId(row.hood_id);
   return { id:row.id, author_id:row.author_id, kind:row.kind, city:h?h.region:'all', emo:(row.kind==='hire'?'💼':'🙋'), chats:0, live:false,
-    t:row.title||'', pr:(row.price_text||'-'), loc:h?tx(h):'', sub:row.subcat||'', meta:(row.meta&&typeof row.meta==='object'?row.meta:null), photos:(Array.isArray(row.photos)&&row.photos.length)?row.photos:(row.photo_url?[row.photo_url]:[]), ago:relTime(row.created_at) };
+    t:row.title||'', pr:(row.price_text||'-'), prRaw:(row.price_text||''), desc:row.body||'', loc:h?tx(h):'', sub:row.subcat||'', meta:(row.meta&&typeof row.meta==='object'?row.meta:null), photos:(Array.isArray(row.photos)&&row.photos.length)?row.photos:(row.photo_url?[row.photo_url]:[]), ago:relTime(row.created_at) };
 }
 async function loadJobs(){
   try{ const {data,error}=await sb.from('listings').select('*').in('kind',['hire','seek']).order('created_at',{ascending:false}).limit(100);
@@ -1853,8 +1853,10 @@ function storeForm(){
   return h;
 }
 var wPhotos=[];   // 장터·구인구직·커뮤니티 글의 사진(여러 장)
+var wListingEditId=null, wEdit=null;   // 장터/구인 글 수정 모드
 function renderWrite(){
   if(!writeOpen){writeEl2.classList.add('hidden');writeEl2.innerHTML='';return;}
+  const we=wEdit||{};
   const _wps=writeEl2.querySelector('.psheet'); const _wsc=_wps?_wps.scrollTop:0;
   writeEl2.classList.remove('hidden');
   const types=[L().seg_sell,L().seg_buy,L().seg_give,L().seg_hire,L().seg_seek,L().comm_info];
@@ -1863,19 +1865,19 @@ function renderWrite(){
   const selSty='width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff';
   let extraFields='';
   if(isMkt){
-    extraFields=`<div class="gfield"><label>${lang==='ko'?'분류':lang==='th'?'หมวด':'Category'}</label><select id="wSubcat" style="${selSty}"><option value="">${lang==='ko'?'분류 선택':lang==='th'?'เลือกหมวด':'Select'}</option>${MKT_SUBCATS.map(s=>`<option value="${s.c}">${tcc(s)}</option>`).join('')}</select></div>`;
+    extraFields=`<div class="gfield"><label>${lang==='ko'?'분류':lang==='th'?'หมวด':'Category'}</label><select id="wSubcat" style="${selSty}"><option value="">${lang==='ko'?'분류 선택':lang==='th'?'เลือกหมวด':'Select'}</option>${MKT_SUBCATS.map(s=>`<option value="${s.c}" ${we.sub===s.c?'selected':''}>${tcc(s)}</option>`).join('')}</select></div>`;
   }else if(isJob){
-    const metaSel=JOB_META_FIELDS.map(f=>`<div style="flex:1 1 46%;min-width:128px"><div style="font-size:10.5px;color:var(--sub);margin-bottom:3px">${tcc(f)}</div><select id="wMeta_${f.key}" style="${selSty};padding:8px"><option value="">-</option>${f.opts.map(o=>`<option value="${o.v}">${tcc(o)}</option>`).join('')}</select></div>`).join('');
-    extraFields=`<div class="gfield"><label>${lang==='ko'?'직종':lang==='th'?'ประเภทงาน':'Job type'}</label><select id="wJobCat" style="${selSty}"><option value="">${lang==='ko'?'직종 선택':lang==='th'?'เลือกประเภท':'Select'}</option>${JOB_CATS.map(s=>`<option value="${s.c}">${tcc(s)}</option>`).join('')}</select></div>
+    const metaSel=JOB_META_FIELDS.map(f=>`<div style="flex:1 1 46%;min-width:128px"><div style="font-size:10.5px;color:var(--sub);margin-bottom:3px">${tcc(f)}</div><select id="wMeta_${f.key}" style="${selSty};padding:8px"><option value="">-</option>${f.opts.map(o=>`<option value="${o.v}" ${(we.meta&&we.meta[f.key]===o.v)?'selected':''}>${tcc(o)}</option>`).join('')}</select></div>`).join('');
+    extraFields=`<div class="gfield"><label>${lang==='ko'?'직종':lang==='th'?'ประเภทงาน':'Job type'}</label><select id="wJobCat" style="${selSty}"><option value="">${lang==='ko'?'직종 선택':lang==='th'?'เลือกประเภท':'Select'}</option>${JOB_CATS.map(s=>`<option value="${s.c}" ${we.sub===s.c?'selected':''}>${tcc(s)}</option>`).join('')}</select></div>
     <div class="gfield"><label>${lang==='ko'?'조건 (단답 선택)':lang==='th'?'เงื่อนไข':'Conditions'}</label><div style="display:flex;flex-wrap:wrap;gap:8px">${metaSel}</div></div>`;
   }
   writeEl2.innerHTML=`<div class="pscrim" data-wclose></div><div class="psheet">
-    <div class="phead" style="position:relative"><b>✏️ ${L().w_title}</b><button class="pclose" data-wclose style="position:absolute;right:0">✕</button></div>
-    ${(()=>{const tabIdx=isMkt?[0,1,2]:(isJob?[3,4]:(writeType===5?[5]:[]));return tabIdx.length>1?`<div class="wtypes">${tabIdx.map(i=>`<button class="wtype ${writeType===i?'on':''}" data-wtype="${i}">${types[i]}</button>`).join('')}</div>`:'';})()}
-    ${isStore?storeForm():`<div class="gfield"><label>${L().w_subject}</label><input id="wSubject" placeholder="${L().w_subject_ph}"></div>
+    <div class="phead" style="position:relative"><b>✏️ ${wListingEditId?(lang==='ko'?'글 수정':lang==='th'?'แก้ไขโพสต์':'Edit post'):L().w_title}</b><button class="pclose" data-wclose style="position:absolute;right:0">✕</button></div>
+    ${(()=>{if(wListingEditId)return'';const tabIdx=isMkt?[0,1,2]:(isJob?[3,4]:(writeType===5?[5]:[]));return tabIdx.length>1?`<div class="wtypes">${tabIdx.map(i=>`<button class="wtype ${writeType===i?'on':''}" data-wtype="${i}">${types[i]}</button>`).join('')}</div>`:'';})()}
+    ${isStore?storeForm():`<div class="gfield"><label>${L().w_subject}</label><input id="wSubject" placeholder="${L().w_subject_ph}" value="${escA(we.t||'')}"></div>
     ${extraFields}
-    ${noPrice?'':`<div class="gfield"><label>${L().w_price}</label><input id="wPrice" placeholder="${L().w_price_ph}"></div>`}
-    <div class="gfield"><label>${L().w_desc}${isJob?` <span style="font-size:10px;color:var(--sub)">(${lang==='ko'?'선택':lang==='th'?'ไม่บังคับ':'optional'})</span>`:''}</label><textarea class="wta" id="wDesc" placeholder="${isJob?(lang==='ko'?'추가 메모 (선택)':lang==='th'?'หมายเหตุ (ไม่บังคับ)':'Extra note (optional)'):L().w_desc_ph}"></textarea></div>`}
+    ${noPrice?'':`<div class="gfield"><label>${L().w_price}</label><input id="wPrice" placeholder="${L().w_price_ph}" value="${escA(we.prRaw||'')}"></div>`}
+    <div class="gfield"><label>${L().w_desc}${isJob?` <span style="font-size:10px;color:var(--sub)">(${lang==='ko'?'선택':lang==='th'?'ไม่บังคับ':'optional'})</span>`:''}</label><textarea class="wta" id="wDesc" placeholder="${isJob?(lang==='ko'?'추가 메모 (선택)':lang==='th'?'หมายเหตุ (ไม่บังคับ)':'Extra note (optional)'):L().w_desc_ph}">${escT(we.desc||'')}</textarea></div>`}
     ${isStore?'':`<div class="gfield"><label>${L().w_photo}</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         ${wPhotos.map((u,i)=>`<div style="position:relative;width:76px;height:76px;flex:none"><img src="${escA(u)}" style="width:100%;height:100%;object-fit:cover;border-radius:10px"><button data-rmwphoto="${i}" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:none;background:#d33;color:#fff;font-size:12px;cursor:pointer;line-height:1">✕</button></div>`).join('')}
@@ -2148,9 +2150,9 @@ function listingCard(it){
       <div class="cmeta">📍 ${tx(it.loc)} · ${tx(it.ago)}${(hood&&it.hoodId===hood.id)?` · <b class="myhood">${L().my_hood}</b>`:''}</div>
       <div class="price" style="${give?'color:var(--green)':''}">${tx(it.pr)}</div>
       <div class="actions">
-        ${it.kind!=='buy'?`<button class="abtn like ${it.liked?'on':''}" data-like="${it.id}">${it.liked?'❤️':'♡'} ${L().btn_like} ${(it.like||0)+(it.liked?1:0)}</button>`:''}
+        ${(it.author_id&&uid&&it.author_id===uid)?`<button class="abtn" data-ledit="${it.id}">✏️ ${lang==='ko'?'수정':lang==='th'?'แก้ไข':'Edit'}</button>`:`${it.kind!=='buy'?`<button class="abtn like ${it.liked?'on':''}" data-like="${it.id}">${it.liked?'❤️':'♡'} ${L().btn_like} ${(it.like||0)+(it.liked?1:0)}</button>`:''}
         <button class="abtn chat" data-cardchat="${it.id}">💬 ${L().btn_chat}</button>
-        ${it.chats?`<span class="live-mini">💬 ${it.chats}</span>`:''}
+        ${it.chats?`<span class="live-mini">💬 ${it.chats}</span>`:''}`}
       </div>
     </div>
   </div>`;
@@ -2171,24 +2173,30 @@ function viewListingDetail(){
   const give=it.kind==='give', buy=it.kind==='buy';
   const stTxt=give?(it.st==='done'?L().status_give_done:L().status_give):{sale:L().status_sale,resv:L().status_resv,done:L().status_done,match:L().status_match}[it.st];
   const stCls=give?(it.st==='done'?'done':'sale'):{sale:'sale',resv:'resv',done:'done',match:'match'}[it.st];
-  const phCls=buy?'want':(give?'give':''), mine=(hood&&it.hoodId===hood.id);
+  const mine=(hood&&it.hoodId===hood.id);
+  const isMine=!!(it.author_id&&uid&&it.author_id===uid);   // 내가 올린 글
+  const canEdit=isMine||isAdmin;
+  const tEdit=lang==='ko'?'정보 수정':lang==='th'?'แก้ไข':'Edit';
   page.innerHTML=`
    <div class="detail-head">
      <button class="back" data-ldback>‹</button>
      <div style="flex:1"><div class="hn">${give?L().seg_give:(buy?L().seg_buy:L().seg_sell)}</div></div>
      <button class="icon-btn" data-report style="font-size:21px">⋮</button>
    </div>
-   <div class="ldphoto ${phCls}" style="overflow:hidden${(it.photos&&it.photos.length)?';background:#eceef1':''}"><span class="badge ${stCls}">${stTxt}</span>${(it.photos&&it.photos.length)?`<img data-listimg src="${escA(it.photos[0])}" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in">${it.photos.length>1?`<span style="position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:20px">📷 ${it.photos.length}</span>`:''}`:it.emo}</div>
+   ${listingPhotoGrid(it)}
    <div class="ldseller"><div class="avatar">😀</div><div><b>${acctId||tx(L().me_name)}</b><div class="lds">🌡️ 36.5°C · 📍 ${tx(it.loc)}${mine?` · <b class="myhood">${L().my_hood}</b>`:''}</div></div></div>
-   <h2 class="ldtitle">${tx(it.t)}</h2>
+   <h2 class="ldtitle">${tx(it.t)} <span class="badge ${stCls}" style="position:static;display:inline-block;vertical-align:middle">${stTxt}</span></h2>
    <div class="ldmeta">${tx(it.ago)}</div>
    <div class="ldprice" style="${give?'color:var(--green)':''}">${tx(it.pr)}</div>
    <p class="lddesc">${tx(it.desc)||(buy?'이 물건 갖고 계신 분 채팅 주세요 🙏':give?'필요하신 분 채팅 주세요. 나눔합니다 💚':'직거래 환영합니다. 채팅 주세요 :)')}</p>
-   <div class="ldbar">
+   ${isMine?'':`<div class="ldbar">
      <button class="ldlike ${it.liked?'on':''}" data-like="${it.id}">${it.liked?'❤️':'🤍'}</button>
      <button class="ldchat" data-lchat="${it.id}">💬 ${L().btn_chat}</button>
-   </div>
-   ${((it.author_id&&uid&&it.author_id===uid)||isAdmin)?`<button class="gbtn line" data-ldel="${it.id}" style="width:100%;margin-top:10px;color:#d33;border-color:#f6c9c4">🗑️ ${lang==='ko'?'이 글 삭제':lang==='th'?'ลบโพสต์นี้':'Delete this post'}</button>`:''}`;
+   </div>`}
+   ${canEdit?`<div style="display:flex;gap:8px;margin-top:10px">
+     <button class="gbtn line" data-ledit="${it.id}" style="flex:1">✏️ ${tEdit}</button>
+     <button class="gbtn line" data-ldel="${it.id}" style="flex:0 0 auto;color:#d33;border-color:#f6c9c4;padding:0 16px">🗑️</button>
+   </div>`:''}`;
 }
 async function delListing(id){
   if(!window.confirm(lang==='ko'?'이 글을 삭제할까요? 되돌릴 수 없습니다.':lang==='th'?'ลบโพสต์นี้? ย้อนกลับไม่ได้':'Delete this post? Cannot be undone.')) return;
@@ -2246,7 +2254,7 @@ function viewJobs(){
          <div class="cmeta">📍 ${tx(j.loc)} · ${tx(j.ago)}</div>
          ${j.meta?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px">${['employ','pay','shift','thai','eng','kor','visa','housing'].map(k=>metaChip(j,k)).join('')}</div>`:''}
          <div class="price" style="color:var(--green)">${tx(j.pr)}</div>
-         <div class="actions"><button class="abtn chat" data-jobchat="${j.id||''}">💬 ${L().btn_apply}</button>${j.chats?`<span class="live-mini">💬 ${j.chats}</span>`:''}</div>
+         <div class="actions">${(j.author_id&&uid&&j.author_id===uid)?`<button class="abtn" data-ledit="${j.id||''}">✏️ ${lang==='ko'?'수정':lang==='th'?'แก้ไข':'Edit'}</button>`:`<button class="abtn chat" data-jobchat="${j.id||''}">💬 ${L().btn_apply}</button>${j.chats?`<span class="live-mini">💬 ${j.chats}</span>`:''}`}</div>
        </div>
      </div>`).join('')||`<div class="empty">—</div>`}</div>`;
 }
@@ -2358,6 +2366,13 @@ function storePhotoGrid(s){
       ${ph.map((u,i)=>`<img src="${escA(u)}" data-lightbox="${i}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in">`).join('')}
     </div></div>`;
 }
+// 장터/구인 상세 사진 — 폰 너비 격자(1장이면 전체폭), 클릭 시 해당 사진만 크게
+function listingPhotoGrid(it){
+  var ph=(it.photos&&it.photos.length)?it.photos:[];
+  if(!ph.length) return '';
+  if(ph.length===1) return `<img data-lphoto="0" src="${escA(ph[0])}" style="width:100%;border-radius:12px;display:block;margin:2px 0 8px;cursor:zoom-in">`;
+  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:2px 0 8px">${ph.map((u,i)=>`<img data-lphoto="${i}" src="${escA(u)}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;cursor:zoom-in">`).join('')}</div>`;
+}
 // 사진 라이트박스(전체화면, 좌우 넘김, 안 잘림)
 function openLightbox(photos,idx){
   if(!photos||!photos.length) return;
@@ -2378,9 +2393,8 @@ function openLightbox(photos,idx){
     if(b){ var a=b.dataset.lbx;
       if(a==='prev'){cur=(cur-1+photos.length)%photos.length;paint();return;}
       if(a==='next'){cur=(cur+1)%photos.length;paint();return;}
-      ov.remove();return;
     }
-    if(e.target===ov) ov.remove();   // 배경 클릭 시 닫기
+    ov.remove();   // 화살표(‹ ›) 외 어디를 눌러도(사진·배경·✕) 닫힘
   });
   document.body.appendChild(ov);
 }
@@ -3665,7 +3679,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-rmpromophoto]')){snapStore();wStore.promoPhoto='';renderWrite();return;}
   if(e.target.closest('[data-rmintrophoto]')){snapStore();wStore.introPhoto='';renderWrite();return;}
   {const rw=e.target.closest('[data-rmwphoto]'); if(rw){wPhotos.splice(+rw.dataset.rmwphoto,1);renderWrite();return;}}
-  if(e.target.closest('[data-wclose]')){writeOpen=false;render();return;}
+  if(e.target.closest('[data-wclose]')){writeOpen=false;wListingEditId=null;wEdit=null;render();return;}
   if(e.target.closest('[data-wsubmit]')){
     const subj=((document.getElementById('wSubject')||{}).value||'').trim();
     const price=((document.getElementById('wPrice')||{}).value||'').trim();
@@ -3673,7 +3687,9 @@ document.addEventListener('click',e=>{
     const rc=(city!=='all'?city:'bkk'), hid=hood?hood.id:null, locStr=hood?tx(hood):(L()['city_'+rc]||''), ago={ko:'방금 전',en:'just now',th:'เมื่อกี้'};
     if(writeType<=2){const kind=['sell','buy','give'][writeType];
       const subcat=((document.getElementById('wSubcat')||{}).value||'')||null;
-      sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:(kind==='give'?'무료':(price||null)), body:desc||null, subcat, hood_id:hoodDbId(hid), status:'selling', photos:wPhotos.slice(), photo_url:(wPhotos[0]||null)}).then(({error})=>{ if(error){toast(error.message);} else {loadListings();} });
+      const _lrow={author_id:uid, kind, title:subj||L().w_subject, price_text:(kind==='give'?'무료':(price||null)), body:desc||null, subcat, hood_id:hoodDbId(hid), photos:wPhotos.slice(), photo_url:(wPhotos[0]||null)};
+      if(wListingEditId){ const _u=Object.assign({},_lrow); delete _u.author_id; sb.from('listings').update(_u).eq('id',wListingEditId).select('id').then(({data,error})=>{ if(error){toast(error.message);return;} if(!data||!data.length){toast(lang==='ko'?'수정 권한이 없어요':lang==='th'?'ไม่มีสิทธิ์แก้ไข':'No permission');return;} loadListings(); }); }
+      else { sb.from('listings').insert(Object.assign({status:'selling'},_lrow)).then(({error})=>{ if(error){toast(error.message);} else {loadListings();} }); }
       tab='market'; mseg=kind; listingOpen=null;
     }else if(writeType===6){
       snapStore();
@@ -3698,13 +3714,16 @@ document.addEventListener('click',e=>{
     }else if(writeType===3||writeType===4){const kind=writeType===3?'hire':'seek';
       const subcat=((document.getElementById('wJobCat')||{}).value||'')||null;
       const meta={}; JOB_META_FIELDS.forEach(f=>{ const v=(document.getElementById('wMeta_'+f.key)||{}).value; if(v)meta[f.key]=v; });
-      sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:price||null, body:desc||null, subcat, meta:Object.keys(meta).length?meta:null, hood_id:hoodDbId(hid), status:'selling', photos:wPhotos.slice(), photo_url:(wPhotos[0]||null)}).then(({error})=>{ if(error){toast(error.message);} else {loadJobs();} });
+      const _jrow={author_id:uid, kind, title:subj||L().w_subject, price_text:price||null, body:desc||null, subcat, meta:Object.keys(meta).length?meta:null, hood_id:hoodDbId(hid), photos:wPhotos.slice(), photo_url:(wPhotos[0]||null)};
+      if(wListingEditId){ const _u=Object.assign({},_jrow); delete _u.author_id; sb.from('listings').update(_u).eq('id',wListingEditId).select('id').then(({data,error})=>{ if(error){toast(error.message);return;} if(!data||!data.length){toast(lang==='ko'?'수정 권한이 없어요':lang==='th'?'ไม่มีสิทธิ์แก้ไข':'No permission');return;} loadJobs(); }); }
+      else { sb.from('listings').insert(Object.assign({status:'selling'},_jrow)).then(({error})=>{ if(error){toast(error.message);} else {loadJobs();} }); }
       tab='jobs'; jseg=kind;
     }else if(writeType===5){
       sb.from('posts').insert({author_id:uid, category:'0', is_official:false, title:subj||L().w_subject, body:desc||null, hood_id:hoodDbId(hid)}).then(({error})=>{ if(error){toast(error.message);} else {loadPosts();} });
       tab='community'; commSeg='info'; golfOpen=false;
     }
-    writeOpen=false; render(); page.scrollTo(0,0); toast(L().w_posted); return;
+    const _wasEdit=wListingEditId; wListingEditId=null; wEdit=null;
+    writeOpen=false; render(); page.scrollTo(0,0); toast(_wasEdit?(lang==='ko'?'수정되었습니다':lang==='th'?'แก้ไขแล้ว':'Updated'):L().w_posted); return;
   }
   /* 채팅 거래확정 · 안전거래 */
   if(e.target.closest('[data-dadvance]')){const c=chats[chatOpen];if(!c)return;const nd=(c.dst==='reserved')?'done':'reserved';c.dst=nd;render();if(c.listingId)persistListingStatus(c.listingId,nd);return;}
@@ -3859,12 +3878,12 @@ document.addEventListener('click',e=>{
   const sub=e.target.closest('[data-sub]'); if(sub){const k=sub.dataset.sub;cart[k]=(cart[k]||0)-1;if(cart[k]<=0)delete cart[k];viewStore();return;}
   {const lb=e.target.closest('[data-lightbox]');if(lb){const s=stores.find(x=>x.id===storeOpen);const ph=s?((s.photos&&s.photos.length)?s.photos:(s.photo?[s.photo]:[])):[];openLightbox(ph,+lb.dataset.lightbox);return;}}
   if(e.target.closest('[data-introbig]')){const s=stores.find(x=>x.id===storeOpen);if(s&&s.introPhoto)openLightbox([s.introPhoto],0);return;}
-  if(e.target.closest('[data-listimg]')){const it=listings.find(x=>x.id===listingOpen);if(it&&it.photos&&it.photos.length)openLightbox(it.photos,0);return;}
+  {const lp=e.target.closest('[data-lphoto]');if(lp){const it=listings.find(x=>x.id===listingOpen);if(it&&it.photos&&it.photos.length)openLightbox(it.photos,+lp.dataset.lphoto||0);return;}}
   {const ji=e.target.closest('[data-jobimg]');if(ji){const j=jobs.find(x=>x.id===ji.dataset.jobimg);if(j&&j.photos&&j.photos.length)openLightbox(j.photos,0);return;}}
   if(e.target.closest('[data-storeedit]')){const s=stores.find(x=>x.id===storeOpen);if(s)openStoreEdit(s);return;}
   if(e.target.closest('[data-closedown]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;if(!window.confirm(L().closedown_confirm))return;sb.from('stores').delete().eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}storeOpen=null;loadStores();myStores=true;tab='shop';render();page.scrollTo(0,0);toast(L().closedown_done);});return;}
   if(e.target.closest('[data-newstore]')){if(!canAct())return;resetStore();writeType=6;writeOpen=true;render();return;}
-  if(e.target.closest('[data-newpost]')){if(!canAct())return;wPhotos=[];writeType=(tab==='jobs'?(jseg==='seek'?4:3):(mseg==='buy'?1:mseg==='give'?2:0));writeOpen=true;render();return;}
+  if(e.target.closest('[data-newpost]')){if(!canAct())return;wPhotos=[];wListingEditId=null;wEdit=null;writeType=(tab==='jobs'?(jseg==='seek'?4:3):(mseg==='buy'?1:mseg==='give'?2:0));writeOpen=true;render();return;}
   if(e.target.closest('[data-myexit]')){myStores=false;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-storetoggle]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;const nv=!s.open;sb.from('stores').update({is_open:nv}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.open=nv;viewStore();toast(nv?L().shop_open:L().shop_closed);});return;}
   if(e.target.closest('[data-holiday]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;if(s.holiday){sb.from('stores').update({holiday:null}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.holiday=null;viewStore();toast(L().holiday_clear);});}else{const note=(window.prompt(L().holiday_prompt,L().holiday_default)||'').trim();if(!note)return;sb.from('stores').update({holiday:note}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.holiday=note;viewStore();toast('🚫 '+note);});}return;}
@@ -3884,6 +3903,7 @@ document.addEventListener('click',e=>{
   const lk=e.target.closest('[data-like]'); if(lk){const it=listings.find(x=>x.id===lk.dataset.like);if(it)it.liked=!it.liked;render();return;}
   if(e.target.closest('[data-ldback]')){listingOpen=null;render();page.scrollTo(0,0);return;}
   const ldl=e.target.closest('[data-ldel]'); if(ldl){delListing(ldl.dataset.ldel);return;}
+  {const le=e.target.closest('[data-ledit]'); if(le){const id=le.dataset.ledit;const it=listings.find(x=>x.id===id)||jobs.find(x=>x.id===id);if(!it)return;wEdit=it;wListingEditId=id;wPhotos=(it.photos||[]).slice();writeType=(it.kind==='buy'?1:it.kind==='give'?2:it.kind==='hire'?3:it.kind==='seek'?4:0);writeOpen=true;render();return;}}
   const pop=e.target.closest('[data-postopen]'); if(pop){postOpen=pop.dataset.postopen;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-postback]')){postOpen=null;render();page.scrollTo(0,0);return;}
   const ppin=e.target.closest('[data-postpin]'); if(ppin){togglePostPin(ppin.dataset.postpin);return;}
@@ -3896,7 +3916,7 @@ document.addEventListener('click',e=>{
   const jc=e.target.closest('[data-jobchat]'); if(jc){if(!canAct())return;openOrCreateChat(jobs.find(x=>x.id===jc.dataset.jobchat));return;}
   if(e.target.closest('#csend')){const i=document.getElementById('cin'); if(i&&i.value.trim()){sendMessage(i.value.trim());i.value='';} return;}
 });
-fab.addEventListener('click',()=>{if(!canAct())return;wPhotos=[];writeType=(tab==='shop'?6:(tab==='jobs'?3:(tab==='community'?5:0)));if(writeType===6)resetStore();writeOpen=true;render();});
+fab.addEventListener('click',()=>{if(!canAct())return;wPhotos=[];wListingEditId=null;wEdit=null;writeType=(tab==='shop'?6:(tab==='jobs'?3:(tab==='community'?5:0)));if(writeType===6)resetStore();writeOpen=true;render();});
 document.addEventListener('input',e=>{if(e.target.id==='searchInput'){searchQ=e.target.value;renderFsView();}});
 document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendMessage(v);e.target.value='';}}
   if(e.target.id==='clubcin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendClubMsg(clubOpen,v);e.target.value='';}}});
