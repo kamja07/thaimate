@@ -1709,7 +1709,7 @@ const MKT_SUBCATS=[
   {c:'sports',ko:'스포츠/레저',en:'Sports/Leisure',th:'กีฬา/นันทนาการ'},
   {c:'hobby',ko:'도서/취미',en:'Books/Hobby',th:'หนังสือ/งานอดิเรก'},
   {c:'vehicle',ko:'차량/오토바이',en:'Car/Motorbike',th:'รถ/มอเตอร์ไซค์'},
-  {c:'realestate',ko:'부동산(매매·임대)',en:'Real estate',th:'อสังหาฯ(ขาย/เช่า)'},
+  {c:'realestate',ko:'부동산(매매·임대·임차)',en:'Real estate (sale/lease/rent)',th:'อสังหาฯ(ขาย/ให้เช่า/เช่า)'},
   {c:'ticket',ko:'티켓/쿠폰',en:'Tickets/Coupons',th:'ตั๋ว/คูปอง'},
   {c:'pet',ko:'반려동물',en:'Pets',th:'สัตว์เลี้ยง'},
   {c:'etc',ko:'기타',en:'Other',th:'อื่นๆ'}
@@ -2224,6 +2224,7 @@ function viewMarket(){
    </div>
    <button class="gbtn primary" data-newpost style="width:100%;margin:2px 0 10px">📝 ${L().nav_market} ${lang==='ko'?'글쓰기':lang==='th'?'โพสต์':'Post'}</button>
    <div style="margin:0 0 10px">${subFilter}</div>
+   <div style="background:#eef5ff;border:1px solid #cfe0f7;border-radius:9px;padding:8px 11px;font-size:12px;color:#33557a;margin:0 0 10px;line-height:1.5">${lang==='ko'?"💡 중고 물건뿐 아니라 <b>부동산 임대·임차(방·콘도·상가)</b> 매물도 올릴 수 있어요. 글쓰기 → 분류에서 <b>‘부동산’</b> 선택!":lang==='th'?"💡 ไม่ใช่แค่ของมือสอง — โพสต์ <b>เช่า/ให้เช่าอสังหาฯ (ห้อง/คอนโด/ร้าน)</b> ได้ เลือกหมวด <b>‘อสังหาฯ’</b> ตอนโพสต์":"💡 Not just second-hand — you can also post <b>real-estate rentals/leases (rooms, condos, shops)</b>. When posting, pick <b>‘Real estate’</b> as the category!"}</div>
    ${rangeChipHtml()}
    ${mseg==='sell'?matchBannerHtml():''}
    ${mseg==='sell'&&liveN?`<div class="livebar"><span class="dot"></span>${liveN}${L().live}</div>`:''}
