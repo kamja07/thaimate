@@ -433,7 +433,7 @@ function dbToListing(row){
   const h=hoodByDbId(row.hood_id), give=row.kind==='give', buy=row.kind==='buy';
   const st=buy?'match':(row.status==='reserved'?'resv':(row.status==='done'?'done':'sale'));
   return { id:row.id, author_id:row.author_id, kind:row.kind, st, emo:give?'🎁':(buy?'🔎':'🆕'), city:h?h.region:'all', hoodId:h?h.id:null, like:0, chats:0, live:false,
-    t:row.title||'', pr:give?{ko:'무료나눔',en:'Free',th:'แจกฟรี'}:(row.price_text||{ko:'가격문의',en:'Ask',th:'สอบถาม'}), loc:h?tx(h):'', desc:row.body||'', sub:row.subcat||'', ago:relTime(row.created_at) };
+    t:row.title||'', pr:give?{ko:'무료나눔',en:'Free',th:'แจกฟรี'}:(row.price_text||{ko:'가격문의',en:'Ask',th:'สอบถาม'}), loc:h?tx(h):'', desc:row.body||'', sub:row.subcat||'', photos:(Array.isArray(row.photos)&&row.photos.length)?row.photos:(row.photo_url?[row.photo_url]:[]), ago:relTime(row.created_at) };
 }
 async function loadListings(){
   try{ const {data,error}=await sb.from('listings').select('*').in('kind',['sell','buy','give']).order('created_at',{ascending:false}).limit(100);
@@ -477,7 +477,7 @@ async function loadPosts(){
 function dbToJob(row){
   const h=hoodByDbId(row.hood_id);
   return { id:row.id, author_id:row.author_id, kind:row.kind, city:h?h.region:'all', emo:(row.kind==='hire'?'💼':'🙋'), chats:0, live:false,
-    t:row.title||'', pr:(row.price_text||'-'), loc:h?tx(h):'', sub:row.subcat||'', meta:(row.meta&&typeof row.meta==='object'?row.meta:null), ago:relTime(row.created_at) };
+    t:row.title||'', pr:(row.price_text||'-'), loc:h?tx(h):'', sub:row.subcat||'', meta:(row.meta&&typeof row.meta==='object'?row.meta:null), photos:(Array.isArray(row.photos)&&row.photos.length)?row.photos:(row.photo_url?[row.photo_url]:[]), ago:relTime(row.created_at) };
 }
 async function loadJobs(){
   try{ const {data,error}=await sb.from('listings').select('*').in('kind',['hire','seek']).order('created_at',{ascending:false}).limit(100);
@@ -1852,6 +1852,7 @@ function storeForm(){
      <div style="font-size:11px;color:var(--sub);margin-top:5px">${lang==='ko'?'※ 상세에서 사진은 잘리지 않고 전체가 보여요':lang==='th'?'※ แสดงทั้งรูป ไม่ถูกตัด':'※ Shown uncropped in the store page'}</div></div>`;
   return h;
 }
+var wPhotos=[];   // 장터·구인구직·커뮤니티 글의 사진(여러 장)
 function renderWrite(){
   if(!writeOpen){writeEl2.classList.add('hidden');writeEl2.innerHTML='';return;}
   const _wps=writeEl2.querySelector('.psheet'); const _wsc=_wps?_wps.scrollTop:0;
@@ -1875,7 +1876,12 @@ function renderWrite(){
     ${extraFields}
     ${noPrice?'':`<div class="gfield"><label>${L().w_price}</label><input id="wPrice" placeholder="${L().w_price_ph}"></div>`}
     <div class="gfield"><label>${L().w_desc}${isJob?` <span style="font-size:10px;color:var(--sub)">(${lang==='ko'?'선택':lang==='th'?'ไม่บังคับ':'optional'})</span>`:''}</label><textarea class="wta" id="wDesc" placeholder="${isJob?(lang==='ko'?'추가 메모 (선택)':lang==='th'?'หมายเหตุ (ไม่บังคับ)':'Extra note (optional)'):L().w_desc_ph}"></textarea></div>`}
-    <div class="wrow">${isStore?'':`<button class="wphoto">📷 ${L().w_photo}</button>`}<div class="wloc">📍 ${locShort()}</div></div>
+    ${isStore?'':`<div class="gfield"><label>${L().w_photo}</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${wPhotos.map((u,i)=>`<div style="position:relative;width:76px;height:76px;flex:none"><img src="${escA(u)}" style="width:100%;height:100%;object-fit:cover;border-radius:10px"><button data-rmwphoto="${i}" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:none;background:#d33;color:#fff;font-size:12px;cursor:pointer;line-height:1">✕</button></div>`).join('')}
+        <label class="wphoto" style="width:76px;height:76px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;gap:2px">📷<span style="font-size:10px">${lang==='ko'?'추가':lang==='th'?'เพิ่ม':'Add'}</span><input type="file" accept="image/*" data-wphoto style="display:none"></label>
+      </div></div>`}
+    <div class="wrow"><div class="wloc">📍 ${locShort()}</div></div>
     <button class="gbtn primary" data-wsubmit style="width:100%;margin-top:8px">${L().w_submit}</button>
   </div>`;
   const _wns=writeEl2.querySelector('.psheet'); if(_wns&&_wsc) _wns.scrollTop=_wsc;
@@ -2135,7 +2141,7 @@ function listingCard(it){
   const stCls=give?(it.st==='done'?'done':'sale'):{sale:'sale',resv:'resv',done:'done',match:'match'}[it.st];
   const thumbCls=it.kind==='buy'?'want':(give?'give':'');
   return `<div class="card" data-listing="${it.id}">
-    <div class="thumb ${thumbCls}"><span class="badge ${stCls}">${stTxt}</span>${it.emo}</div>
+    <div class="thumb ${thumbCls}"><span class="badge ${stCls}">${stTxt}</span>${(it.photos&&it.photos[0])?`<img src="${escA(it.photos[0])}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:it.emo}</div>
     <div class="cbody">
       <div class="ctitle">${tx(it.t)}</div>
       ${it.sub?`<div style="margin:2px 0 1px"><span style="font-size:10.5px;font-weight:800;color:#c2410c;background:#fff1e8;border-radius:7px;padding:2px 8px">${mktSubLabel(it.sub)}</span></div>`:''}
@@ -2172,7 +2178,7 @@ function viewListingDetail(){
      <div style="flex:1"><div class="hn">${give?L().seg_give:(buy?L().seg_buy:L().seg_sell)}</div></div>
      <button class="icon-btn" data-report style="font-size:21px">⋮</button>
    </div>
-   <div class="ldphoto ${phCls}"><span class="badge ${stCls}">${stTxt}</span>${it.emo}</div>
+   <div class="ldphoto ${phCls}" style="overflow:hidden${(it.photos&&it.photos.length)?';background:#eceef1':''}"><span class="badge ${stCls}">${stTxt}</span>${(it.photos&&it.photos.length)?`<img data-listimg src="${escA(it.photos[0])}" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in">${it.photos.length>1?`<span style="position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:20px">📷 ${it.photos.length}</span>`:''}`:it.emo}</div>
    <div class="ldseller"><div class="avatar">😀</div><div><b>${acctId||tx(L().me_name)}</b><div class="lds">🌡️ 36.5°C · 📍 ${tx(it.loc)}${mine?` · <b class="myhood">${L().my_hood}</b>`:''}</div></div></div>
    <h2 class="ldtitle">${tx(it.t)}</h2>
    <div class="ldmeta">${tx(it.ago)}</div>
@@ -2233,7 +2239,7 @@ function viewJobs(){
    <div style="margin:0 0 10px">${catFilter}</div>
    <div class="list">${data.map(j=>`
      <div class="card">
-       <div class="thumb want"><span class="badge match">${j.kind==='hire'?L().seg_hire:L().seg_seek}</span>${j.emo}</div>
+       <div class="thumb want"><span class="badge match">${j.kind==='hire'?L().seg_hire:L().seg_seek}</span>${(j.photos&&j.photos[0])?`<img data-jobimg="${j.id||''}" src="${escA(j.photos[0])}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;cursor:zoom-in">`:j.emo}</div>
        <div class="cbody">
          <div class="ctitle">${tx(j.t)}</div>
          ${j.sub?`<div style="margin:2px 0 1px"><span style="font-size:11px;font-weight:800;color:#0b7a3b;background:#e7f6ee;border-radius:7px;padding:2px 8px">${jobCatLabel(j.sub)}</span></div>`:''}
@@ -3592,7 +3598,8 @@ document.addEventListener('change', async e=>{
   const isPhoto=e.target&&e.target.matches&&e.target.matches('[data-storephoto]');
   const isPromo=e.target&&e.target.matches&&e.target.matches('[data-promophoto]');
   const isIntro=e.target&&e.target.matches&&e.target.matches('[data-introphoto]');
-  if(!isMenu&&!isQr&&!isLogo&&!isPhoto&&!isPromo&&!isIntro) return;
+  const isWpost=e.target&&e.target.matches&&e.target.matches('[data-wphoto]');
+  if(!isMenu&&!isQr&&!isLogo&&!isPhoto&&!isPromo&&!isIntro&&!isWpost) return;
   const file=e.target.files&&e.target.files[0]; if(!file) return;
   const mi=isMenu?+e.target.dataset.mphoto:-1;
   if(isMenu&&(!wStore.menu||!wStore.menu[mi])) return;
@@ -3600,11 +3607,12 @@ document.addEventListener('change', async e=>{
   toast(lang==='ko'?'사진 업로드 중…':lang==='th'?'กำลังอัปโหลด…':'Uploading…');
   try{
     const ext=((file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg');
-    const pre=isQr?'qr_':isLogo?'logo_':isPhoto?'photo_':isPromo?'promo_':isIntro?'intro_':'m_';
+    const pre=isQr?'qr_':isLogo?'logo_':isPhoto?'photo_':isPromo?'promo_':isIntro?'intro_':isWpost?'post_':'m_';
     const path=uid+'/'+pre+Date.now()+(isMenu?('_'+mi):'')+'.'+ext;
     const up=await sb.storage.from('store-photos').upload(path,file,{upsert:true,contentType:file.type});
     if(up.error){toast(up.error.message);return;}
     const url=sb.storage.from('store-photos').getPublicUrl(path).data.publicUrl;
+    if(isWpost){ wPhotos.push(url); renderWrite(); return; }
     snapStore();
     if(isQr) wStore.payQr=url; else if(isLogo) wStore.logo=url; else if(isPromo) wStore.promoPhoto=url; else if(isIntro) wStore.introPhoto=url; else if(isPhoto){ wStore.photos=wStore.photos||[]; wStore.photos.push(url); } else wStore.menu[mi].photo=url;
     renderWrite();
@@ -3656,6 +3664,7 @@ document.addEventListener('click',e=>{
   const rmpBtn=e.target.closest('[data-rmphoto]'); if(rmpBtn){snapStore();(wStore.photos=wStore.photos||[]).splice(+rmpBtn.dataset.rmphoto,1);renderWrite();return;}
   if(e.target.closest('[data-rmpromophoto]')){snapStore();wStore.promoPhoto='';renderWrite();return;}
   if(e.target.closest('[data-rmintrophoto]')){snapStore();wStore.introPhoto='';renderWrite();return;}
+  {const rw=e.target.closest('[data-rmwphoto]'); if(rw){wPhotos.splice(+rw.dataset.rmwphoto,1);renderWrite();return;}}
   if(e.target.closest('[data-wclose]')){writeOpen=false;render();return;}
   if(e.target.closest('[data-wsubmit]')){
     const subj=((document.getElementById('wSubject')||{}).value||'').trim();
@@ -3664,7 +3673,7 @@ document.addEventListener('click',e=>{
     const rc=(city!=='all'?city:'bkk'), hid=hood?hood.id:null, locStr=hood?tx(hood):(L()['city_'+rc]||''), ago={ko:'방금 전',en:'just now',th:'เมื่อกี้'};
     if(writeType<=2){const kind=['sell','buy','give'][writeType];
       const subcat=((document.getElementById('wSubcat')||{}).value||'')||null;
-      sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:(kind==='give'?'무료':(price||null)), body:desc||null, subcat, hood_id:hoodDbId(hid), status:'selling'}).then(({error})=>{ if(error){toast(error.message);} else {loadListings();} });
+      sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:(kind==='give'?'무료':(price||null)), body:desc||null, subcat, hood_id:hoodDbId(hid), status:'selling', photos:wPhotos.slice(), photo_url:(wPhotos[0]||null)}).then(({error})=>{ if(error){toast(error.message);} else {loadListings();} });
       tab='market'; mseg=kind; listingOpen=null;
     }else if(writeType===6){
       snapStore();
@@ -3689,7 +3698,7 @@ document.addEventListener('click',e=>{
     }else if(writeType===3||writeType===4){const kind=writeType===3?'hire':'seek';
       const subcat=((document.getElementById('wJobCat')||{}).value||'')||null;
       const meta={}; JOB_META_FIELDS.forEach(f=>{ const v=(document.getElementById('wMeta_'+f.key)||{}).value; if(v)meta[f.key]=v; });
-      sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:price||null, body:desc||null, subcat, meta:Object.keys(meta).length?meta:null, hood_id:hoodDbId(hid), status:'selling'}).then(({error})=>{ if(error){toast(error.message);} else {loadJobs();} });
+      sb.from('listings').insert({author_id:uid, kind, title:subj||L().w_subject, price_text:price||null, body:desc||null, subcat, meta:Object.keys(meta).length?meta:null, hood_id:hoodDbId(hid), status:'selling', photos:wPhotos.slice(), photo_url:(wPhotos[0]||null)}).then(({error})=>{ if(error){toast(error.message);} else {loadJobs();} });
       tab='jobs'; jseg=kind;
     }else if(writeType===5){
       sb.from('posts').insert({author_id:uid, category:'0', is_official:false, title:subj||L().w_subject, body:desc||null, hood_id:hoodDbId(hid)}).then(({error})=>{ if(error){toast(error.message);} else {loadPosts();} });
@@ -3850,10 +3859,12 @@ document.addEventListener('click',e=>{
   const sub=e.target.closest('[data-sub]'); if(sub){const k=sub.dataset.sub;cart[k]=(cart[k]||0)-1;if(cart[k]<=0)delete cart[k];viewStore();return;}
   {const lb=e.target.closest('[data-lightbox]');if(lb){const s=stores.find(x=>x.id===storeOpen);const ph=s?((s.photos&&s.photos.length)?s.photos:(s.photo?[s.photo]:[])):[];openLightbox(ph,+lb.dataset.lightbox);return;}}
   if(e.target.closest('[data-introbig]')){const s=stores.find(x=>x.id===storeOpen);if(s&&s.introPhoto)openLightbox([s.introPhoto],0);return;}
+  if(e.target.closest('[data-listimg]')){const it=listings.find(x=>x.id===listingOpen);if(it&&it.photos&&it.photos.length)openLightbox(it.photos,0);return;}
+  {const ji=e.target.closest('[data-jobimg]');if(ji){const j=jobs.find(x=>x.id===ji.dataset.jobimg);if(j&&j.photos&&j.photos.length)openLightbox(j.photos,0);return;}}
   if(e.target.closest('[data-storeedit]')){const s=stores.find(x=>x.id===storeOpen);if(s)openStoreEdit(s);return;}
   if(e.target.closest('[data-closedown]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;if(!window.confirm(L().closedown_confirm))return;sb.from('stores').delete().eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}storeOpen=null;loadStores();myStores=true;tab='shop';render();page.scrollTo(0,0);toast(L().closedown_done);});return;}
   if(e.target.closest('[data-newstore]')){if(!canAct())return;resetStore();writeType=6;writeOpen=true;render();return;}
-  if(e.target.closest('[data-newpost]')){if(!canAct())return;writeType=(tab==='jobs'?(jseg==='seek'?4:3):(mseg==='buy'?1:mseg==='give'?2:0));writeOpen=true;render();return;}
+  if(e.target.closest('[data-newpost]')){if(!canAct())return;wPhotos=[];writeType=(tab==='jobs'?(jseg==='seek'?4:3):(mseg==='buy'?1:mseg==='give'?2:0));writeOpen=true;render();return;}
   if(e.target.closest('[data-myexit]')){myStores=false;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-storetoggle]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;const nv=!s.open;sb.from('stores').update({is_open:nv}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.open=nv;viewStore();toast(nv?L().shop_open:L().shop_closed);});return;}
   if(e.target.closest('[data-holiday]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;if(s.holiday){sb.from('stores').update({holiday:null}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.holiday=null;viewStore();toast(L().holiday_clear);});}else{const note=(window.prompt(L().holiday_prompt,L().holiday_default)||'').trim();if(!note)return;sb.from('stores').update({holiday:note}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.holiday=note;viewStore();toast('🚫 '+note);});}return;}
@@ -3885,7 +3896,7 @@ document.addEventListener('click',e=>{
   const jc=e.target.closest('[data-jobchat]'); if(jc){if(!canAct())return;openOrCreateChat(jobs.find(x=>x.id===jc.dataset.jobchat));return;}
   if(e.target.closest('#csend')){const i=document.getElementById('cin'); if(i&&i.value.trim()){sendMessage(i.value.trim());i.value='';} return;}
 });
-fab.addEventListener('click',()=>{if(!canAct())return;writeType=(tab==='shop'?6:(tab==='jobs'?3:(tab==='community'?5:0)));if(writeType===6)resetStore();writeOpen=true;render();});
+fab.addEventListener('click',()=>{if(!canAct())return;wPhotos=[];writeType=(tab==='shop'?6:(tab==='jobs'?3:(tab==='community'?5:0)));if(writeType===6)resetStore();writeOpen=true;render();});
 document.addEventListener('input',e=>{if(e.target.id==='searchInput'){searchQ=e.target.value;renderFsView();}});
 document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendMessage(v);e.target.value='';}}
   if(e.target.id==='clubcin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendClubMsg(clubOpen,v);e.target.value='';}}});
