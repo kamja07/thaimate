@@ -1644,7 +1644,7 @@ listings.forEach((x,i)=>x.id=x.id||('L'+i));
 info.forEach((x,i)=>x.id=x.id||('I'+i));
 
 /* ===================== state ===================== */
-let lang="ko", screen="gate", tab="home", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=0, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gmFrameOpen=false, gmFrameSrc="", gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null, postOpen=null,
+let lang="ko", screen="gate", tab="home", city="all", hood=null, pickRegion="bkk", locPickerOpen=false, radiusKm=3, verified=false, mseg="sell", jseg="hire", icat=-1, shopCat=0, commSeg="info", chatOpen=null, storeOpen=null, cart={}, payOpen=false, payStore=null, payAmount=0, golfOpen=false, authed=false, gmGateOpen=false, gmFrameOpen=false, gmFrameSrc="", gateMode="home", emailVerified=false, acctId="", isAdmin=false, verifyOpen=false, verifySent=false, vEmailVal="", fsView=null, searchQ="", writeOpen=false, writeType=0, reportOpen=false, reviewOpen=false, listingOpen=null, postOpen=null,
     wStore={cat:0,delivery:false,pickup:false,menu:[]}, wStoreEditId=null, myStores=false,
     dbClubs=[], myClubMem={}, clubCounts={}, clubOpen=null, clubData=null, clubBusy=false, actFormOpen=false, clubCreateOpen=false, clubEditId=null,
     myClubsOpen=false, noticeEditOpen=false, clubPending={}, rosterOpen=false, actEditId=null,
@@ -1891,7 +1891,7 @@ function renderWrite(){
     extraFields=`<div class="gfield"><label>${lang==='ko'?'직종':lang==='th'?'ประเภทงาน':'Job type'}</label><select id="wJobCat" style="${selSty}"><option value="">${lang==='ko'?'직종 선택':lang==='th'?'เลือกประเภท':'Select'}</option>${JOB_CATS.map(s=>`<option value="${s.c}" ${we.sub===s.c?'selected':''}>${tcc(s)}</option>`).join('')}</select></div>
     <div class="gfield"><label>${lang==='ko'?'조건 (단답 선택)':lang==='th'?'เงื่อนไข':'Conditions'}</label><div style="display:flex;flex-wrap:wrap;gap:8px">${metaSel}</div></div>`;
   }else if(writeType===5){
-    const cats=L().info_cats; const defCat=(we.cat!=null?we.cat:(icat||0));
+    const cats=L().info_cats; const defCat=(we.cat!=null?we.cat:(icat>=0?icat:0));
     extraFields=`<div class="gfield"><label>${lang==='ko'?'분류':lang==='th'?'หมวด':'Category'}</label><select id="wPostCat" style="${selSty}">${cats.map((c,i)=>`<option value="${i}" ${defCat===i?'selected':''}>${c}</option>`).join('')}</select></div>`;
   }
   writeEl2.innerHTML=`<div class="pscrim" data-wclose></div><div class="psheet">
@@ -2580,10 +2580,11 @@ function pinnedGuideCard(){
 function infoInner(){
   const cats=L().info_cats;
   let data=byCity(info);
-  if(icat>0) data=data.filter(x=>x.cat===icat);
+  if(icat>=0) data=data.filter(x=>x.cat===icat);   // icat<0 = 전체
+  const allLbl=lang==='ko'?'전체':lang==='th'?'ทั้งหมด':'All';
   return `
    ${pinnedGuideCard()}
-   <div class="cities" style="padding:0 0 12px;margin:0">${cats.map((c,i)=>`<button class="city ${icat===i?'on':''}" data-icat="${i}">${c}</button>`).join('')}</div>
+   <div class="cities" style="padding:0 0 12px;margin:0"><button class="city ${icat<0?'on':''}" data-icat="-1">${allLbl}</button>${cats.map((c,i)=>`<button class="city ${icat===i?'on':''}" data-icat="${i}">${c}</button>`).join('')}</div>
    <div class="list">${data.map(infoCard).join('')||`<div class="empty">—</div>`}</div>`;
 }
 function clubsInner(){
