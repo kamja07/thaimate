@@ -1,7 +1,7 @@
 /* ThaiMate Service Worker — 설치형 PWA (홈 화면에 추가)
    원칙: 앱 셸만 캐시. Supabase/CDN 등 외부 요청은 절대 건드리지 않음.
    네비게이션은 네트워크 우선(항상 최신) → 오프라인일 때만 캐시 폴백. */
-const CACHE = 'thaimate-v6';
+const CACHE = 'thaimate-v7';
 const SHELL = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest'];
 
 /* 페이지가 SKIP_WAITING 보내면 대기 워커 즉시 활성화 → controllerchange → 페이지 자동 새로고침 */
@@ -51,7 +51,7 @@ self.addEventListener('fetch', e => {
   // 페이지 진입: 네트워크 우선, 실패 시 캐시 셸로 폴백
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'reload' })   // HTML은 항상 네트워크에서 새로(브라우저 HTTP 캐시 무시) → 배포 즉시 반영
         .then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put('/', cp)).catch(() => {}); return res; })
         .catch(() => caches.match('/').then(r => r || caches.match('/index.html')))
     );
