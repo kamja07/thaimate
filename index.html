@@ -2541,18 +2541,23 @@ const GUIDE={
     tip:'📍 ตั้งละแวกของคุณ (มุมขวาบน) ก่อน เพื่อผลลัพธ์ใกล้ตัวที่ดีที่สุด!',
     foot:'นัดเจอกันอย่างปลอดภัย ข้อพิพาทเป็นความรับผิดชอบของคู่กรณี' }
 };
+var guideOpen=false;   // 상단 고정공지(사용 안내) 접힘/펼침
 function pinnedGuideCard(){
   const g=GUIDE[lang]||GUIDE.ko;
-  return `<div style="border:1.5px solid #ffd9a8;background:linear-gradient(135deg,#fff7ee,#fffdfa);border-radius:14px;padding:14px 15px;margin:0 0 12px;box-shadow:0 2px 10px rgba(255,122,51,.08)">
-    <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
-      <span style="background:#ff7a33;color:#fff;font-size:10.5px;font-weight:800;border-radius:6px;padding:2px 8px">📌 ${g.pin}</span>
-      <span style="font-size:11.5px;color:var(--sub)">${g.by}</span>
+  const open=!!guideOpen;
+  return `<div data-guidetoggle style="cursor:pointer;border:1.5px solid #ffd9a8;background:linear-gradient(135deg,#fff7ee,#fffdfa);border-radius:14px;padding:12px 14px;margin:0 0 10px;box-shadow:0 2px 10px rgba(255,122,51,.08)">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="background:#ff7a33;color:#fff;font-size:10.5px;font-weight:800;border-radius:6px;padding:2px 8px;flex:none">📌 ${g.pin}</span>
+      <span style="flex:1;min-width:0;font-size:14px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.t}</span>
+      <span style="color:#c2c8d0;font-size:18px;flex:none;transition:transform .15s;transform:rotate(${open?'90deg':'0deg'})">›</span>
     </div>
-    <div style="font-size:15.5px;font-weight:800;margin-bottom:3px;color:var(--ink)">${g.t}</div>
-    <div style="font-size:12.5px;color:#555;line-height:1.5;margin-bottom:10px">${g.intro}</div>
-    ${g.rows.map(r=>`<div style="display:flex;gap:9px;align-items:flex-start;margin:7px 0;font-size:12.5px;line-height:1.45"><span style="font-size:16px;flex:none;width:20px;text-align:center">${r[0]}</span><span><b>${r[1]}</b> · ${r[2]}</span></div>`).join('')}
-    <div style="font-size:12px;color:#0d8a47;background:#eafaf0;border-radius:9px;padding:8px 11px;margin-top:10px;line-height:1.45">${g.tip}</div>
-    <div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.4">${g.foot}</div>
+    ${open?`<div style="margin-top:10px">
+      <div style="font-size:11.5px;color:var(--sub);margin-bottom:6px">${g.by}</div>
+      <div style="font-size:12.5px;color:#555;line-height:1.5;margin-bottom:10px">${g.intro}</div>
+      ${g.rows.map(r=>`<div style="display:flex;gap:9px;align-items:flex-start;margin:7px 0;font-size:12.5px;line-height:1.45"><span style="font-size:16px;flex:none;width:20px;text-align:center">${r[0]}</span><span><b>${r[1]}</b> · ${r[2]}</span></div>`).join('')}
+      <div style="font-size:12px;color:#0d8a47;background:#eafaf0;border-radius:9px;padding:8px 11px;margin-top:10px;line-height:1.45">${g.tip}</div>
+      <div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.4">${g.foot}</div>
+    </div>`:''}
   </div>`;
 }
 function infoInner(){
@@ -3922,6 +3927,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-ldback]')){listingOpen=null;render();page.scrollTo(0,0);return;}
   const ldl=e.target.closest('[data-ldel]'); if(ldl){delListing(ldl.dataset.ldel);return;}
   {const le=e.target.closest('[data-ledit]'); if(le){const id=le.dataset.ledit;const it=listings.find(x=>x.id===id)||jobs.find(x=>x.id===id);if(!it)return;wEdit=it;wListingEditId=id;wPhotos=(it.photos||[]).slice();writeType=(it.kind==='buy'?1:it.kind==='give'?2:it.kind==='hire'?3:it.kind==='seek'?4:0);writeOpen=true;render();return;}}
+  if(e.target.closest('[data-guidetoggle]')){guideOpen=!guideOpen;render();return;}
   const pop=e.target.closest('[data-postopen]'); if(pop){postOpen=pop.dataset.postopen;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-postback]')){postOpen=null;render();page.scrollTo(0,0);return;}
   const ppin=e.target.closest('[data-postpin]'); if(ppin){togglePostPin(ppin.dataset.postpin);return;}
