@@ -546,11 +546,13 @@ async function openOrCreateChat(listing){
   if(listing.author_id===uid){ toast(lang==='ko'?'내 글에는 채팅할 수 없어요':lang==='th'?'แชทโพสต์ตัวเองไม่ได้':'Cannot chat on your own post'); return; }
   try{
     let {data:ex}=await sb.from('chats').select('*').eq('listing_id',listing.id).eq('buyer_id',uid).maybeSingle();
-    let row=ex;
-    if(!row){ const ins=await sb.from('chats').insert({listing_id:listing.id, buyer_id:uid, seller_id:listing.author_id, last_message_at:new Date().toISOString()}).select().single(); if(ins.error){toast(ins.error.message);return;} row=ins.data; }
-    await loadChats(); listingOpen=null; tab='chat';
-    const idx=chats.findIndex(c=>c.id===row.id);
-    if(idx>=0) openChat(idx); else render();
+    listingOpen=null; tab='chat';
+    if(ex){ await loadChats(); const idx=chats.findIndex(c=>c.id===ex.id); if(idx>=0) openChat(idx); else render(); return; }
+    // 빈 채팅방 방지 — 첫 메시지를 보낼 때 실제로 생성. 지금은 로컬 draft로 연다.
+    const draft={ id:null, _draftKind:'listing', _draftRef:listing.id, sellerId:listing.author_id, buyerId:uid,
+      who:{ko:'판매자',en:'Seller',th:'ผู้ขาย'}, av:'🙂', city:(listing.city||'bkk'), item:listing.t, price:listing.pr,
+      msgs:[], unread:0, dst:'selling', listingId:listing.id };
+    chats.unshift(draft); chatOpen=0; render(); page.scrollTo(0,9999);
   }catch(e){ toast(String(e.message||e)); }
 }
 async function openStoreChat(store, firstMsg){
@@ -677,9 +679,15 @@ function subscribeChat(chatId){
   }).subscribe(); }catch(e){}
 }
 async function sendMessage(text){
-  if(chatOpen===null) return; const c=chats[chatOpen]; if(!c||!c.id) return;
+  if(chatOpen===null) return; const c=chats[chatOpen]; if(!c) return;
   const tmpId='tmp'+Date.now(); c.msgs=c.msgs||[]; c.msgs.push({me:true,tx:text,id:tmpId}); render(); page.scrollTo(0,9999);
   try{
+    if(!c.id){ // draft → 첫 메시지를 보내는 지금 실제 채팅방 생성(빈 방 방지)
+      const payload=(c._draftKind==='store')?{store_id:c._draftRef, buyer_id:uid, seller_id:c.sellerId, last_message_at:new Date().toISOString()}:{listing_id:c._draftRef, buyer_id:uid, seller_id:c.sellerId, last_message_at:new Date().toISOString()};
+      const cr=await sb.from('chats').insert(payload).select().single();
+      if(cr.error){ toast(cr.error.message); return; }
+      c.id=cr.data.id; try{ subscribeChat(c.id); }catch(_){}
+    }
     const ins=await sb.from('messages').insert({chat_id:c.id, sender_id:uid, body:text}).select().single();
     if(ins.error){ toast(ins.error.message); return; }
     const mm=c.msgs.find(x=>x.id===tmpId); if(mm) mm.id=ins.data.id;
