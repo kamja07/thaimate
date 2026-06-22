@@ -843,7 +843,7 @@ const T = {
   banner_t:"단톡방 댓글싸움 없이, 1:1로 바로 매칭", banner_p:"공개 댓글 없음 · 모든 대화는 비공개 채팅",
   shop_banner_t:"우리 동네 업체 광고 · 앱에서 바로 주문", shop_banner_p:"식당·마트·서비스까지 한 곳에서 주문·예약",
   info_banner_t:"정보·소식도 댓글싸움 없이 깔끔하게", info_banner_p:"공개 댓글 대신 도움돼요·저장 · 질문은 작성자에게 1:1로",
-  info_cats:["공지","비자·행정","생활·꿀팁","맛집·플레이스","기타","환전·송금"],
+  info_cats:["공지","비자·행정","생활·꿀팁","맛집·플레이스","기타"],
   shop_cats:["식당","카페·베이커리","골프","마트·식자재","뷰티·헬스","생활서비스","기타업종"],
   live:"건 거래중", status_sale:"판매중", status_resv:"예약중", status_done:"거래완료", status_match:"매칭대기", status_give:"나눔중", status_give_done:"나눔완료",
   btn_like:"관심", btn_chat:"채팅하기", btn_apply:"문의하기", budget:"예산",
@@ -900,7 +900,7 @@ const T = {
   banner_t:"Match 1:1 — no group-chat comment wars", banner_p:"No public comments · every chat is private",
   shop_banner_t:"Local business ads · order in-app", shop_banner_p:"Restaurants, marts & services — order or book in one place",
   info_banner_t:"News & info — clean, no comment wars", info_banner_p:"Helpful & Save instead of public comments · ask the author 1:1",
-  info_cats:["Notice","Visa·Admin","Life tips","Food·Places","Other","Exchange"],
+  info_cats:["Notice","Visa·Admin","Life tips","Food·Places","Other"],
   shop_cats:["Restaurant","Cafe·Bakery","Golf","Mart·Grocery","Beauty·Health","Services","Other"],
   live:" on sale now", status_sale:"For sale", status_resv:"Reserved", status_done:"Sold", status_match:"Matching", status_give:"Available", status_give_done:"Gone",
   btn_like:"Save", btn_chat:"Chat", btn_apply:"Apply", budget:"Budget",
@@ -957,7 +957,7 @@ const T = {
   banner_t:"จับคู่ 1:1 ไม่มีดราม่าในกลุ่มแชท", banner_p:"ไม่มีคอมเมนต์สาธารณะ · ทุกแชทเป็นส่วนตัว",
   shop_banner_t:"โฆษณาร้านในย่าน · สั่งในแอป", shop_banner_p:"ร้านอาหาร มาร์ท บริการ สั่งหรือจองที่เดียว",
   info_banner_t:"ข่าวสารแบบสะอาด ไม่มีดราม่าคอมเมนต์", info_banner_p:"ใช้ 'มีประโยชน์' และบันทึก แทนคอมเมนต์ · ถามผู้โพสต์ 1:1",
-  info_cats:["ประกาศ","วีซ่า","เคล็ดลับ","ร้าน·สถานที่","อื่นๆ","แลกเงิน"],
+  info_cats:["ประกาศ","วีซ่า","เคล็ดลับ","ร้าน·สถานที่","อื่นๆ"],
   shop_cats:["ร้านอาหาร","คาเฟ่·เบเกอรี่","กอล์ฟ","มาร์ท·ของชำ","บิวตี้·สุขภาพ","บริการ","อื่นๆ"],
   live:" รายการขายอยู่", status_sale:"ขายอยู่", status_resv:"จองแล้ว", status_done:"ขายแล้ว", status_match:"รอจับคู่", status_give:"แจกอยู่", status_give_done:"หมดแล้ว",
   btn_like:"บันทึก", btn_chat:"แชท", btn_apply:"สอบถาม", budget:"งบ",
@@ -2503,7 +2503,7 @@ function viewChatDetail(){
 /* ===================== community (소식 + 모임) ===================== */
 function infoCard(p){
   return `<div class="ipost"${p.pinned?' style="border:1.5px solid #ffd9a8;background:linear-gradient(135deg,#fff8f0,#fff)"':''}>
-    <div class="imeta">${p.pinned?`<span class="otag" style="background:#ff7a33">📌 ${lang==='ko'?'고정':lang==='th'?'ปักหมุด':'Pinned'}</span>`:''}${p.official?`<span class="otag">📢 ${L().official}</span>`:`<span class="itag">${L().info_cats[p.cat]}</span>`}<span class="idot">📍 ${tx(p.loc)} · ${tx(p.ago)}</span></div>
+    <div class="imeta">${p.pinned?`<span class="otag" style="background:#ff7a33">📌 ${lang==='ko'?'고정':lang==='th'?'ปักหมุด':'Pinned'}</span>`:''}${p.official?`<span class="otag">📢 ${L().official}</span>`:`<span class="itag">${L().info_cats[p.cat]||(lang==='ko'?'기타':lang==='th'?'อื่นๆ':'Other')}</span>`}<span class="idot">📍 ${tx(p.loc)} · ${tx(p.ago)}</span></div>
     <div data-postopen="${p.id}" style="cursor:pointer">
       <h3 class="ititle">${tx(p.t)}</h3>
       <p class="iexc">${tx(p.e)}</p>
@@ -3493,7 +3493,7 @@ function viewPostDetail(){
   const canPin=(p.author_id&&uid&&p.author_id===uid)||isAdmin;
   return `<div class="detail-head">
      <button class="back" data-postback>‹</button>
-     <div style="flex:1"><div class="hn">${p.pinned?'📌 ':''}${p.official?'📢 '+L().official:L().info_cats[p.cat]}</div></div>
+     <div style="flex:1"><div class="hn">${p.pinned?'📌 ':''}${p.official?'📢 '+L().official:(L().info_cats[p.cat]||(lang==='ko'?'기타':lang==='th'?'อื่นๆ':'Other'))}</div></div>
    </div>
    <div style="padding:14px 16px">
      <h2 style="font-size:18px;font-weight:800;line-height:1.45;margin:0 0 8px">${escT(title)}</h2>
