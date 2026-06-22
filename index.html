@@ -1890,6 +1890,9 @@ function renderWrite(){
     const metaSel=JOB_META_FIELDS.map(f=>`<div style="flex:1 1 46%;min-width:128px"><div style="font-size:10.5px;color:var(--sub);margin-bottom:3px">${tcc(f)}</div><select id="wMeta_${f.key}" style="${selSty};padding:8px"><option value="">-</option>${f.opts.map(o=>`<option value="${o.v}" ${(we.meta&&we.meta[f.key]===o.v)?'selected':''}>${tcc(o)}</option>`).join('')}</select></div>`).join('');
     extraFields=`<div class="gfield"><label>${lang==='ko'?'직종':lang==='th'?'ประเภทงาน':'Job type'}</label><select id="wJobCat" style="${selSty}"><option value="">${lang==='ko'?'직종 선택':lang==='th'?'เลือกประเภท':'Select'}</option>${JOB_CATS.map(s=>`<option value="${s.c}" ${we.sub===s.c?'selected':''}>${tcc(s)}</option>`).join('')}</select></div>
     <div class="gfield"><label>${lang==='ko'?'조건 (단답 선택)':lang==='th'?'เงื่อนไข':'Conditions'}</label><div style="display:flex;flex-wrap:wrap;gap:8px">${metaSel}</div></div>`;
+  }else if(writeType===5){
+    const cats=L().info_cats; const defCat=(we.cat!=null?we.cat:(icat||0));
+    extraFields=`<div class="gfield"><label>${lang==='ko'?'분류':lang==='th'?'หมวด':'Category'}</label><select id="wPostCat" style="${selSty}">${cats.map((c,i)=>`<option value="${i}" ${defCat===i?'selected':''}>${c}</option>`).join('')}</select></div>`;
   }
   writeEl2.innerHTML=`<div class="pscrim" data-wclose></div><div class="psheet">
     <div class="phead" style="position:relative"><b>✏️ ${(wListingEditId||wPostEditId)?(lang==='ko'?'글 수정':lang==='th'?'แก้ไขโพสต์':'Edit post'):L().w_title}</b><button class="pclose" data-wclose style="position:absolute;right:0">✕</button></div>
@@ -3758,12 +3761,13 @@ document.addEventListener('click',e=>{
       else { sb.from('listings').insert(Object.assign({status:'selling'},_jrow)).then(({error})=>{ if(error){toast(error.message);} else {loadJobs();} }); }
       tab='jobs'; jseg=kind;
     }else if(writeType===5){
-      const prow={author_id:uid, title:subj||L().w_subject, body:desc||null, hood_id:hoodDbId(hid)};
+      const pcat=String(((document.getElementById('wPostCat')||{}).value)||'0');
+      const prow={title:subj||L().w_subject, body:desc||null, hood_id:hoodDbId(hid), category:pcat};   // author_id는 insert에만(수정 시 원작성자 유지)
       const _photos=wPhotos.slice(), _peid=wPostEditId;   // 비동기 콜백 전에 캡처(아래에서 wPostEditId가 null로 리셋됨)
       // 사진은 별도 update로 — posts에 photos 컬럼이 없어도 글 자체는 저장되도록(컬럼 추가되면 사진도 반영)
       const applyPhotos=(pid)=>{ if(!pid){loadPosts();return;} sb.from('posts').update({photos:_photos, photo_url:(_photos[0]||null)}).eq('id',pid).then(()=>loadPosts()); };
       if(_peid){ sb.from('posts').update(prow).eq('id',_peid).select('id').then(({data,error})=>{ if(error){toast(error.message);return;} if(!data||!data.length){toast(lang==='ko'?'수정 권한이 없어요':lang==='th'?'ไม่มีสิทธิ์แก้ไข':'No permission');return;} applyPhotos(_peid); }); }
-      else { sb.from('posts').insert(Object.assign({category:'0', is_official:false}, prow)).select('id').single().then(({data,error})=>{ if(error){toast(error.message);return;} applyPhotos(data&&data.id); }); }
+      else { sb.from('posts').insert(Object.assign({author_id:uid, is_official:false}, prow)).select('id').single().then(({data,error})=>{ if(error){toast(error.message);return;} applyPhotos(data&&data.id); }); }
       tab='community'; commSeg='info'; golfOpen=false; postOpen=null;
     }
     const _wasEdit=wListingEditId||wPostEditId; wListingEditId=null; wEdit=null; wPostEditId=null;
@@ -3953,7 +3957,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-postback]')){postOpen=null;render();page.scrollTo(0,0);return;}
   const ppin=e.target.closest('[data-postpin]'); if(ppin){togglePostPin(ppin.dataset.postpin);return;}
   const pdl=e.target.closest('[data-pdel]'); if(pdl){delPost(pdl.dataset.pdel);return;}
-  {const pe=e.target.closest('[data-pedit]'); if(pe){const p=info.find(x=>x.id===pe.dataset.pedit); if(!p)return; wEdit={t:(typeof p.t==='object'?tx(p.t):p.t)||'', desc:(typeof p.e==='object'?tx(p.e):p.e)||''}; wPhotos=(p.photos||[]).slice(); wPostEditId=p.id; wListingEditId=null; writeType=5; writeOpen=true; render(); return;}}
+  {const pe=e.target.closest('[data-pedit]'); if(pe){const p=info.find(x=>x.id===pe.dataset.pedit); if(!p)return; wEdit={t:(typeof p.t==='object'?tx(p.t):p.t)||'', desc:(typeof p.e==='object'?tx(p.e):p.e)||'', cat:(p.cat!=null?p.cat:0)}; wPhotos=(p.photos||[]).slice(); wPostEditId=p.id; wListingEditId=null; writeType=5; writeOpen=true; render(); return;}}
   {const pi=e.target.closest('[data-pimg]'); if(pi){const p=info.find(x=>x.id===postOpen); if(p&&p.photos&&p.photos.length)openLightbox(p.photos,+pi.dataset.pimg||0); return;}}
   const lch=e.target.closest('[data-lchat]'); if(lch){if(!canAct())return;const it=listings.find(x=>x.id===lch.dataset.lchat); openOrCreateChat(it); return;}
   const lo=e.target.closest('[data-listing]'); if(lo){listingOpen=lo.dataset.listing;render();page.scrollTo(0,0);return;}
