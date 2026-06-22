@@ -2515,9 +2515,11 @@ function viewChatDetail(){
 /* ===================== community (소식 + 모임) ===================== */
 // 소식 목록 — 제목+날짜만(접힌 한 줄). 탭하면 상세에서 전체 내용이 열림.
 function infoCard(p){
+  const thumb=(p.photos&&p.photos[0])?`<img src="${escA(p.photos[0])}" style="width:42px;height:42px;flex:none;object-fit:cover;border-radius:8px;border:1px solid var(--line)">`:'';
   return `<div class="ipost" data-postopen="${p.id}" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 14px;margin:0 0 7px${p.pinned?';border:1.5px solid #ffd9a8;background:linear-gradient(135deg,#fff8f0,#fff)':''}">
+    ${thumb}
     <div style="flex:1;min-width:0">
-      <div style="font-size:14.5px;font-weight:700;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.pinned?'📌 ':''}${p.official?'📢 ':''}${tx(p.t)}</div>
+      <div style="font-size:14.5px;font-weight:700;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.pinned?'📌 ':''}${p.official?'📢 ':''}${(p.photos&&p.photos.length)?'📷 ':''}${tx(p.t)}</div>
       <div style="font-size:11.5px;color:var(--sub);margin-top:3px">${tx(p.ago)}</div>
     </div>
     <span style="color:#c2c8d0;font-size:20px;flex:none">›</span>
