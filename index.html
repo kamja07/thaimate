@@ -455,7 +455,7 @@ function dbToStore(row){
     hoursAll:!!row.hours_all, hoursDays:Array.isArray(row.hours_days)?row.hours_days:[], hoursOpen:row.hours_open||'', hoursClose:row.hours_close||'',
     city:h?h.region:'all', hoodId:h?h.id:null, rating:row.rating||5.0, reviews:row.reviews_count||0,
     service:!!row.is_service, nm:row.name||'', product:(row.category==='mart'),
-    min: menu.length?('฿'+menu[0].pr):null, menu: menu.length?menu:undefined,
+    min: menu.length?('฿'+menu[0].pr):null, menu: menu,
     desc: row.is_service?{ko:'1:1 채팅으로 예약·문의 주세요. 한국어 가능합니다.',en:'Book/ask via 1:1 chat.',th:'จอง/สอบถามผ่านแชท 1:1'}:'' };
 }
 async function loadStores(){
@@ -2430,12 +2430,13 @@ function viewStore(){
     return;
   }
   const count=Object.values(cart).reduce((a,b)=>a+b,0);
-  const total=s.menu.reduce((t,m)=>t+(cart[m.id]||0)*m.pr,0);
-  const rows=s.menu.map(m=>{
+  const menu=s.menu||[];
+  const total=menu.reduce((t,m)=>t+(cart[m.id]||0)*(m.pr||0),0);
+  const rows=menu.map(m=>{
     const q=cart[m.id]||0;
     return `<div class="mrow2">
       <div class="memo" style="overflow:hidden">${m.photo?`<img src="${m.photo}" style="width:100%;height:100%;object-fit:cover">`:m.emo}</div>
-      <div class="mmid"><div class="mnm">${tx(m.nm)}</div><div class="mpr">฿${m.pr.toLocaleString()}</div></div>
+      <div class="mmid"><div class="mnm">${tx(m.nm)}</div><div class="mpr">${m.pr!=null?'฿'+m.pr.toLocaleString():(lang==='ko'?'문의':lang==='th'?'สอบถาม':'Ask')}</div></div>
       <div class="stepper">
         ${q>0?`<button class="stbtn" data-sub="${m.id}">−</button><span class="qn">${q}</span>`:''}
         <button class="stbtn add" data-add="${m.id}">＋</button>
