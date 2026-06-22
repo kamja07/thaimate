@@ -3759,9 +3759,10 @@ document.addEventListener('click',e=>{
       tab='jobs'; jseg=kind;
     }else if(writeType===5){
       const prow={author_id:uid, title:subj||L().w_subject, body:desc||null, hood_id:hoodDbId(hid)};
+      const _photos=wPhotos.slice(), _peid=wPostEditId;   // 비동기 콜백 전에 캡처(아래에서 wPostEditId가 null로 리셋됨)
       // 사진은 별도 update로 — posts에 photos 컬럼이 없어도 글 자체는 저장되도록(컬럼 추가되면 사진도 반영)
-      const applyPhotos=(pid)=>{ if(!pid){loadPosts();return;} sb.from('posts').update({photos:wPhotos.slice(), photo_url:(wPhotos[0]||null)}).eq('id',pid).then(()=>loadPosts()); };
-      if(wPostEditId){ sb.from('posts').update(prow).eq('id',wPostEditId).select('id').then(({data,error})=>{ if(error){toast(error.message);return;} if(!data||!data.length){toast(lang==='ko'?'수정 권한이 없어요':lang==='th'?'ไม่มีสิทธิ์แก้ไข':'No permission');return;} applyPhotos(wPostEditId); }); }
+      const applyPhotos=(pid)=>{ if(!pid){loadPosts();return;} sb.from('posts').update({photos:_photos, photo_url:(_photos[0]||null)}).eq('id',pid).then(()=>loadPosts()); };
+      if(_peid){ sb.from('posts').update(prow).eq('id',_peid).select('id').then(({data,error})=>{ if(error){toast(error.message);return;} if(!data||!data.length){toast(lang==='ko'?'수정 권한이 없어요':lang==='th'?'ไม่มีสิทธิ์แก้ไข':'No permission');return;} applyPhotos(_peid); }); }
       else { sb.from('posts').insert(Object.assign({category:'0', is_official:false}, prow)).select('id').single().then(({data,error})=>{ if(error){toast(error.message);return;} applyPhotos(data&&data.id); }); }
       tab='community'; commSeg='info'; golfOpen=false; postOpen=null;
     }
