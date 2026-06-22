@@ -1625,10 +1625,10 @@ const NOTI=[];   // 실제 알림 연동 전까지 비움 — 하드코딩 데�
 function searchAll(q){
   q=(q||"").trim().toLowerCase(); if(!q)return [];
   const r=[], hit=s=>tx(s).toLowerCase().includes(q);
-  listings.forEach(x=>{if(hit(x.t))r.push({tag:x.kind==='give'?L().seg_give:(x.kind==='buy'?L().seg_buy:L().seg_sell),emo:x.emo,t:tx(x.t),sub:tx(x.loc),go:'market'});});
-  stores.forEach(x=>{if(hit(x.nm))r.push({tag:L().nav_shop,emo:x.emo,t:tx(x.nm),sub:L().shop_cats[x.cat],go:'shop'});});
-  jobs.forEach(x=>{if(hit(x.t))r.push({tag:x.kind==='hire'?L().seg_hire:L().seg_seek,emo:x.emo,t:tx(x.t),sub:tx(x.loc),go:'jobs'});});
-  info.forEach(x=>{if(hit(x.t))r.push({tag:L().comm_info,emo:'📰',t:tx(x.t),sub:tx(x.loc),go:'community'});});
+  listings.forEach(x=>{if(hit(x.t))r.push({tag:x.kind==='give'?L().seg_give:(x.kind==='buy'?L().seg_buy:L().seg_sell),emo:x.emo,t:tx(x.t),sub:tx(x.loc),go:'market',id:x.id,kind:x.kind});});
+  stores.forEach(x=>{if(hit(x.nm))r.push({tag:L().nav_shop,emo:x.emo,t:tx(x.nm),sub:L().shop_cats[x.cat],go:'shop',id:x.id});});
+  jobs.forEach(x=>{if(hit(x.t))r.push({tag:x.kind==='hire'?L().seg_hire:L().seg_seek,emo:x.emo,t:tx(x.t),sub:tx(x.loc),go:'jobs',id:x.id,kind:x.kind});});
+  info.forEach(x=>{if(hit(x.t))r.push({tag:L().comm_info,emo:'📰',t:tx(x.t),sub:tx(x.loc),go:'community',id:x.id});});
   return r;
 }
 
@@ -1694,7 +1694,7 @@ function renderFsView(){
     const res=searchAll(searchQ);
     fsEl.innerHTML=`
      <div class="fshead"><button class="back" data-fsback>‹</button><input class="searchin" id="searchInput" placeholder="${L().search_ph}" value="${(searchQ||'').replace(/"/g,'&quot;')}" autocomplete="off"></div>
-     <div class="fsbody">${!searchQ.trim()?`<div class="empty">🔍 ${L().search_hint}</div>`:(res.length?`<div style="font-size:12px;color:var(--sub);font-weight:700;margin:2px 2px 11px">${res.length}${L().search_cnt}</div>`+res.map(r=>`<div class="srow" data-srchgo="${r.go}"><div class="semoji">${r.emo}</div><div class="sbd"><div class="stt">${r.t}</div><div class="sss">${r.sub}</div></div><span class="stag">${r.tag}</span></div>`).join(''):`<div class="empty">${L().search_empty}</div>`)}</div>`;
+     <div class="fsbody">${!searchQ.trim()?`<div class="empty">🔍 ${L().search_hint}</div>`:(res.length?`<div style="font-size:12px;color:var(--sub);font-weight:700;margin:2px 2px 11px">${res.length}${L().search_cnt}</div>`+res.map(r=>`<div class="srow" data-srchgo="${r.go}" data-srchid="${r.id||''}" data-srchkind="${r.kind||''}"><div class="semoji">${r.emo}</div><div class="sbd"><div class="stt">${r.t}</div><div class="sss">${r.sub}</div></div><span class="stag">${r.tag}</span></div>`).join(''):`<div class="empty">${L().search_empty}</div>`)}</div>`;
     const si=document.getElementById('searchInput'); if(si){si.focus();const v=si.value;si.setSelectionRange(v.length,v.length);}
   }
 }
@@ -3667,7 +3667,10 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-search]')){fsView='search';searchQ='';render();return;}
   if(e.target.closest('[data-fsback]')){fsView=null;render();return;}
   const ng=e.target.closest('[data-notigo]'); if(ng){fsView=null;tab=ng.dataset.notigo;chatOpen=null;storeOpen=null;golfOpen=false;render();page.scrollTo(0,0);return;}
-  const sg=e.target.closest('[data-srchgo]'); if(sg){fsView=null;tab=sg.dataset.srchgo;chatOpen=null;storeOpen=null;golfOpen=false;render();page.scrollTo(0,0);return;}
+  const sg=e.target.closest('[data-srchgo]'); if(sg){fsView=null;tab=sg.dataset.srchgo;chatOpen=null;storeOpen=null;golfOpen=false;listingOpen=null;
+    const _sid=sg.dataset.srchid||'', _sk=sg.dataset.srchkind||'';
+    if(_sid){ if(tab==='shop'){ storeOpen=_sid; } else if(tab==='market'){ listingOpen=_sid; if(_sk)mseg=_sk; } else if(tab==='jobs'){ if(_sk)jseg=_sk; } }
+    render();page.scrollTo(0,0);return;}
   /* 글쓰기 */
   const wt=e.target.closest('[data-wtype]'); if(wt){writeType=+wt.dataset.wtype;renderWrite();return;}
   const scatBtn=e.target.closest('[data-scat]'); if(scatBtn){snapStore();wStore.cat=+scatBtn.dataset.scat;renderWrite();return;}
