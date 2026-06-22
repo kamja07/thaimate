@@ -467,7 +467,7 @@ function dbToPost(row){
   const h=hoodByDbId(row.hood_id);
   return { id:row.id, author_id:row.author_id, official:!!row.is_official, pinned:!!row.pinned, cat:(parseInt(row.category)||0), city:h?h.region:'all',
     help:row.helpful_count||0, save:row.save_count||0, view:row.view_count||0,
-    t:row.title||'', e:row.body||'', loc:h?tx(h):'', ago:relTime(row.created_at) };
+    t:row.title||'', e:row.body||'', photos:(Array.isArray(row.photos)&&row.photos.length)?row.photos:(row.photo_url?[row.photo_url]:[]), loc:h?tx(h):'', ago:relTime(row.created_at) };
 }
 async function loadPosts(){
   try{ const {data,error}=await sb.from('posts').select('*').order('created_at',{ascending:false}).limit(100);
@@ -1861,7 +1861,19 @@ function storeForm(){
   return h;
 }
 var wPhotos=[];   // 장터·구인구직·커뮤니티 글의 사진(여러 장)
-var wListingEditId=null, wEdit=null;   // 장터/구인 글 수정 모드
+var wListingEditId=null, wEdit=null, wPostEditId=null;   // 장터/구인/공지 글 수정 모드
+// 사진 업로드 등으로 폼이 다시 그려지기 전에 현재 입력값을 보존(제목·가격·내용·분류) — 글 사라짐 방지
+function snapWriteForm(){
+  if(writeType===6) return;   // 가게 폼은 wStore 사용(별도)
+  wEdit=wEdit||{};
+  const g=id=>{const el=document.getElementById(id);return el?el.value:undefined;};
+  const t=g('wSubject'); if(t!==undefined) wEdit.t=t;
+  const pr=g('wPrice'); if(pr!==undefined) wEdit.prRaw=pr;
+  const d=g('wDesc'); if(d!==undefined) wEdit.desc=d;
+  const sc=g('wSubcat'); if(sc!==undefined) wEdit.sub=sc;
+  const jc=g('wJobCat'); if(jc!==undefined) wEdit.sub=jc;
+  try{ const meta=Object.assign({},wEdit.meta||{}); JOB_META_FIELDS.forEach(f=>{const v=g('wMeta_'+f.key); if(v)meta[f.key]=v;}); if(Object.keys(meta).length) wEdit.meta=meta; }catch(_){}
+}
 function renderWrite(){
   if(!writeOpen){writeEl2.classList.add('hidden');writeEl2.innerHTML='';return;}
   const we=wEdit||{};
@@ -1880,8 +1892,8 @@ function renderWrite(){
     <div class="gfield"><label>${lang==='ko'?'조건 (단답 선택)':lang==='th'?'เงื่อนไข':'Conditions'}</label><div style="display:flex;flex-wrap:wrap;gap:8px">${metaSel}</div></div>`;
   }
   writeEl2.innerHTML=`<div class="pscrim" data-wclose></div><div class="psheet">
-    <div class="phead" style="position:relative"><b>✏️ ${wListingEditId?(lang==='ko'?'글 수정':lang==='th'?'แก้ไขโพสต์':'Edit post'):L().w_title}</b><button class="pclose" data-wclose style="position:absolute;right:0">✕</button></div>
-    ${(()=>{if(wListingEditId)return'';const tabIdx=isMkt?[0,1,2]:(isJob?[3,4]:(writeType===5?[5]:[]));return tabIdx.length>1?`<div class="wtypes">${tabIdx.map(i=>`<button class="wtype ${writeType===i?'on':''}" data-wtype="${i}">${types[i]}</button>`).join('')}</div>`:'';})()}
+    <div class="phead" style="position:relative"><b>✏️ ${(wListingEditId||wPostEditId)?(lang==='ko'?'글 수정':lang==='th'?'แก้ไขโพสต์':'Edit post'):L().w_title}</b><button class="pclose" data-wclose style="position:absolute;right:0">✕</button></div>
+    ${(()=>{if(wListingEditId||wPostEditId)return'';const tabIdx=isMkt?[0,1,2]:(isJob?[3,4]:(writeType===5?[5]:[]));return tabIdx.length>1?`<div class="wtypes">${tabIdx.map(i=>`<button class="wtype ${writeType===i?'on':''}" data-wtype="${i}">${types[i]}</button>`).join('')}</div>`:'';})()}
     ${isStore?storeForm():`<div class="gfield"><label>${L().w_subject}</label><input id="wSubject" placeholder="${L().w_subject_ph}" value="${escA(we.t||'')}"></div>
     ${extraFields}
     ${noPrice?'':`<div class="gfield"><label>${L().w_price}</label><input id="wPrice" placeholder="${L().w_price_ph}" value="${escA(we.prRaw||'')}"></div>`}
@@ -3499,7 +3511,9 @@ function viewPostDetail(){
      <h2 style="font-size:18px;font-weight:800;line-height:1.45;margin:0 0 8px">${escT(title)}</h2>
      <div style="font-size:12px;color:var(--sub);margin:0 0 14px;padding-bottom:13px;border-bottom:1px solid var(--line)">📍 ${tx(p.loc)} · ${tx(p.ago)}</div>
      <div style="font-size:14.5px;line-height:1.75;white-space:pre-wrap;word-break:break-word;color:#222">${escT(body)}</div>
-     ${canPin?`<button class="gbtn line" data-postpin="${p.id}" style="width:100%;margin-top:16px;${p.pinned?'color:#c2410c;border-color:#ffd9a8;background:#fff8f0':''}">${p.pinned?(lang==='ko'?'📌 상단 고정 해제':lang==='th'?'📌 เลิกปักหมุด':'📌 Unpin'):(lang==='ko'?'📌 상단에 고정':lang==='th'?'📌 ปักหมุดบนสุด':'📌 Pin to top')}</button>
+     ${(p.photos&&p.photos.length)?`<div style="display:grid;grid-template-columns:${p.photos.length===1?'1fr':'repeat(3,1fr)'};gap:6px;margin:12px 0 2px">${p.photos.map((u,i)=>`<img data-pimg="${i}" src="${escA(u)}" loading="lazy" style="width:100%;${p.photos.length===1?'':'aspect-ratio:1;object-fit:cover;'}border-radius:10px;cursor:zoom-in;display:block">`).join('')}</div>`:''}
+     ${canPin?`<button class="gbtn line" data-pedit="${p.id}" style="width:100%;margin-top:16px">✏️ ${lang==='ko'?'정보 수정':lang==='th'?'แก้ไข':'Edit'}</button>
+     <button class="gbtn line" data-postpin="${p.id}" style="width:100%;margin-top:8px;${p.pinned?'color:#c2410c;border-color:#ffd9a8;background:#fff8f0':''}">${p.pinned?(lang==='ko'?'📌 상단 고정 해제':lang==='th'?'📌 เลิกปักหมุด':'📌 Unpin'):(lang==='ko'?'📌 상단에 고정':lang==='th'?'📌 ปักหมุดบนสุด':'📌 Pin to top')}</button>
      <button class="gbtn line" data-pdel="${p.id}" style="width:100%;margin-top:8px;color:#d33;border-color:#f6c9c4">🗑️ ${lang==='ko'?'이 글 삭제':lang==='th'?'ลบโพสต์นี้':'Delete this post'}</button>`:''}
      <div class="ireact" style="margin-top:14px">
        <button class="rb ${p.rHelp?'on':''}" data-react="${p.id}:helpful"><span>👍</span> ${L().r_help} <b>${p.help}</b></button>
@@ -3646,7 +3660,7 @@ document.addEventListener('change', async e=>{
     const up=await sb.storage.from('store-photos').upload(path,file,{upsert:true,contentType:file.type});
     if(up.error){toast(up.error.message);return;}
     const url=sb.storage.from('store-photos').getPublicUrl(path).data.publicUrl;
-    if(isWpost){ wPhotos.push(url); renderWrite(); return; }
+    if(isWpost){ snapWriteForm(); wPhotos.push(url); renderWrite(); return; }
     snapStore();
     if(isQr) wStore.payQr=url; else if(isLogo) wStore.logo=url; else if(isPromo) wStore.promoPhoto=url; else if(isIntro) wStore.introPhoto=url; else if(isPhoto){ wStore.photos=wStore.photos||[]; wStore.photos.push(url); } else wStore.menu[mi].photo=url;
     renderWrite();
@@ -3701,8 +3715,8 @@ document.addEventListener('click',e=>{
   const rmpBtn=e.target.closest('[data-rmphoto]'); if(rmpBtn){snapStore();(wStore.photos=wStore.photos||[]).splice(+rmpBtn.dataset.rmphoto,1);renderWrite();return;}
   if(e.target.closest('[data-rmpromophoto]')){snapStore();wStore.promoPhoto='';renderWrite();return;}
   if(e.target.closest('[data-rmintrophoto]')){snapStore();wStore.introPhoto='';renderWrite();return;}
-  {const rw=e.target.closest('[data-rmwphoto]'); if(rw){wPhotos.splice(+rw.dataset.rmwphoto,1);renderWrite();return;}}
-  if(e.target.closest('[data-wclose]')){writeOpen=false;wListingEditId=null;wEdit=null;render();return;}
+  {const rw=e.target.closest('[data-rmwphoto]'); if(rw){snapWriteForm();wPhotos.splice(+rw.dataset.rmwphoto,1);renderWrite();return;}}
+  if(e.target.closest('[data-wclose]')){writeOpen=false;wListingEditId=null;wPostEditId=null;wEdit=null;render();return;}
   if(e.target.closest('[data-wsubmit]')){
     const subj=((document.getElementById('wSubject')||{}).value||'').trim();
     const price=((document.getElementById('wPrice')||{}).value||'').trim();
@@ -3742,10 +3756,14 @@ document.addEventListener('click',e=>{
       else { sb.from('listings').insert(Object.assign({status:'selling'},_jrow)).then(({error})=>{ if(error){toast(error.message);} else {loadJobs();} }); }
       tab='jobs'; jseg=kind;
     }else if(writeType===5){
-      sb.from('posts').insert({author_id:uid, category:'0', is_official:false, title:subj||L().w_subject, body:desc||null, hood_id:hoodDbId(hid)}).then(({error})=>{ if(error){toast(error.message);} else {loadPosts();} });
-      tab='community'; commSeg='info'; golfOpen=false;
+      const prow={author_id:uid, title:subj||L().w_subject, body:desc||null, hood_id:hoodDbId(hid)};
+      // 사진은 별도 update로 — posts에 photos 컬럼이 없어도 글 자체는 저장되도록(컬럼 추가되면 사진도 반영)
+      const applyPhotos=(pid)=>{ if(!pid){loadPosts();return;} sb.from('posts').update({photos:wPhotos.slice(), photo_url:(wPhotos[0]||null)}).eq('id',pid).then(()=>loadPosts()); };
+      if(wPostEditId){ sb.from('posts').update(prow).eq('id',wPostEditId).select('id').then(({data,error})=>{ if(error){toast(error.message);return;} if(!data||!data.length){toast(lang==='ko'?'수정 권한이 없어요':lang==='th'?'ไม่มีสิทธิ์แก้ไข':'No permission');return;} applyPhotos(wPostEditId); }); }
+      else { sb.from('posts').insert(Object.assign({category:'0', is_official:false}, prow)).select('id').single().then(({data,error})=>{ if(error){toast(error.message);return;} applyPhotos(data&&data.id); }); }
+      tab='community'; commSeg='info'; golfOpen=false; postOpen=null;
     }
-    const _wasEdit=wListingEditId; wListingEditId=null; wEdit=null;
+    const _wasEdit=wListingEditId||wPostEditId; wListingEditId=null; wEdit=null; wPostEditId=null;
     writeOpen=false; render(); page.scrollTo(0,0); toast(_wasEdit?(lang==='ko'?'수정되었습니다':lang==='th'?'แก้ไขแล้ว':'Updated'):L().w_posted); return;
   }
   /* 채팅 거래확정 · 안전거래 */
@@ -3906,7 +3924,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-storeedit]')){const s=stores.find(x=>x.id===storeOpen);if(s)openStoreEdit(s);return;}
   if(e.target.closest('[data-closedown]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;if(!window.confirm(L().closedown_confirm))return;sb.from('stores').delete().eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}storeOpen=null;loadStores();myStores=true;tab='shop';render();page.scrollTo(0,0);toast(L().closedown_done);});return;}
   if(e.target.closest('[data-newstore]')){if(!canAct())return;resetStore();writeType=6;writeOpen=true;render();return;}
-  if(e.target.closest('[data-newpost]')){if(!canAct())return;wPhotos=[];wListingEditId=null;wEdit=null;writeType=(tab==='jobs'?(jseg==='seek'?4:3):(mseg==='buy'?1:mseg==='give'?2:0));writeOpen=true;render();return;}
+  if(e.target.closest('[data-newpost]')){if(!canAct())return;wPhotos=[];wListingEditId=null;wPostEditId=null;wEdit=null;writeType=(tab==='jobs'?(jseg==='seek'?4:3):(mseg==='buy'?1:mseg==='give'?2:0));writeOpen=true;render();return;}
   if(e.target.closest('[data-myexit]')){myStores=false;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-storetoggle]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;const nv=!s.open;sb.from('stores').update({is_open:nv}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.open=nv;viewStore();toast(nv?L().shop_open:L().shop_closed);});return;}
   if(e.target.closest('[data-holiday]')){const s=stores.find(x=>x.id===storeOpen);if(!s)return;if(s.holiday){sb.from('stores').update({holiday:null}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.holiday=null;viewStore();toast(L().holiday_clear);});}else{const note=(window.prompt(L().holiday_prompt,L().holiday_default)||'').trim();if(!note)return;sb.from('stores').update({holiday:note}).eq('id',s.id).then(({error})=>{if(error){toast(error.message);return;}s.holiday=note;viewStore();toast('🚫 '+note);});}return;}
@@ -3932,6 +3950,8 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-postback]')){postOpen=null;render();page.scrollTo(0,0);return;}
   const ppin=e.target.closest('[data-postpin]'); if(ppin){togglePostPin(ppin.dataset.postpin);return;}
   const pdl=e.target.closest('[data-pdel]'); if(pdl){delPost(pdl.dataset.pdel);return;}
+  {const pe=e.target.closest('[data-pedit]'); if(pe){const p=info.find(x=>x.id===pe.dataset.pedit); if(!p)return; wEdit={t:(typeof p.t==='object'?tx(p.t):p.t)||'', desc:(typeof p.e==='object'?tx(p.e):p.e)||''}; wPhotos=(p.photos||[]).slice(); wPostEditId=p.id; wListingEditId=null; writeType=5; writeOpen=true; render(); return;}}
+  {const pi=e.target.closest('[data-pimg]'); if(pi){const p=info.find(x=>x.id===postOpen); if(p&&p.photos&&p.photos.length)openLightbox(p.photos,+pi.dataset.pimg||0); return;}}
   const lch=e.target.closest('[data-lchat]'); if(lch){if(!canAct())return;const it=listings.find(x=>x.id===lch.dataset.lchat); openOrCreateChat(it); return;}
   const lo=e.target.closest('[data-listing]'); if(lo){listingOpen=lo.dataset.listing;render();page.scrollTo(0,0);return;}
   const cr=e.target.closest('[data-chat]'); if(cr){openChat(+cr.dataset.chat);return;}
@@ -3941,7 +3961,7 @@ document.addEventListener('click',e=>{
   const jc=e.target.closest('[data-jobchat]'); if(jc){if(!canAct())return;openOrCreateChat(jobs.find(x=>x.id===jc.dataset.jobchat));return;}
   if(e.target.closest('#csend')){const i=document.getElementById('cin'); if(i&&i.value.trim()){sendMessage(i.value.trim());i.value='';} return;}
 });
-fab.addEventListener('click',()=>{if(!canAct())return;wPhotos=[];wListingEditId=null;wEdit=null;writeType=(tab==='shop'?6:(tab==='jobs'?3:(tab==='community'?5:0)));if(writeType===6)resetStore();writeOpen=true;render();});
+fab.addEventListener('click',()=>{if(!canAct())return;wPhotos=[];wListingEditId=null;wPostEditId=null;wEdit=null;writeType=(tab==='shop'?6:(tab==='jobs'?3:(tab==='community'?5:0)));if(writeType===6)resetStore();writeOpen=true;render();});
 document.addEventListener('input',e=>{if(e.target.id==='searchInput'){searchQ=e.target.value;renderFsView();}});
 document.addEventListener('keydown',e=>{if(e.target.id==='cin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendMessage(v);e.target.value='';}}
   if(e.target.id==='clubcin'&&e.key==='Enter'){const v=e.target.value.trim();if(v){sendClubMsg(clubOpen,v);e.target.value='';}}});
