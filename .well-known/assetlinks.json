@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.thaimate.app",
+        "sha256_cert_fingerprints": ["6B:9E:95:06:8C:07:6F:23:63:90:89:07:F1:9F:A9:45:3A:91:B0:80:50:CF:40:6D:7A:C3:57:90:E8:57:B2:4E"]
+      }
+    }]
