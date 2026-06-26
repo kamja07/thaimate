@@ -1290,7 +1290,7 @@ async function applyClub(id){
     if(extra){ try{ await sb.from('profiles').update({real_name:extra.realName, phone:extra.phone}).eq('id',uid); }catch(_){} }
     const row={club_id:id,user_id:uid,status:'pending'};
     if(extra && extra.note) row.join_note=extra.note;
-    const {error}=await sb.from('club_members').insert(row);
+    const {error}=await sb.from('club_members').upsert(row,{onConflict:'club_id,user_id'});   // 과거 거절 행이 남아있어도 덮어써서 재신청 허용
     if(error){ toast(error.message); } else { myClubMem[id]='pending'; toast(lang==='ko'?'가입 신청 완료 — 승인 대기':lang==='th'?'ส่งคำขอแล้ว — รออนุมัติ':'Applied — awaiting approval'); }
   }catch(e){ toast(String(e.message||e)); }
   clubBusy=false; render();
@@ -1403,7 +1403,9 @@ async function openClub(id){
   }
 }
 async function decideMember(clubId,userId,approve){
-  try{ const {error}=await sb.from('club_members').update({status:approve?'approved':'rejected'}).eq('club_id',clubId).eq('user_id',userId);
+  try{ let error;
+    if(approve){ ({error}=await sb.from('club_members').update({status:'approved'}).eq('club_id',clubId).eq('user_id',userId)); }
+    else { ({error}=await sb.from('club_members').delete().eq('club_id',clubId).eq('user_id',userId).eq('status','pending')); }   // 거절 = 신청 기록 삭제 → 본인이 다시 신청 가능
     if(error){ toast(error.message); return; }
     toast(approve?(lang==='ko'?'승인했어요':lang==='th'?'อนุมัติแล้ว':'Approved'):(lang==='ko'?'거절했어요':lang==='th'?'ปฏิเสธแล้ว':'Rejected')); openClub(clubId);
   }catch(e){ toast(String(e.message||e)); }
@@ -2645,8 +2647,7 @@ function clubsInner(){
     if(pend&&!isAdmin) btn=`<button class="join" disabled style="background:#fde9c8;color:#b45309;cursor:default">⏳ ${lang==='ko'?'승인 대기':lang==='th'?'รออนุมัติ':'Pending'}</button>`;
     else if(isAdmin||st==='leader'||st==='vice'||st==='member') btn=`<button class="join" data-clubenter="${c.id}">${pend?'⏳ ':''}${lang==='ko'?'입장':enter}</button>`;
     else if(st==='pending') btn=`<button class="join" disabled style="background:#cbd5e1;cursor:default">${lang==='ko'?'승인 대기':lang==='th'?'รออนุมัติ':'Pending'}</button>`;
-    else if(st==='rejected') btn=`<button class="join" disabled style="background:#e5e7eb;color:#9ca3af;cursor:default">${lang==='ko'?'거절됨':lang==='th'?'ปฏิเสธแล้ว':'Rejected'}</button>`;
-    else btn=`<button class="join" data-clubapply="${c.id}">${lang==='ko'?'가입 신청':lang==='en'?'Apply':'สมัคร'}</button>`;
+    else btn=`<button class="join" data-clubapply="${c.id}">${lang==='ko'?'가입 신청':lang==='en'?'Apply':'สมัคร'}</button>`;   // 거절(rejected)도 다시 '가입 신청' 노출 → 재신청 가능
     const left=pend?`<span class="flag" style="color:#b45309;background:#fff7e8;border-color:#ffe6b3">⏳ ${lang==='ko'?'관리자 승인 대기중':lang==='th'?'รอแอดมินอนุมัติ':'Awaiting approval'}</span>`:(st==='leader'?`<span class="flag">👑 ${lang==='ko'?'방장':lang==='th'?'หัวหน้า':'Leader'}</span>`:(st==='vice'?`<span class="flag" style="color:#2f6df0;background:#eef4ff;border-color:#cfe0ff">⭐ ${lang==='ko'?'부방장':lang==='th'?'รองหัวหน้า':'Vice'}</span>`:(c.region?`<span>📍 ${escT(c.region)}</span>`:`<span>👥 ${lang==='ko'?'모임':lang==='th'?'ชมรม':'Club'}</span>`)));
     return `<div class="club"${pend?' style="opacity:.75"':''}><div class="banner" style="background:${c.grad||'linear-gradient(120deg,#64748b,#94a3b8)'}">${c.emoji||'👥'} ${escT(c.name||'')}</div><div class="cbody2"><div class="desc">${escT(c.intro||'')}</div><div class="cfoot">${left}${btn}</div></div></div>`;
   }).join('');
