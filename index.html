@@ -851,7 +851,7 @@ async function confirmEmailCode(cd){
 /* ===================== i18n ===================== */
 const T = {
  ko:{
-  title:"동네 매칭·주문", nav_shop:"타운몰", nav_market:"장터·나눔", nav_jobs:"구인구직", nav_chat:"채팅", nav_community:"커뮤니티", nav_me:"내정보",
+  title:"동네 매칭·주문", nav_shop:"타운몰", nav_market:"중고/복덕방", nav_jobs:"구인구직", nav_chat:"채팅", nav_community:"커뮤니티", nav_me:"내정보",
   city_all:"전체", city_bkk:"방콕", city_cm:"치앙마이", city_pty:"파타야", city_east:"동부", city_west:"서부", city_north:"북부", city_central:"중부", city_nisan:"북부 이산", city_eisan:"동부 이산", city_south:"남부",
   seg_sell:"팝니다", seg_buy:"삽니다", seg_give:"나눔터", seg_hire:"구인", seg_seek:"구직",
   comm_info:"소식", comm_clubs:"모임",
@@ -908,7 +908,7 @@ const T = {
   rv_title:"매너후기", rv_q:"이 거래는 어떠셨나요?", rv_good:["시간 약속을 잘 지켜요","친절하고 매너가 좋아요","상품이 설명과 같아요","응답이 빨라요"], rv_submit:"후기 남기기", rv_done:"후기 등록 완료 — 매너온도가 올라요!"
  },
  en:{
-  title:"Match · Order", nav_shop:"Town Mall", nav_market:"Flea Market", nav_jobs:"Jobs", nav_chat:"Chat", nav_community:"Community", nav_me:"My",
+  title:"Match · Order", nav_shop:"Town Mall", nav_market:"Used·Property", nav_jobs:"Jobs", nav_chat:"Chat", nav_community:"Community", nav_me:"My",
   city_all:"All", city_bkk:"Bangkok", city_cm:"Chiang Mai", city_pty:"Pattaya", city_east:"Eastern", city_west:"Western", city_north:"Northern", city_central:"Central", city_nisan:"North Isan", city_eisan:"East Isan", city_south:"Southern",
   seg_sell:"For sale", seg_buy:"Wanted", seg_give:"Free", seg_hire:"Hiring", seg_seek:"Seeking",
   comm_info:"News", comm_clubs:"Clubs",
@@ -965,7 +965,7 @@ const T = {
   rv_title:"Manner review", rv_q:"How was this deal?", rv_good:["On time","Kind & polite","As described","Quick replies"], rv_submit:"Submit review", rv_done:"Review posted — manner score up!"
  },
  th:{
-  title:"จับคู่ · สั่งซื้อ", nav_shop:"ทาวน์มอลล์", nav_market:"ตลาดนัด", nav_jobs:"หางาน", nav_chat:"แชท", nav_community:"คอมมูนิตี้", nav_me:"ฉัน",
+  title:"จับคู่ · สั่งซื้อ", nav_shop:"ทาวน์มอลล์", nav_market:"มือสอง·อสังหาฯ", nav_jobs:"หางาน", nav_chat:"แชท", nav_community:"คอมมูนิตี้", nav_me:"ฉัน",
   city_all:"ทั้งหมด", city_bkk:"กรุงเทพ", city_cm:"เชียงใหม่", city_pty:"พัทยา", city_east:"ภาคตะวันออก", city_west:"ภาคตะวันตก", city_north:"ภาคเหนือ", city_central:"ภาคกลาง", city_nisan:"อีสานเหนือ", city_eisan:"อีสานตะวันออก", city_south:"ภาคใต้",
   seg_sell:"ขาย", seg_buy:"ต้องการซื้อ", seg_give:"แจกฟรี", seg_hire:"รับสมัคร", seg_seek:"หางาน",
   comm_info:"ข่าว", comm_clubs:"ชมรม",
@@ -2146,7 +2146,7 @@ function viewHome(){
      <div style="font-size:11px;color:var(--sub);line-height:1.45">${desc}</div></button>`;
   const grid=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
      ${card('shop','🏬',t('타운몰','Town Mall','ทาวน์มอลล์'),t('동네 가게·맛집·서비스 둘러보고 주문','Browse & order from local shops','ร้านค้าใกล้ตัว สั่งได้เลย'))}
-     ${card('market','🛍️',t('장터나눔','Flea Market','ตลาดมือสอง'),t('이웃과 중고거래·나눔','Buy·sell·give with neighbors','ซื้อขายแบ่งปันกับเพื่อนบ้าน'))}
+     ${card('market','🛍️',t('중고/복덕방','Used·Property','มือสอง·อสังหาฯ'),t('중고거래·나눔 + 부동산 매매·임대','Used deals·giveaways + property','ซื้อขาย·แบ่งปัน + อสังหาฯ'))}
      ${card('jobs','💼',t('구인구직','Jobs','หางาน'),t('교민 일자리·알바 구하고 올리기','Find & post local jobs','หางาน·ลงประกาศ'))}
      ${card('info','📰',t('공지·소식','Notices','ข่าวสาร'),t('운영 공지와 동네 소식','App notices & local news','ประกาศ·ข่าวในพื้นที่'))}
      ${card('clubs','🏘️',t('모임방','Clubs','ชมรม'),t('관심사 모임·동호회 활동','Interest clubs & activities','ชมรมตามความสนใจ'))}
@@ -2548,7 +2548,7 @@ const GUIDE={
   ko:{ t:'ThaiMate 사용 안내', by:'운영자', pin:'고정 공지',
     intro:'환영합니다! 모든 기능은 우리 동네 기반이에요. 이렇게 쓰면 됩니다:',
     rows:[['🏬','타운몰','동네 가게·서비스(식당·카페·법률·미용 등) 찾고 주문·예약·문의'],
-          ['🛍️','장터·나눔','중고 사고팔기 · 필요 없는 물건 무료 나눔'],
+          ['🛍️','중고/복덕방','중고 사고팔기·무료 나눔 + 부동산 매매·임대·임차'],
           ['💼','구인구직','일자리 구하고, 사람 구하기'],
           ['💬','채팅','상대와 1:1 비공개 대화 — 공개 댓글 싸움 없이 깔끔하게'],
           ['🏘️','커뮤니티','소식 나누고 모임(동호회) 참여 · ⛳ 골프메이트']],
@@ -2557,7 +2557,7 @@ const GUIDE={
   en:{ t:'How to use ThaiMate', by:'Admin', pin:'Pinned',
     intro:'Welcome! Everything is based on your neighborhood. Here’s how:',
     rows:[['🏬','Town Mall','Find local shops & services (food, cafe, legal, beauty…) — order, book, ask'],
-          ['🛍️','Flea Market','Buy & sell used items · give away for free'],
+          ['🛍️','Used·Property','Buy/sell used items·give away + real estate'],
           ['💼','Jobs','Find work, or hire people'],
           ['💬','Chat','Private 1:1 with the other person — no public comment fights'],
           ['🏘️','Community','Share news & join clubs · ⛳ Golf Mate']],
@@ -2566,7 +2566,7 @@ const GUIDE={
   th:{ t:'วิธีใช้ ThaiMate', by:'ผู้ดูแล', pin:'ปักหมุด',
     intro:'ยินดีต้อนรับ! ทุกอย่างอิงตามละแวกของคุณ ใช้แบบนี้:',
     rows:[['🏬','Town Mall','หาร้าน·บริการในละแวก (อาหาร คาเฟ่ กฎหมาย เสริมสวย ฯลฯ) สั่ง·จอง·สอบถาม'],
-          ['🛍️','ตลาดนัด','ซื้อขายมือสอง · แจกของฟรี'],
+          ['🛍️','มือสอง·อสังหาฯ','ซื้อขายมือสอง·แจกฟรี + อสังหาริมทรัพย์'],
           ['💼','หางาน','หางานหรือหาคนทำงาน'],
           ['💬','แชท','คุย 1:1 ส่วนตัวกับอีกฝ่าย — ไม่มีคอมเมนต์สาธารณะ'],
           ['🏘️','คอมมูนิตี้','แชร์ข่าวและเข้าร่วมชมรม · ⛳ Golf Mate']],
