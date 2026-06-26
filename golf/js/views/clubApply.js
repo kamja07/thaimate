@@ -21,11 +21,16 @@ export async function clubApplyView() {
       <label style="display:block;font-size:13px;margin-bottom:4px;">동호회 소개 (선택)</label>
       <textarea id="ca_description" placeholder="동호회 성격, 주 활동 시간대, 핸디 범위 등" rows="4" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:12px;font-size:14px;font-family:inherit;"></textarea>
       
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:16px;cursor:pointer;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;cursor:pointer;">
         <input id="ca_approval" type="checkbox" checked style="width:18px;height:18px;">
         가입 시 회장 승인 받기 (체크 해제하면 자동 승인)
       </label>
-      
+
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;margin-bottom:16px;cursor:pointer;">
+        <input id="ca_realname" type="checkbox" style="width:18px;height:18px;flex:none;margin-top:1px;">
+        <span>가입 시 <b>실명·연락처 필수</b><br><span style="color:var(--text-secondary);font-size:11.5px;">신청자가 실명·연락처·가입 한마디를 입력해야 하고, 이 동호회 안에서는 실명으로 표시됩니다.</span></span>
+      </label>
+
       <button class="btn btn-primary" style="width:100%;font-size:15px;padding:12px;" onclick="window._gd.doApplyForClub()">📨 개설 신청</button>
       <p style="font-size:11px;color:var(--text-secondary);text-align:center;margin:12px 0 0;">신청 후 슈퍼관리자가 검토하여 승인합니다.</p>
     </div>

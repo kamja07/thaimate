@@ -5,7 +5,7 @@ import { getSession, isAdmin } from '../core/auth.js';
 
 export async function loadAllClubs() {
   return _cached('loadAllClubs', 10000, async () => {
-  const { data, error } = await sb.from('golf_clubs').select('id, name, location, description, leader_id, member_count, requires_approval, approved_at').not('approved_at', 'is', null).order('member_count', { ascending: false });
+  const { data, error } = await sb.from('golf_clubs').select('id, name, location, description, leader_id, member_count, requires_approval, require_realname, approved_at').not('approved_at', 'is', null).order('member_count', { ascending: false });
   return { data: data || [], error };
 });
 }
@@ -24,12 +24,12 @@ export async function loadClub(clubId) {
 }
 
 export async function loadClubMembers(clubId) {
-  const { data, error } = await sb.from('club_members').select('user_id, role, status, joined_at, profiles!club_members_user_id_fkey(id, name, location, handicap, created_by_proxy_uuid)').eq('club_id', clubId).eq('status', 'approved').order('role', { ascending: false });
+  const { data, error } = await sb.from('club_members').select('user_id, role, status, joined_at, profiles!club_members_user_id_fkey(id, name, real_name, phone, location, handicap, created_by_proxy_uuid)').eq('club_id', clubId).eq('status', 'approved').order('role', { ascending: false });
   return { data: data || [], error };
 }
 
 export async function loadPendingJoinRequests(clubId) {
-  const { data, error } = await sb.from('club_members').select('user_id, requested_at, profiles!club_members_user_id_fkey(id, name, location, handicap, created_by_proxy_uuid)').eq('club_id', clubId).eq('status', 'pending').order('requested_at', { ascending: true });
+  const { data, error } = await sb.from('club_members').select('user_id, requested_at, join_note, profiles!club_members_user_id_fkey(id, name, real_name, phone, location, handicap, created_by_proxy_uuid)').eq('club_id', clubId).eq('status', 'pending').order('requested_at', { ascending: true });
   return { data: data || [], error };
 }
 
@@ -58,7 +58,7 @@ async function bumpMemberCount(clubId, delta) {
   } catch(_) {}
 }
 
-export async function applyForClub({ name, location, description, requiresApproval }) {
+export async function applyForClub({ name, location, description, requiresApproval, requireRealname }) {
   const session = getSession();
   if (!session) return { error: new Error('로그인 필요') };
   const { isVerifiedEmail } = await import('../core/email-verify.js');
@@ -72,7 +72,7 @@ export async function applyForClub({ name, location, description, requiresApprov
       name: name.trim(), location: location.trim(),
       description: description?.trim() || null,
       leader_id: session.user.id, member_count: 1,
-      requires_approval: !!requiresApproval, approved_at: null
+      requires_approval: !!requiresApproval, require_realname: !!requireRealname, approved_at: null
     }),
     { rlsMessage: '동호회 개설 신청 실패: 권한 없음' }
   );
@@ -105,7 +105,7 @@ export async function rejectClub(clubId) {
   return { data: { rejected: true }, error: null };
 }
 
-export async function requestJoinClub(clubId) {
+export async function requestJoinClub(clubId, joinInfo) {
   const session = getSession();
   if (!session) return { error: new Error('로그인 필요') };
   const { data: existing } = await sb.from('club_members').select('status').eq('club_id', clubId).eq('user_id', session.user.id).maybeSingle();
@@ -113,11 +113,19 @@ export async function requestJoinClub(clubId) {
     if (existing.status === 'approved') return { error: new Error('이미 가입된 동호회') };
     if (existing.status === 'pending') return { error: new Error('이미 가입 신청 중 — 회장 승인 대기') };
   }
+  // 실명 필수 동호회: 제출한 실명·연락처를 내 프로필에 저장
+  if (joinInfo && (joinInfo.realName || joinInfo.phone)) {
+    const prof = {};
+    if (joinInfo.realName) prof.real_name = joinInfo.realName.trim();
+    if (joinInfo.phone) prof.phone = joinInfo.phone.trim();
+    if (Object.keys(prof).length) await sb.from('profiles').update(prof).eq('id', session.user.id);
+  }
   // 슈퍼관리자는 무조건 즉시 가입, 일반 회원은 무조건 회장 승인 필요
   const admin = await isAdmin();
   const status = admin ? 'approved' : 'pending';
   const nowIso = new Date().toISOString();
   const row = { club_id: clubId, user_id: session.user.id, role: 'member', status, requested_at: nowIso };
+  if (joinInfo && joinInfo.note) row.join_note = joinInfo.note.trim();
   if (status === 'approved') {
     row.joined_at = nowIso;
     row.approved_at = nowIso;
@@ -155,12 +163,13 @@ export async function removeClubMember(clubId, userId) {
   return { data: { removed: true }, error: null };
 }
 
-export async function updateClub(clubId, { name, location, description, requiresApproval }) {
+export async function updateClub(clubId, { name, location, description, requiresApproval, requireRealname }) {
   const updates = {};
   if (name != null) updates.name = name.trim();
   if (location != null) updates.location = location.trim();
   if (description !== undefined) updates.description = description?.trim() || null;
   if (requiresApproval != null) updates.requires_approval = !!requiresApproval;
+  if (requireRealname != null) updates.require_realname = !!requireRealname;
   const { data, error, rls } = await mutate(
     sb.from('golf_clubs').update(updates).eq('id', clubId),
     { rlsMessage: '동호회 정보 수정 실패: 회장 권한 필요' }

@@ -48,6 +48,7 @@ export async function clubDetailView(params) {
           <h2 style="margin:0 0 4px;">${escapeHtml(club.name)}</h2>
           <div style="color:var(--text-secondary);font-size:13px;">
             ${escapeHtml(club.location || '지역 미지정')} · 멤버 ${members.length}명
+            ${club.require_realname ? ' · <span style="background:#e3f2fd;color:#1565c0;font-size:11px;padding:1px 6px;border-radius:5px;font-weight:600;">🪪 실명제</span>' : ''}
             ${isLeader ? ' · 👑 회장' : ''}
             ${admin ? ' · 슈퍼관리자' : ''}
           </div>
@@ -79,6 +80,7 @@ export async function clubDetailView(params) {
           <div style="font-size:28px;margin-bottom:6px;">👋</div>
           <p style="margin:0 0 10px;font-size:15px;font-weight:600;color:#E65100;">가입하면 활동 피드와 라운드를 볼 수 있습니다</p>
           <p style="margin:0 0 14px;font-size:12px;color:#888;">현재는 동호회 기본 정보만 표시됩니다</p>
+          ${club.require_realname ? '<p style="margin:0 0 14px;font-size:12px;color:#1565c0;background:#e3f2fd;padding:8px 10px;border-radius:6px;text-align:left;line-height:1.5;">🪪 이 동호회는 <b>실명제</b>입니다. 가입 시 <b>실명·연락처·가입 한마디</b>를 입력해야 하며, 동호회 안에서는 실명으로 표시됩니다.</p>' : ''}
           <button class="btn btn-primary" style="width:100%;font-size:15px;padding:12px;background:#FF9800;border:none;font-weight:600;" onclick="window._gd.doRequestJoin('${club.id}')">
             ${needsApproval ? '👋 가입 신청하기' : '👋 바로 가입하기'}
           </button>
@@ -91,13 +93,16 @@ export async function clubDetailView(params) {
       <div class="card" style="background:#fff8e1;border:1px solid #FFB300;">
         <h3 style="margin-top:0;font-size:15px;color:#FB8C00;">👑 가입 신청 ${pendingJoins.length}건 대기</h3>
         ${pendingJoins.map(j => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:white;border-radius:8px;margin-bottom:6px;">
-            <div>
-              <b>${escapeHtml(j.profiles?.name || '익명')}</b>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:10px;background:white;border-radius:8px;margin-bottom:6px;">
+            <div style="flex:1;min-width:0;">
+              <b>${escapeHtml(j.profiles?.real_name || j.profiles?.name || '익명')}</b>
+              ${j.profiles?.real_name && j.profiles?.name && j.profiles.real_name !== j.profiles.name ? `<span style="color:var(--text-secondary);font-size:11px;margin-left:4px;">(${escapeHtml(j.profiles.name)})</span>` : ''}
               <span style="color:var(--text-secondary);font-size:12px;margin-left:6px;">
                 ${j.profiles?.location ? '· ' + escapeHtml(j.profiles.location) : ''}
                 ${j.profiles?.handicap != null ? ' · 핸디 ' + j.profiles.handicap : ''}
               </span>
+              ${j.profiles?.phone ? `<div style="font-size:12px;color:#1565c0;margin-top:3px;">📞 ${escapeHtml(j.profiles.phone)}</div>` : ''}
+              ${j.join_note ? `<div style="font-size:12px;color:#5d4037;margin-top:3px;background:#fffde7;padding:4px 7px;border-radius:5px;">💬 ${escapeHtml(j.join_note)}</div>` : ''}
             </div>
             <div style="display:flex;gap:6px;">
               <button class="btn btn-primary" style="font-size:11px;padding:6px 10px;background:#43A047;" onclick="window._gd.doApproveJoin('${club.id}', '${j.user_id}')">✓ 승인</button>
@@ -122,7 +127,7 @@ export async function clubDetailView(params) {
           <h3 style="margin:0;font-size:15px;">👥 멤버 (${members.length})</h3>
           ${canManage ? `<button class="btn btn-primary" style="font-size:12px;padding:6px 12px;background:#7E57C2;border:none;color:white;" onclick="window._gd.openProxyMember('${club.id}')">➕ 대행 가입</button>` : ''}
         </div>
-        ${members.slice(0, 30).map(m => memberRow(m, club.leader_id, canManage, canAssignCoLeader, club.id)).join('')}
+        ${members.slice(0, 30).map(m => memberRow(m, club.leader_id, canManage, canAssignCoLeader, club.id, club.require_realname)).join('')}
         ${members.length > 30 ? `<p style="text-align:center;font-size:12px;color:var(--text-secondary);">...외 ${members.length - 30}명</p>` : ''}
       </div>
     ` : ''}
@@ -173,15 +178,16 @@ function activityRow(a, canManage, canJoin) {
   `;
 }
 
-function memberRow(m, leaderId, canManage, canAssignCoLeader, clubId) {
+function memberRow(m, leaderId, canManage, canAssignCoLeader, clubId, showRealName) {
   const isLeader = m.user_id === leaderId;
   const isCoLeader = m.role === 'co_leader';
   const roleIcon = isLeader ? '👑 ' : (isCoLeader ? '🛡️ ' : '');
   const canKick = canManage && !isLeader && (!isCoLeader || canAssignCoLeader);
+  const dispName = (showRealName && m.profiles?.real_name) || m.profiles?.name || '익명';
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
       <div>
-        ${roleIcon}<b>${escapeHtml(m.profiles?.name || '익명')}</b>${m.profiles?.created_by_proxy_uuid ? '<span style="background:#e1bee7;color:#6a1b9a;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:4px;font-weight:600;">🤝 대행</span>' : ''}
+        ${roleIcon}<b>${escapeHtml(dispName)}</b>${m.profiles?.created_by_proxy_uuid ? '<span style="background:#e1bee7;color:#6a1b9a;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:4px;font-weight:600;">🤝 대행</span>' : ''}
         ${m.profiles?.location ? `<span style="color:var(--text-secondary);font-size:12px;"> · ${escapeHtml(m.profiles.location)}</span>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;">

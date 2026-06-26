@@ -1,7 +1,7 @@
 // main.js — Entry point (Phase 4 + club management)
 
 import { sb, sbCourses } from './core/db.js';
-import { loadSession, signIn, signOut, getSession } from './core/auth.js';
+import { loadSession, signIn, signOut, getSession, getProfile } from './core/auth.js';
 import { signInByNickname, signUp, updateMyProfile, grantAdmin, revokeAdmin } from './domain/users.js';
 import { loadEventParticipants, loadEventAwards, createActivity, updateActivity } from './domain/events.js';
 import { lockResults, drawPeoriaHoles, setSpecialAwards, setMethodAndRanks, publishAwards, unlockResults, saveRaffleWinners, setRaffleIncludeWinners } from './domain/awards.js';
@@ -501,8 +501,9 @@ window._gd = {
     const location = document.getElementById('ca_location')?.value;
     const description = document.getElementById('ca_description')?.value;
     const requiresApproval = document.getElementById('ca_approval')?.checked;
+    const requireRealname = document.getElementById('ca_realname')?.checked;
     showLoading();
-    const r = await applyForClub({ name, location, description, requiresApproval });
+    const r = await applyForClub({ name, location, description, requiresApproval, requireRealname });
     hideLoading();
     if (r.error) { showError(r.error, '동호회 개설 신청'); return; }
     toastSuccess('🎉 동호회 개설 신청 완료 — 슈퍼관리자 승인 대기');
@@ -978,8 +979,23 @@ window._gd = {
   
   // ── Club join/leave/manage ──
   async doRequestJoin(clubId) {
+    // 실명 필수 동호회면 실명·연락처·가입 한마디를 먼저 입력
+    const { data: club } = await loadClub(clubId);
+    let joinInfo = null;
+    if (club && club.require_realname) {
+      const prof = getProfile() || {};
+      const realName = await promptDialog('실명을 입력해주세요 (필수)', { defaultValue: prof.real_name || '', title: '🪪 실명 필수 동호회' });
+      if (realName === null) return;
+      if (!realName.trim()) { showError(new Error('실명은 필수입니다'), '가입 신청'); return; }
+      const phone = await promptDialog('연락처를 입력해주세요 (필수)', { defaultValue: prof.phone || '', title: '연락처' });
+      if (phone === null) return;
+      if (!phone.trim()) { showError(new Error('연락처는 필수입니다'), '가입 신청'); return; }
+      const note = await promptDialog('회장에게 남길 가입 한마디 (선택)', { defaultValue: '', title: '가입 한마디' });
+      if (note === null) return;
+      joinInfo = { realName, phone, note };
+    }
     showLoading();
-    const r = await requestJoinClub(clubId);
+    const r = await requestJoinClub(clubId, joinInfo);
     hideLoading();
     if (r.error) { showError(r.error, '가입 신청'); return; }
     toastSuccess(r.status === 'approved' ? '✓ 가입 완료' : '⏳ 가입 신청 — 회장 승인 대기');
@@ -1047,8 +1063,11 @@ window._gd = {
     if (newLocation === null) return;
     const newDesc = await promptDialog('소개 (선택)', { defaultValue: club.description || '', title: '소개 변경 (취소 시 무변경)' });
     if (newDesc === null) return;
+    const rnAns = await promptDialog('가입 시 실명·연락처 필수로 할까요?   y = 켜기 / n = 끄기', { defaultValue: club.require_realname ? 'y' : 'n', title: '🪪 실명 필수 설정' });
+    if (rnAns === null) return;
+    const requireRealname = /^\s*y/i.test(rnAns || '');
     showLoading();
-    const r = await updateClub(clubId, { name: newName, location: newLocation, description: newDesc });
+    const r = await updateClub(clubId, { name: newName, location: newLocation, description: newDesc, requireRealname });
     hideLoading();
     if (r.error) { showError(r.error, '정보 수정'); return; }
     toastSuccess('동호회 정보 수정 완료');
