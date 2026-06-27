@@ -537,7 +537,7 @@ function chatToLocal(row, nameMap){
   const iAmBuyer=(row.buyer_id===uid), otherId=iAmBuyer?row.seller_id:row.buyer_id, li=row.listings||{}, st=row.stores||null;
   const ms=(row.messages||[]).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
   const lastM=ms.length?ms[ms.length-1]:null;
-  return { id:row.id, buyerId:row.buyer_id, sellerId:row.seller_id, listingId:row.listing_id,
+  return { id:row.id, buyerId:row.buyer_id, sellerId:row.seller_id, listingId:row.listing_id, hasDeal:!!(row.listing_id||row.store_id),
     av:'🧑', who:(nameMap&&nameMap[otherId])||(lang==='ko'?'사용자':lang==='th'?'ผู้ใช้':'User'),
     item: st?(st.name+(lang==='ko'?' · 예약·문의':lang==='th'?' · จอง/สอบถาม':' · Inquiry')):(li.title||(lang==='ko'?'대화':lang==='th'?'แชท':'Chat')), price:li.price_text||'', city:'all',
     unread: iAmBuyer?(row.buyer_unread||0):(row.seller_unread||0),
@@ -566,7 +566,7 @@ async function openOrCreateChat(listing){
     // 빈 채팅방 방지 — 첫 메시지를 보낼 때 실제로 생성. 지금은 로컬 draft로 연다.
     const draft={ id:null, _draftKind:'listing', _draftRef:listing.id, sellerId:listing.author_id, buyerId:uid,
       who:{ko:'판매자',en:'Seller',th:'ผู้ขาย'}, av:'🙂', city:(listing.city||'bkk'), item:listing.t, price:listing.pr,
-      msgs:[], unread:0, dst:'selling', listingId:listing.id };
+      msgs:[], unread:0, dst:'selling', listingId:listing.id, hasDeal:true };
     chats.unshift(draft); chatOpen=0; render(); page.scrollTo(0,9999);
   }catch(e){ toast(String(e.message||e)); }
 }
@@ -698,7 +698,8 @@ async function sendMessage(text){
   const tmpId='tmp'+Date.now(); c.msgs=c.msgs||[]; c.msgs.push({me:true,tx:text,id:tmpId}); render(); page.scrollTo(0,9999);
   try{
     if(!c.id){ // draft → 첫 메시지를 보내는 지금 실제 채팅방 생성(빈 방 방지)
-      const payload=(c._draftKind==='store')?{store_id:c._draftRef, buyer_id:uid, seller_id:c.sellerId, last_message_at:new Date().toISOString()}:{listing_id:c._draftRef, buyer_id:uid, seller_id:c.sellerId, last_message_at:new Date().toISOString()};
+      const _cbase={ buyer_id:uid, seller_id:c.sellerId, last_message_at:new Date().toISOString() };
+      const payload=(c._draftKind==='store')?{..._cbase, store_id:c._draftRef}:(c._draftKind==='user')?_cbase:{..._cbase, listing_id:c._draftRef};
       const cr=await sb.from('chats').insert(payload).select().single();
       if(cr.error){ toast(cr.error.message); return; }
       c.id=cr.data.id; try{ subscribeChat(c.id); }catch(_){}
@@ -1302,11 +1303,21 @@ async function openUserChat(otherId, firstMsg){
   try{
     let {data:ex}=await sb.from('chats').select('*').is('listing_id',null).is('store_id',null).or(`and(buyer_id.eq.${uid},seller_id.eq.${otherId}),and(buyer_id.eq.${otherId},seller_id.eq.${uid})`);
     let row=(ex&&ex[0])||null;
-    if(!row){ const ins=await sb.from('chats').insert({buyer_id:uid, seller_id:otherId, last_message_at:new Date().toISOString()}).select().single(); if(ins.error){toast(ins.error.message);return;} row=ins.data; }
-    if(firstMsg){ try{ await sb.from('messages').insert({chat_id:row.id, sender_id:uid, body:firstMsg}); await sb.from('chats').update({last_message_at:new Date().toISOString()}).eq('id',row.id); }catch(_){} }
-    await loadChats(); clubOpen=null; clubData=null; rosterOpen=false; myClubsOpen=false; golfOpen=false; storeOpen=null; tab='chat'; renderNav();
-    const idx=chats.findIndex(c=>c.id===row.id);
-    if(idx>=0) openChat(idx); else render();
+    clubOpen=null; clubData=null; rosterOpen=false; myClubsOpen=false; golfOpen=false; storeOpen=null; listingOpen=null; tab='chat';
+    if(row){   // 이미 있는 1:1 방 → 열기 (firstMsg 있으면 전송)
+      if(firstMsg){ try{ await sb.from('messages').insert({chat_id:row.id, sender_id:uid, body:firstMsg}); await sb.from('chats').update({last_message_at:new Date().toISOString()}).eq('id',row.id); }catch(_){} }
+      await loadChats(); renderNav();
+      const idx=chats.findIndex(c=>c.id===row.id);
+      if(idx>=0) openChat(idx); else render();
+      return;
+    }
+    // 새 1:1 — 빈 채팅방 방지: 로컬 draft만(첫 메시지 보낼 때 실제 생성)
+    let dWho=(lang==='ko'?'사용자':lang==='th'?'ผู้ใช้':'User');
+    try{ const {data:dp}=await sb.from('profiles').select('nickname,username').eq('id',otherId).maybeSingle(); if(dp) dWho=dp.nickname||dp.username||dWho; }catch(_){}
+    renderNav();
+    const draft={ id:null, _draftKind:'user', _draftRef:otherId, sellerId:otherId, buyerId:uid, who:dWho, av:'🧑', city:'all', item:(lang==='ko'?'대화':lang==='th'?'แชท':'Chat'), price:'', msgs:[], unread:0, dst:'selling', listingId:null, hasDeal:false };
+    chats.unshift(draft); chatOpen=0; render(); page.scrollTo(0,9999);
+    if(firstMsg) sendMessage(firstMsg);
   }catch(e){ toast(String(e.message||e)); }
 }
 async function setMemberRole(clubId, userId, newRole){
@@ -2550,11 +2561,11 @@ function viewChatDetail(){
      <button class="icon-btn" data-report style="font-size:21px">⋮</button>
    </div>
    <div class="secure">🔒 ${L().chat_secure}</div>
-   <div class="deal">
+   ${c.hasDeal?`<div class="deal">
      <div class="avatar" style="width:40px;height:40px;flex:0 0 40px;border-radius:10px;font-size:20px">🏷️</div>
      <div style="flex:1;min-width:0"><div class="dn">${tx(c.item)}</div><div class="dp">${tx(c.price)}</div></div>
      <div class="dealctl">${ctl}</div>
-   </div>
+   </div>`:''}
    <div class="msgs">${c.msgs.map(m=>`<div class="bub ${m.me?'me':'them'}">${tx(m.tx)}</div>`).join('')}</div>
    ${dst==='done'?`<div class="secure" style="background:#f1f2f4;color:var(--sub)">🔒 ${L().d_locked}</div>`:`<div class="inbar"><input placeholder="${L().input_ph}" id="cin"/><button class="send" id="csend">↑</button></div>`}`;
   page.scrollTo(0,9999);
