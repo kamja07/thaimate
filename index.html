@@ -2316,7 +2316,7 @@ function viewJobs(){
   if(jobCatFilter) data=data.filter(x=>x.sub===jobCatFilter);
   const selSty='width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff';
   const catFilter=`<select onchange="window.__jobCatF(this.value)" style="${selSty}"><option value="">${lang==='ko'?'전체 직종':lang==='th'?'ทุกประเภทงาน':'All job types'}</option>${JOB_CATS.map(s=>`<option value="${s.c}" ${jobCatFilter===s.c?'selected':''}>${tcc(s)}</option>`).join('')}</select>`;
-  const metaChip=(j,k)=>{ if(!j.meta||!j.meta[k])return''; return `<span style="font-size:12px;background:#eef2f7;color:#475569;border-radius:6px;padding:2px 7px">${jobMetaLabel(k,j.meta[k])}</span>`; };
+  const metaChip=(j,k)=>{ if(!j.meta||!j.meta[k])return''; const f=JOB_META_FIELDS.find(x=>x.key===k); return `<span style="font-size:12px;background:#eef2f7;color:#475569;border-radius:6px;padding:2px 7px">${f?`<span style="color:#94a3b8">${tcc(f)}</span> `:''}${jobMetaLabel(k,j.meta[k])}</span>`; };
   page.innerHTML=`
    <div class="vbanner"><span class="em">🔒</span><div><b>${L().banner_t}</b><p>${L().banner_p}</p></div></div>
    <div class="seg">
