@@ -2326,17 +2326,19 @@ function viewJobs(){
    <button class="gbtn primary" data-newpost style="width:100%;margin:2px 0 10px">💼 ${L().fab_jobs}</button>
    <div style="margin:0 0 10px">${catFilter}</div>
    <div class="list">${data.map(j=>`
-     <div class="card">
+     <div class="card" style="flex-direction:column;align-items:stretch;gap:10px">
+       <div style="display:flex;gap:12px;align-items:flex-start">
        <div class="thumb want"><span class="badge match">${j.kind==='hire'?L().seg_hire:L().seg_seek}</span>${(j.photos&&j.photos[0])?`<img data-jobimg="${j.id||''}" src="${escA(j.photos[0])}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;cursor:zoom-in">`:j.emo}</div>
        <div class="cbody">
          <div class="ctitle">${tx(j.t)}</div>
          ${j.sub?`<div style="margin:2px 0 1px"><span style="font-size:12px;font-weight:800;color:#0b7a3b;background:#e7f6ee;border-radius:7px;padding:2px 8px">${jobCatLabel(j.sub)}</span></div>`:''}
          <div class="cmeta">📍 ${tx(j.loc)} · ${tx(j.ago)}</div>
          ${j.meta?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px">${(j.kind==='seek'?['employ','pay','shift','thai','eng','kor']:['employ','pay','shift','thai','eng','kor','visa','housing']).map(k=>metaChip(j,k)).join('')}</div>`:''}
-         ${j.desc?`<div style="font-size:13px;color:#475569;line-height:1.5;margin:4px 0 2px;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${escT(j.desc)}</div>`:''}
          <div class="price" style="color:var(--green)">${tx(j.pr)}</div>
          <div class="actions">${(j.author_id&&uid&&j.author_id===uid)?`<button class="abtn" data-ledit="${j.id||''}">✏️ ${lang==='ko'?'수정':lang==='th'?'แก้ไข':'Edit'}</button>`:`<button class="abtn chat" data-jobchat="${j.id||''}">💬 ${L().btn_apply}</button>${j.chats?`<span class="live-mini">💬 ${j.chats}</span>`:''}`}</div>
        </div>
+       </div>
+       ${j.desc?`<div style="font-size:13.5px;color:#374151;line-height:1.55;white-space:pre-wrap;background:#fafafa;border:1px solid var(--line);border-radius:10px;padding:9px 11px;display:-webkit-box;-webkit-line-clamp:10;-webkit-box-orient:vertical;overflow:hidden">${escT(j.desc)}</div>`:''}
      </div>`).join('')||`<div class="empty">—</div>`}</div>`;
 }
 
