@@ -1943,7 +1943,7 @@ function renderWrite(){
   if(isMkt){
     extraFields=`<div class="gfield"><label>${lang==='ko'?'분류':lang==='th'?'หมวด':'Category'}</label><select id="wSubcat" style="${selSty}"><option value="">${lang==='ko'?'분류 선택':lang==='th'?'เลือกหมวด':'Select'}</option>${MKT_SUBCATS.map(s=>`<option value="${s.c}" ${we.sub===s.c?'selected':''}>${tcc(s)}</option>`).join('')}</select></div>`;
   }else if(isJob){
-    const metaSel=JOB_META_FIELDS.map(f=>`<div style="flex:1 1 46%;min-width:128px"><div style="font-size:12px;color:var(--sub);margin-bottom:3px">${tcc(f)}</div><select id="wMeta_${f.key}" style="${selSty};padding:8px"><option value="">-</option>${f.opts.map(o=>`<option value="${o.v}" ${(we.meta&&we.meta[f.key]===o.v)?'selected':''}>${tcc(o)}</option>`).join('')}</select></div>`).join('');
+    const metaSel=((writeType===4)?JOB_META_FIELDS.filter(f=>f.key!=='visa'&&f.key!=='housing'):JOB_META_FIELDS).map(f=>`<div style="flex:1 1 46%;min-width:128px"><div style="font-size:12px;color:var(--sub);margin-bottom:3px">${tcc(f)}</div><select id="wMeta_${f.key}" style="${selSty};padding:8px"><option value="">-</option>${f.opts.map(o=>`<option value="${o.v}" ${(we.meta&&we.meta[f.key]===o.v)?'selected':''}>${tcc(o)}</option>`).join('')}</select></div>`).join('');
     extraFields=`<div class="gfield"><label>${lang==='ko'?'직종':lang==='th'?'ประเภทงาน':'Job type'}</label><select id="wJobCat" style="${selSty}"><option value="">${lang==='ko'?'직종 선택':lang==='th'?'เลือกประเภท':'Select'}</option>${JOB_CATS.map(s=>`<option value="${s.c}" ${we.sub===s.c?'selected':''}>${tcc(s)}</option>`).join('')}</select></div>
     <div class="gfield"><label>${lang==='ko'?'조건 (단답 선택)':lang==='th'?'เงื่อนไข':'Conditions'}</label><div style="display:flex;flex-wrap:wrap;gap:8px">${metaSel}</div></div>`;
   }else if(writeType===5){
@@ -2332,7 +2332,8 @@ function viewJobs(){
          <div class="ctitle">${tx(j.t)}</div>
          ${j.sub?`<div style="margin:2px 0 1px"><span style="font-size:12px;font-weight:800;color:#0b7a3b;background:#e7f6ee;border-radius:7px;padding:2px 8px">${jobCatLabel(j.sub)}</span></div>`:''}
          <div class="cmeta">📍 ${tx(j.loc)} · ${tx(j.ago)}</div>
-         ${j.meta?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px">${['employ','pay','shift','thai','eng','kor','visa','housing'].map(k=>metaChip(j,k)).join('')}</div>`:''}
+         ${j.meta?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px">${(j.kind==='seek'?['employ','pay','shift','thai','eng','kor']:['employ','pay','shift','thai','eng','kor','visa','housing']).map(k=>metaChip(j,k)).join('')}</div>`:''}
+         ${j.desc?`<div style="font-size:13px;color:#475569;line-height:1.5;margin:4px 0 2px;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${escT(j.desc)}</div>`:''}
          <div class="price" style="color:var(--green)">${tx(j.pr)}</div>
          <div class="actions">${(j.author_id&&uid&&j.author_id===uid)?`<button class="abtn" data-ledit="${j.id||''}">✏️ ${lang==='ko'?'수정':lang==='th'?'แก้ไข':'Edit'}</button>`:`<button class="abtn chat" data-jobchat="${j.id||''}">💬 ${L().btn_apply}</button>${j.chats?`<span class="live-mini">💬 ${j.chats}</span>`:''}`}</div>
        </div>
