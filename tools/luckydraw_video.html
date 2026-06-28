@@ -3,18 +3,22 @@
 <title>ThaiMate 럭키드로우 영상(소리)</title>
 <style>
   html,body{margin:0;background:#fff;font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
-  .wrap{display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px}
-  #stage{border-radius:18px}
-  #status{font-size:15px;color:#555;font-weight:600;text-align:center}
-  .btn{background:#ff7a33;color:#fff;border:none;border-radius:10px;padding:11px 22px;font-size:15px;font-weight:700;cursor:pointer}
-  video{max-width:380px;border-radius:14px;display:none;margin-top:6px}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:16px;padding:22px}
+  #stage{border-radius:18px;box-shadow:0 2px 14px rgba(0,0,0,.08)}
+  #status{font-size:15px;color:#555;font-weight:600;text-align:center;min-height:20px}
+  .btn{background:#ff7a33;color:#fff;border:none;border-radius:12px;padding:15px 30px;font-size:18px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(255,122,51,.35)}
+  .btn.save{background:#16a34a;box-shadow:0 3px 10px rgba(22,163,74,.35)}
+  .hint{font-size:13px;color:#888;text-align:center;max-width:340px;line-height:1.5}
+  video{max-width:380px;border-radius:14px;display:none}
 </style></head>
 <body>
 <div class="wrap">
   <canvas id="stage" width="380" height="470"></canvas>
-  <div id="status">▶ 시작을 누르면 소리와 함께 녹화됩니다</div>
-  <button class="btn" id="go">▶ 영상 만들기 (소리 포함)</button>
+  <button class="btn" id="go">▶ 룰렛 돌리기 (소리 켜고)</button>
+  <div class="hint" id="hint">PC 볼륨을 켠 뒤 위 버튼을 누르면, 돌아가는 소리와 당첨 팡파레가 들리고 녹화됩니다.</div>
+  <div id="status"></div>
   <video id="out" controls></video>
+  <button class="btn save" id="save" style="display:none">⬇ 영상 저장 (WebM, 소리 포함)</button>
 </div>
 <script>
 const NAMES=[
@@ -65,34 +69,31 @@ function drawWheel(rotDeg, winner){
 }
 drawWheel(0,null);
 
-let AC=null;
-function tick(ac,dest,t,freq,dur,vol){
+function tone(ac,dest,t,freq,dur,vol,type){
   const o=ac.createOscillator(), g=ac.createGain();
-  o.type='square'; o.frequency.value=freq;
+  o.type=type||'square'; o.frequency.value=freq;
   g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.005); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   o.connect(g); g.connect(dest); o.start(t); o.stop(t+dur+0.02);
 }
 function fanfare(ac,dest,t){
-  const notes=[523.25,659.25,783.99,1046.5];
-  notes.forEach((f,i)=>{
-    const o=ac.createOscillator(), g=ac.createGain();
-    o.type='triangle'; o.frequency.value=f;
-    const ts=t+i*0.13;
-    g.gain.setValueAtTime(0,ts); g.gain.linearRampToValueAtTime(0.18,ts+0.02); g.gain.exponentialRampToValueAtTime(0.0001,ts+0.4);
-    o.connect(g); g.connect(dest); o.start(ts); o.stop(ts+0.42);
-  });
+  [523.25,659.25,783.99,1046.5].forEach((f,i)=>{ tone(ac,dest,t+i*0.13,f,0.4,0.2,'triangle'); });
 }
 
-function run(){
-  document.getElementById('go').style.display='none';
+let lastBlob=null, lastWinner=null;
+async function run(){
+  const goBtn=document.getElementById('go');
+  goBtn.disabled=true; goBtn.style.opacity=.5;
+  document.getElementById('save').style.display='none';
   document.getElementById('out').style.display='none';
-  status.textContent='🔴 녹화 중… (소리 켜고 봐주세요)';
-  const ac=new (window.AudioContext||window.webkitAudioContext)();
-  try{ ac.resume(); }catch(e){}
+  document.getElementById('hint').style.display='none';
+  status.textContent='🔴 녹화 중… 소리가 들리나요?';
+
+  const AC=window.AudioContext||window.webkitAudioContext;
+  const ac=new AC();
+  await ac.resume();                         // real user gesture → audio unlocked
   const adest=ac.createMediaStreamDestination();
-  const master=ac.createGain(); master.gain.value=0.9; master.connect(adest);
-  // also to speakers for live monitoring
-  master.connect(ac.destination);
+  const master=ac.createGain(); master.gain.value=0.9;
+  master.connect(adest); master.connect(ac.destination);   // record + live speakers
 
   const vstream=cv.captureStream(30);
   const mixed=new MediaStream([...vstream.getVideoTracks(), ...adest.stream.getAudioTracks()]);
@@ -103,21 +104,22 @@ function run(){
   const chunks=[];
   rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
   rec.onstop=()=>{
-    const blob=new Blob(chunks,{type:'video/webm'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download='thaimate_luckydraw.webm'; document.body.appendChild(a); a.click();
+    lastBlob=new Blob(chunks,{type:'video/webm'});
+    const url=URL.createObjectURL(lastBlob);
     const v=document.getElementById('out'); v.src=url; v.style.display='block';
-    status.textContent='✅ 영상 다운로드 완료! (당첨: '+NAMES[winner].t+') — 소리 포함';
-    document.getElementById('go').textContent='▶ 다시 만들기'; document.getElementById('go').style.display='inline-block';
+    status.textContent='✅ 완료! (당첨: '+NAMES[lastWinner].t+') — 아래 초록 버튼으로 저장하세요';
+    const sb=document.getElementById('save'); sb.style.display='inline-block';
+    goBtn.disabled=false; goBtn.style.opacity=1; goBtn.textContent='▶ 다시 돌리기';
     try{ac.close();}catch(e){}
   };
 
-  const winner=Math.floor(Math.random()*N);
+  const winner=Math.floor(Math.random()*N); lastWinner=winner;
   const finalRot=360*6 + (360-(winner*SEG+SEG/2));
   const spinMs=5000, holdMs=1800;
   let start=null, lastSeg=-1, fanfared=false;
-  const t0=ac.currentTime;
   rec.start();
+  // priming click so audio graph is definitely flowing
+  tone(ac,master,ac.currentTime+0.02,440,0.05,0.12,'square');
 
   function frame(ts){
     if(start===null) start=ts;
@@ -126,7 +128,7 @@ function run(){
       const p=el/spinMs, rot=finalRot*easeOut(p);
       drawWheel(rot,null);
       const segNow=Math.floor(rot/SEG);
-      if(segNow!==lastSeg){ lastSeg=segNow; tick(ac,master,ac.currentTime,520,0.05,0.12); }
+      if(segNow!==lastSeg){ lastSeg=segNow; tone(ac,master,ac.currentTime,520,0.05,0.13,'square'); }
       requestAnimationFrame(frame);
     } else if(el<spinMs+holdMs){
       drawWheel(finalRot,winner);
@@ -137,10 +139,15 @@ function run(){
       rec.stop();
     }
   }
-  window.winner=winner;
   requestAnimationFrame(frame);
 }
+function save(){
+  if(!lastBlob) return;
+  const url=URL.createObjectURL(lastBlob);
+  const a=document.createElement('a'); a.href=url; a.download='thaimate_luckydraw.webm';
+  document.body.appendChild(a); a.click(); a.remove();
+}
 document.getElementById('go').addEventListener('click',run);
-setTimeout(run,500);
+document.getElementById('save').addEventListener('click',save);
 </script>
 </body></html>
