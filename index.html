@@ -1881,7 +1881,7 @@ function storeForm(){
   const s=wStore, cat=STORE_CATS[s.cat]||STORE_CATS[0], cats=L().shop_cats;
   let h=`<div class="gfield"><label>${ws('name')}</label><input id="wSubject" placeholder="${ws('name_ph')}" value="${escA(s.name)}"></div>
    <div class="gfield"><label>${lang==='ko'?'가게 로고 (선택)':lang==='th'?'โลโก้ร้าน (ไม่บังคับ)':'Store logo (optional)'}</label>
-     <label style="display:inline-flex;align-items:center;gap:10px;border:1px dashed var(--line);border-radius:10px;padding:8px 12px;cursor:pointer">${s.logo?`<img src="${escA(s.logo)}" style="width:48px;height:48px;object-fit:cover;border-radius:10px">`:'<span style="font-size:24px">🏷️</span>'}<span style="font-size:13px;color:var(--sub)">${s.logo?(lang==='ko'?'로고 변경':lang==='th'?'เปลี่ยนโลโก้':'Change logo'):(lang==='ko'?'로고 이미지 올리기':lang==='th'?'อัปโหลดโลโก้':'Upload logo')}</span><input type="file" accept="image/*" data-storelogo style="display:none"></label></div>
+     <label style="display:inline-flex;align-items:center;gap:10px;border:1px dashed var(--line);border-radius:10px;padding:8px 12px;cursor:pointer">${s.logo?`<img src="${escA(s.logo)}" style="width:48px;height:48px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:10px">`:'<span style="font-size:24px">🏷️</span>'}<span style="font-size:13px;color:var(--sub)">${s.logo?(lang==='ko'?'로고 변경':lang==='th'?'เปลี่ยนโลโก้':'Change logo'):(lang==='ko'?'로고 이미지 올리기':lang==='th'?'อัปโหลดโลโก้':'Upload logo')}</span><input type="file" accept="image/*" data-storelogo style="display:none"></label></div>
    <div class="gfield"><label>${ws('cat')}</label><div class="wtypes" style="margin:2px 0 2px">${cats.map((c,i)=>`<button class="wtype ${s.cat===i?'on':''}" data-scat="${i}">${c}</button>`).join('')}</div></div>
    <div class="gfield"><label>${ws('phone')}</label><input id="wPhone" placeholder="${ws('phone_ph')}" value="${escA(s.phone)}"></div>
    <div class="gfield"><label>${lang==='ko'?'웹사이트 (선택)':lang==='th'?'เว็บไซต์ (ไม่บังคับ)':'Website (optional)'}</label><input id="wWeb" inputmode="url" placeholder="https://..." value="${escA(s.web)}"></div>
@@ -2377,7 +2377,7 @@ function storeCard(s){
   const promoLine = s.promo?`<div class="spills" style="margin-top:3px"><span class="pill" style="color:#c2410c;background:#fff1e8">🎉 ${s.promo.length>22?s.promo.slice(0,22)+'…':s.promo}</span></div>`:'';
   const dim=(!_on)?'opacity:.62':'';
   return `<div class="scard" data-store="${s.id}" style="${dim}">
-    <div class="sthumb">${s.logo?`<img src="${escA(s.logo)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:13px">`:s.emo}${s.ad?`<span class="adb">${L().ad_badge}</span>`:''}</div>
+    <div class="sthumb">${s.logo?`<img src="${escA(s.logo)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:13px">`:s.emo}${s.ad?`<span class="adb">${L().ad_badge}</span>`:''}</div>
     <div class="sbody">
       <div class="snm">${tx(s.nm)}</div>
       <div class="smeta">${s.reviews>0?`⭐ ${s.rating} <span class="sgray">(${s.reviews})</span>`:`<span style="color:#0d8a47;font-weight:700">🆕 ${lang==='ko'?'신규':lang==='th'?'ใหม่':'New'}</span>`} · ${L().shop_cats[s.cat]}</div>
@@ -2495,7 +2495,7 @@ function viewStore(){
   const statusRow=`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap">${statusText}${ownerBtns}</div>`;
   const head=`<div class="detail-head">
     <button class="back" id="sback">‹</button>
-    <div class="avatar" style="width:42px;height:42px;flex:0 0 42px;border-radius:12px;font-size:22px;background:#fff1e8;overflow:hidden">${s.logo?`<img src="${escA(s.logo)}" style="width:100%;height:100%;object-fit:cover">`:s.emo}</div>
+    <div class="avatar" style="width:42px;height:42px;flex:0 0 42px;border-radius:12px;font-size:22px;background:#fff1e8;overflow:hidden">${s.logo?`<img src="${escA(s.logo)}" style="width:100%;height:100%;object-fit:contain;background:#fff">`:s.emo}</div>
     <div><div class="hn">${tx(s.nm)} <span class="dbadge">🤝 ${L().direct_badge}</span></div><div class="hs">${s.reviews>0?`⭐ ${s.rating} (${s.reviews})`:(lang==='ko'?'🆕 신규':lang==='th'?'🆕 ใหม่':'🆕 New')} · ${L().shop_cats[s.cat]}</div></div></div>`;
   if(s.service){
     page.innerHTML=head+`
