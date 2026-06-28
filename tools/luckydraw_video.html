@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ThaiMate 럭키드로우 영상(소리)</title>
+<style>
+  html,body{margin:0;background:#fff;font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px}
+  #stage{border-radius:18px}
+  #status{font-size:15px;color:#555;font-weight:600;text-align:center}
+  .btn{background:#ff7a33;color:#fff;border:none;border-radius:10px;padding:11px 22px;font-size:15px;font-weight:700;cursor:pointer}
+  video{max-width:380px;border-radius:14px;display:none;margin-top:6px}
+</style></head>
+<body>
+<div class="wrap">
+  <canvas id="stage" width="380" height="470"></canvas>
+  <div id="status">▶ 시작을 누르면 소리와 함께 녹화됩니다</div>
+  <button class="btn" id="go">▶ 영상 만들기 (소리 포함)</button>
+  <video id="out" controls></video>
+</div>
+<script>
+const NAMES=[
+ {t:'김민호',c:'#F0997B',tc:'#712B13'},
+ {t:'박서준',c:'#5DCAA5',tc:'#085041'},
+ {t:'이지훈',c:'#FAC775',tc:'#633806'},
+ {t:'최유나',c:'#85B7EB',tc:'#0C447C'},
+ {t:'정대현',c:'#97C459',tc:'#27500A'},
+ {t:'한소영',c:'#AFA9EC',tc:'#3C3489'},
+ {t:'강도윤',c:'#ED93B1',tc:'#72243E'},
+ {t:'조은비',c:'#D3D1C7',tc:'#444441'}
+];
+const N=NAMES.length, SEG=360/N, R=150, CX=190, CY=205;
+const cv=document.getElementById('stage'), ctx=cv.getContext('2d'), status=document.getElementById('status');
+
+function roundRect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+function easeOut(p){return 1-Math.pow(1-p,3);}
+function drawWheel(rotDeg, winner){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='#ff7a33'; roundRect(ctx, CX-95, 14, 30, 30, 8); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='700 18px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('M', CX-80, 30);
+  ctx.fillStyle='#222'; ctx.font='700 16px sans-serif'; ctx.textAlign='left'; ctx.fillText('Golf Mate 럭키드로우', CX-58, 30);
+  ctx.save(); ctx.translate(CX,CY); ctx.rotate(rotDeg*Math.PI/180);
+  for(let i=0;i<N;i++){
+    const a0=(i*SEG-90)*Math.PI/180, a1=((i+1)*SEG-90)*Math.PI/180;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,R,a0,a1); ctx.closePath();
+    ctx.fillStyle=NAMES[i].c; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#fff'; ctx.stroke();
+    ctx.save();
+    const mid=(i*SEG+SEG/2-90)*Math.PI/180;
+    ctx.rotate(mid); ctx.translate(R*0.62,0); ctx.rotate(Math.PI/2);
+    ctx.fillStyle=NAMES[i].tc; ctx.font='700 16px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(NAMES[i].t,0,0);
+    ctx.restore();
+  }
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(CX,CY,30,0,2*Math.PI); ctx.fillStyle='#fff'; ctx.fill(); ctx.lineWidth=4; ctx.strokeStyle='#ff7a33'; ctx.stroke();
+  ctx.fillStyle='#ff7a33'; ctx.font='700 20px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('M',CX,CY+1);
+  ctx.beginPath(); ctx.moveTo(CX,CY-R+6); ctx.lineTo(CX-15,CY-R-22); ctx.lineTo(CX+15,CY-R-22); ctx.closePath();
+  ctx.fillStyle='#ff7a33'; ctx.fill();
+  if(winner!=null){
+    ctx.fillStyle='#fff7ee'; roundRect(ctx, 30, CY+R+18, cv.width-60, 56, 14); ctx.fill();
+    ctx.strokeStyle='#ffd9a8'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle='#c2410c'; ctx.font='700 22px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🎉 '+NAMES[winner].t+' 님 당첨!', CX, CY+R+46);
+  }
+}
+drawWheel(0,null);
+
+let AC=null;
+function tick(ac,dest,t,freq,dur,vol){
+  const o=ac.createOscillator(), g=ac.createGain();
+  o.type='square'; o.frequency.value=freq;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.005); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t+dur+0.02);
+}
+function fanfare(ac,dest,t){
+  const notes=[523.25,659.25,783.99,1046.5];
+  notes.forEach((f,i)=>{
+    const o=ac.createOscillator(), g=ac.createGain();
+    o.type='triangle'; o.frequency.value=f;
+    const ts=t+i*0.13;
+    g.gain.setValueAtTime(0,ts); g.gain.linearRampToValueAtTime(0.18,ts+0.02); g.gain.exponentialRampToValueAtTime(0.0001,ts+0.4);
+    o.connect(g); g.connect(dest); o.start(ts); o.stop(ts+0.42);
+  });
+}
+
+function run(){
+  document.getElementById('go').style.display='none';
+  document.getElementById('out').style.display='none';
+  status.textContent='🔴 녹화 중… (소리 켜고 봐주세요)';
+  const ac=new (window.AudioContext||window.webkitAudioContext)();
+  try{ ac.resume(); }catch(e){}
+  const adest=ac.createMediaStreamDestination();
+  const master=ac.createGain(); master.gain.value=0.9; master.connect(adest);
+  // also to speakers for live monitoring
+  master.connect(ac.destination);
+
+  const vstream=cv.captureStream(30);
+  const mixed=new MediaStream([...vstream.getVideoTracks(), ...adest.stream.getAudioTracks()]);
+  let mime='video/webm;codecs=vp9,opus';
+  if(!MediaRecorder.isTypeSupported(mime)) mime='video/webm;codecs=vp8,opus';
+  if(!MediaRecorder.isTypeSupported(mime)) mime='video/webm';
+  const rec=new MediaRecorder(mixed,{mimeType:mime,videoBitsPerSecond:2500000});
+  const chunks=[];
+  rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+  rec.onstop=()=>{
+    const blob=new Blob(chunks,{type:'video/webm'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='thaimate_luckydraw.webm'; document.body.appendChild(a); a.click();
+    const v=document.getElementById('out'); v.src=url; v.style.display='block';
+    status.textContent='✅ 영상 다운로드 완료! (당첨: '+NAMES[winner].t+') — 소리 포함';
+    document.getElementById('go').textContent='▶ 다시 만들기'; document.getElementById('go').style.display='inline-block';
+    try{ac.close();}catch(e){}
+  };
+
+  const winner=Math.floor(Math.random()*N);
+  const finalRot=360*6 + (360-(winner*SEG+SEG/2));
+  const spinMs=5000, holdMs=1800;
+  let start=null, lastSeg=-1, fanfared=false;
+  const t0=ac.currentTime;
+  rec.start();
+
+  function frame(ts){
+    if(start===null) start=ts;
+    const el=ts-start;
+    if(el<spinMs){
+      const p=el/spinMs, rot=finalRot*easeOut(p);
+      drawWheel(rot,null);
+      const segNow=Math.floor(rot/SEG);
+      if(segNow!==lastSeg){ lastSeg=segNow; tick(ac,master,ac.currentTime,520,0.05,0.12); }
+      requestAnimationFrame(frame);
+    } else if(el<spinMs+holdMs){
+      drawWheel(finalRot,winner);
+      if(!fanfared){ fanfared=true; fanfare(ac,master,ac.currentTime); }
+      requestAnimationFrame(frame);
+    } else {
+      drawWheel(finalRot,winner);
+      rec.stop();
+    }
+  }
+  window.winner=winner;
+  requestAnimationFrame(frame);
+}
+document.getElementById('go').addEventListener('click',run);
+setTimeout(run,500);
+</script>
+</body></html>
