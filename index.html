@@ -455,8 +455,8 @@ async function loadListings(){
     if(!error && Array.isArray(data)){ listings.length=0; data.forEach(r=>listings.push(dbToListing(r))); if(screen==='app') render(); }
   }catch(e){}
 }
-const SEMO={restaurant:'🍲',cafe:'🥐',mart:'🛒',beauty:'💇',service:'🧹',etc:'🏪',golf:'⛳'};
-const SCAT={restaurant:0,cafe:1,golf:2,mart:3,beauty:4,service:5,etc:6};  // STORE_CATS/shop_cats 순서와 일치(골프 index 2)
+const SEMO={restaurant:'🍲',cafe:'🥐',mart:'🛒',beauty:'💇',service:'🧹',it:'💻',etc:'🏪',golf:'⛳'};
+const SCAT={restaurant:0,cafe:1,golf:2,mart:3,beauty:4,service:5,it:6,etc:7};  // STORE_CATS/shop_cats 순서와 일치(골프 index 2)
 function dbToStore(row){
   const h=hoodByDbId(row.hood_id);
   const menu=(row.menu_items||[]).slice().sort((a,b)=>a.price-b.price).map(m=>({id:m.id,emo:m.emoji||'🍽️',pr:m.price,nm:m.name||'',photo:m.photo_url||null}));
@@ -860,7 +860,7 @@ const T = {
   shop_banner_t:"우리 동네 업체 광고 · 앱에서 바로 주문", shop_banner_p:"식당·마트·서비스까지 한 곳에서 주문·예약",
   info_banner_t:"정보·소식도 댓글싸움 없이 깔끔하게", info_banner_p:"공개 댓글 대신 도움돼요·저장 · 질문은 작성자에게 1:1로",
   info_cats:["공지","비자·행정","생활·꿀팁","맛집·플레이스","기타"],
-  shop_cats:["식당","카페·베이커리","골프","마트·식자재","뷰티·헬스","생활서비스","기타업종"],
+  shop_cats:["식당","카페·베이커리","골프","마트·식자재","뷰티·헬스","생활서비스","IT·기술","기타업종"],
   live:"건 거래중", status_sale:"판매중", status_resv:"예약중", status_done:"거래완료", status_match:"매칭대기", status_give:"나눔중", status_give_done:"나눔완료",
   btn_like:"관심", btn_chat:"채팅하기", btn_apply:"문의하기", budget:"예산",
   ad_badge:"광고", btn_order:"주문하기", btn_menu:"메뉴보기", btn_inquire:"예약·문의", min_order:"최소주문", delivery:"배달", pickup:"포장",
@@ -917,7 +917,7 @@ const T = {
   shop_banner_t:"Local business ads · order in-app", shop_banner_p:"Restaurants, marts & services — order or book in one place",
   info_banner_t:"News & info — clean, no comment wars", info_banner_p:"Helpful & Save instead of public comments · ask the author 1:1",
   info_cats:["Notice","Visa·Admin","Life tips","Food·Places","Other"],
-  shop_cats:["Restaurant","Cafe·Bakery","Golf","Mart·Grocery","Beauty·Health","Services","Other"],
+  shop_cats:["Restaurant","Cafe·Bakery","Golf","Mart·Grocery","Beauty·Health","Services","IT·Tech","Other"],
   live:" on sale now", status_sale:"For sale", status_resv:"Reserved", status_done:"Sold", status_match:"Matching", status_give:"Available", status_give_done:"Gone",
   btn_like:"Save", btn_chat:"Chat", btn_apply:"Apply", budget:"Budget",
   ad_badge:"AD", btn_order:"Order", btn_menu:"Menu", btn_inquire:"Book·Ask", min_order:"Min", delivery:"Delivery", pickup:"Pickup",
@@ -974,7 +974,7 @@ const T = {
   shop_banner_t:"โฆษณาร้านในย่าน · สั่งในแอป", shop_banner_p:"ร้านอาหาร มาร์ท บริการ สั่งหรือจองที่เดียว",
   info_banner_t:"ข่าวสารแบบสะอาด ไม่มีดราม่าคอมเมนต์", info_banner_p:"ใช้ 'มีประโยชน์' และบันทึก แทนคอมเมนต์ · ถามผู้โพสต์ 1:1",
   info_cats:["ประกาศ","วีซ่า","เคล็ดลับ","ร้าน·สถานที่","อื่นๆ"],
-  shop_cats:["ร้านอาหาร","คาเฟ่·เบเกอรี่","กอล์ฟ","มาร์ท·ของชำ","บิวตี้·สุขภาพ","บริการ","อื่นๆ"],
+  shop_cats:["ร้านอาหาร","คาเฟ่·เบเกอรี่","กอล์ฟ","มาร์ท·ของชำ","บิวตี้·สุขภาพ","บริการ","ไอที·เทค","อื่นๆ"],
   live:" รายการขายอยู่", status_sale:"ขายอยู่", status_resv:"จองแล้ว", status_done:"ขายแล้ว", status_match:"รอจับคู่", status_give:"แจกอยู่", status_give_done:"หมดแล้ว",
   btn_like:"บันทึก", btn_chat:"แชท", btn_apply:"สอบถาม", budget:"งบ",
   ad_badge:"โฆษณา", btn_order:"สั่งซื้อ", btn_menu:"ดูเมนู", btn_inquire:"จอง·สอบถาม", min_order:"ขั้นต่ำ", delivery:"เดลิเวอรี", pickup:"รับเอง",
@@ -1818,6 +1818,7 @@ const STORE_CATS=[
   {code:'mart',svc:false,goods:true},
   {code:'beauty',svc:true},
   {code:'service',svc:true},
+  {code:'it',svc:true},
   {code:'etc',svc:false}
 ];
 const WS={
