@@ -1906,7 +1906,7 @@ function storeForm(){
     h+=`<div style="font-size:12px;color:var(--sub);background:#f3f4f6;border-radius:8px;padding:8px 10px;margin:0 0 8px">💬 ${ws('book')}</div>
        <div class="gfield"><label>${ws('order')}</label><div class="wtypes" style="margin:2px 0 2px"><button class="wtype ${s.visit?'on':''}" data-stoggle="visit">🏬 ${ws('visit_store')}</button><button class="wtype ${s.delivery?'on':''}" data-stoggle="delivery">🚗 ${ws('visit_home')}</button></div></div>`+storePayHtml()+storeMenuHtml(ws('svc_items'),ws('addsvc'));
   } else {
-    h+=`<div class="gfield"><label>${ws('order')}</label><div class="wtypes" style="margin:2px 0 2px"><button class="wtype ${s.visit?'on':''}" data-stoggle="visit">🏬 ${ws('visit_store')}</button></div></div>`+storePayHtml();
+    h+=`<div class="gfield"><label>${ws('order')}</label><div class="wtypes" style="margin:2px 0 2px"><button class="wtype ${s.visit?'on':''}" data-stoggle="visit">🏬 ${ws('visit_store')}</button></div></div>`+storePayHtml()+storeMenuHtml(ws('svc_items'),ws('addsvc'));
   }
   // 맨 아래: 매장 사진(여러 장)
   h+=`<div class="gfield"><label>${lang==='ko'?'매장 사진 (여러 장 추가 가능)':lang==='th'?'รูปร้าน (เพิ่มได้หลายรูป)':'Store photos (add multiple)'}</label>
@@ -2498,7 +2498,8 @@ function viewStore(){
     <button class="back" id="sback">‹</button>
     <div class="avatar" style="width:42px;height:42px;flex:0 0 42px;border-radius:12px;font-size:22px;background:#fff1e8;overflow:hidden">${s.logo?`<img src="${escA(s.logo)}" style="width:100%;height:100%;object-fit:contain;background:#fff">`:s.emo}</div>
     <div><div class="hn">${tx(s.nm)} <span class="dbadge">🤝 ${L().direct_badge}</span></div><div class="hs">${s.reviews>0?`⭐ ${s.rating} (${s.reviews})`:(lang==='ko'?'🆕 신규':lang==='th'?'🆕 ใหม่':'🆕 New')} · ${L().shop_cats[s.cat]}</div></div></div>`;
-  if(s.service){
+  const _cdf=STORE_CATS[s.cat]||{}, _orderable=!!(_cdf.food||_cdf.goods);
+  if(!_orderable){
     page.innerHTML=head+`
       ${storeBanner(s)}
       ${statusRow}
