@@ -173,6 +173,9 @@
   .idot{font-size:12px;color:var(--sub);margin-left:auto}
   .ititle{margin:0;font-size:15px;font-weight:700;line-height:1.35;letter-spacing:-.2px}
   .iexc{margin:5px 0 0;font-size:13px;color:#4b5563;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .jdesc{font-size:13.5px;color:#374151;line-height:1.55;white-space:pre-wrap;background:#fafafa;border:1px solid var(--line);border-radius:10px;padding:9px 11px;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+  .jdesc.open{-webkit-line-clamp:unset;overflow:visible}
+  .jmore{margin-top:6px;background:none;border:none;color:#2f6df0;font-size:13px;font-weight:700;cursor:pointer;padding:3px 0}
   .ireact{display:flex;align-items:center;gap:8px;margin-top:11px;flex-wrap:wrap}
   .rb{border:1px solid var(--line);background:#fff;border-radius:9px;font-size:12px;font-weight:700;color:#5b6472;padding:6px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
   .rb b{font-weight:800}
@@ -2345,8 +2348,9 @@ function viewJobs(){
          <div class="actions">${(j.author_id&&uid&&j.author_id===uid)?`<button class="abtn" data-ledit="${j.id||''}">✏️ ${lang==='ko'?'수정':lang==='th'?'แก้ไข':'Edit'}</button>`:`<button class="abtn chat" data-jobchat="${j.id||''}">💬 ${L().btn_apply}</button>${j.chats?`<span class="live-mini">💬 ${j.chats}</span>`:''}`}</div>
        </div>
        </div>
-       ${j.desc?`<div style="font-size:13.5px;color:#374151;line-height:1.55;white-space:pre-wrap;background:#fafafa;border:1px solid var(--line);border-radius:10px;padding:9px 11px;display:-webkit-box;-webkit-line-clamp:10;-webkit-box-orient:vertical;overflow:hidden">${escT(j.desc)}</div>`:''}
+       ${j.desc?`<div class="jdescwrap"><div class="jdesc">${escT(j.desc)}</div></div>`:''}
      </div>`).join('')||`<div class="empty">—</div>`}</div>`;
+  setTimeout(()=>{document.querySelectorAll('.jdescwrap').forEach(w=>{const d=w.querySelector('.jdesc'); if(d&&!w.querySelector('.jmore')&&d.scrollHeight-d.clientHeight>4){ const b=document.createElement('button'); b.className='jmore'; b.setAttribute('data-jmore','1'); b.textContent=(lang==='ko'?'더보기 ▾':lang==='th'?'ดูเพิ่ม ▾':'Show more ▾'); w.appendChild(b);} });},0);
 }
 
 /* ===================== shop (광고/주문) ===================== */
@@ -3990,6 +3994,7 @@ document.addEventListener('click',e=>{
     return;}
   const gr=e.target.closest('[data-gmround]'); if(gr){if(!canAct())return;toast(lang==='ko'?'라운딩 참여 신청 — 1:1 채팅으로 연결':lang==='th'?'ขอร่วมออกรอบ — เปิดแชท 1:1':'Round join request — opens 1:1 chat');return;}
   const ms=e.target.closest('[data-mseg]'); if(ms){mseg=ms.dataset.mseg;viewMarket();return;}
+  const jm=e.target.closest('[data-jmore]'); if(jm){const w=jm.closest('.jdescwrap'); const d=w&&w.querySelector('.jdesc'); if(d){const op=d.classList.toggle('open'); jm.textContent=op?(lang==='ko'?'접기 ▴':lang==='th'?'ย่อ ▴':'Show less ▴'):(lang==='ko'?'더보기 ▾':lang==='th'?'ดูเพิ่ม ▾':'Show more ▾');} return;}
   const js=e.target.closest('[data-jseg]'); if(js){jseg=js.dataset.jseg;viewJobs();return;}
   const cm=e.target.closest('[data-comm]'); if(cm){commSeg=cm.dataset.comm;golfOpen=false;renderFab();viewCommunity();return;}
   const ic=e.target.closest('[data-icat]'); if(ic){icat=+ic.dataset.icat;viewCommunity();return;}
