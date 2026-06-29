@@ -1904,7 +1904,7 @@ function storeForm(){
     h+=`<div class="gfield"><label>${ws('order')}</label><div class="wtypes" style="margin:2px 0 2px"><button class="wtype ${s.delivery?'on':''}" data-stoggle="delivery">🛵 ${ws('delivery')}</button><button class="wtype ${s.pickup?'on':''}" data-stoggle="pickup">🏪 ${ws('pickup')}</button></div></div>`+storePayHtml()+storeMenuHtml(ws('goods'),ws('addgoods'));
   } else if(cat.svc){
     h+=`<div style="font-size:12px;color:var(--sub);background:#f3f4f6;border-radius:8px;padding:8px 10px;margin:0 0 8px">💬 ${ws('book')}</div>
-       <div class="gfield"><label>${ws('order')}</label><div class="wtypes" style="margin:2px 0 2px"><button class="wtype ${s.visit?'on':''}" data-stoggle="visit">🏬 ${ws('visit_store')}</button><button class="wtype ${s.delivery?'on':''}" data-stoggle="delivery">🚗 ${ws('visit_home')}</button></div></div>`+storeMenuHtml(ws('svc_items'),ws('addsvc'));
+       <div class="gfield"><label>${ws('order')}</label><div class="wtypes" style="margin:2px 0 2px"><button class="wtype ${s.visit?'on':''}" data-stoggle="visit">🏬 ${ws('visit_store')}</button><button class="wtype ${s.delivery?'on':''}" data-stoggle="delivery">🚗 ${ws('visit_home')}</button></div></div>`+storePayHtml()+storeMenuHtml(ws('svc_items'),ws('addsvc'));
   } else {
     h+=`<div class="gfield"><label>${ws('order')}</label><div class="wtypes" style="margin:2px 0 2px"><button class="wtype ${s.visit?'on':''}" data-stoggle="visit">🏬 ${ws('visit_store')}</button></div></div>`;
   }
