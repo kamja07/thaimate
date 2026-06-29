@@ -2147,7 +2147,7 @@ function renderPicker(){
      <div class="phoods">${REGIONS[pickRegion].hoods.map(h=>`
        <button class="hood ${(hood&&hood.id===h.id)?'on':''}" data-hood="${h.id}"><span class="hp">📍</span>${tx(h)}</button>`).join('')}</div>
      <div class="plabel" style="margin-top:18px">${L().r_range}</div>
-     <div class="pradio">${[0,3,5,10,999].map(v=>`<button data-rad="${v}" class="${radiusKm===v?'on':''}">${v===0?L().r_only:v===999?L().r_all:'+'+v+'km'}</button>`).join('')}</div>
+     <div class="pradio">${[3,5,10,15,20,30,50,100,150,200,999].map(v=>`<button data-rad="${v}" class="${radiusKm===v?'on':''}">${v===999?L().r_all:'+'+v+'km'}</button>`).join('')}</div>
      <div class="pall"><button data-pall="1">${L().p_all}</button></div>
    </div>`;
 }
@@ -2252,6 +2252,13 @@ function rangeChipHtml(){
   const r=radiusKm===0?L().r_only:radiusKm===999?L().r_all:('+'+radiusKm+'km '+L().within);
   return `<div class="rangechip">📍 <b>${tx(hood)}</b> · ${r} ▾</div>`;
 }
+const RADII=[3,5,10,15,20,30,50,100,150,200];
+function radiusSelectHtml(){
+  const selSty='box-sizing:border-box;width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff';
+  return `<select onchange="window.__setRad(this.value)" style="${selSty}">${RADII.map(v=>`<option value="${v}" ${radiusKm===v?'selected':''}>📍 ${v}km ${L().within}</option>`).join('')}<option value="999" ${radiusKm===999?'selected':''}>📍 ${L().r_all}</option></select>`;
+}
+window.__setRad=function(v){ radiusKm=+v; render(); };
+window.__setShopCat=function(v){ shopCat=+v; viewShop(); };
 function matchBannerHtml(){
   const m=byCity(listings).filter(x=>x.kind==='buy'&&inRange(x))[0];
   if(!m) return '';
@@ -2313,7 +2320,7 @@ function viewMarket(){
      <button data-mseg="give" class="${mseg==='give'?'on':''}">💚 ${L().seg_give}</button>
    </div>
    <button class="gbtn primary" data-newpost style="width:100%;margin:2px 0 10px">📝 ${L().nav_market} ${lang==='ko'?'글쓰기':lang==='th'?'โพสต์':'Post'}</button>
-   <div style="margin:0 0 10px">${subFilter}</div>
+   <div style="display:flex;gap:8px;margin:0 0 10px"><div style="flex:1">${subFilter}</div><div style="flex:0 0 134px">${radiusSelectHtml()}</div></div>
    <div style="background:#eef5ff;border:1px solid #cfe0f7;border-radius:9px;padding:8px 11px;font-size:12px;color:#33557a;margin:0 0 10px;line-height:1.5">${lang==='ko'?"💡 중고 물건뿐 아니라 <b>부동산 임대·임차(방·콘도·상가)</b> 매물도 올릴 수 있어요. 글쓰기 → 분류에서 <b>‘부동산’</b> 선택!":lang==='th'?"💡 ไม่ใช่แค่ของมือสอง — โพสต์ <b>เช่า/ให้เช่าอสังหาฯ (ห้อง/คอนโด/ร้าน)</b> ได้ เลือกหมวด <b>‘อสังหาฯ’</b> ตอนโพสต์":"💡 Not just second-hand — you can also post <b>real-estate rentals/leases (rooms, condos, shops)</b>. When posting, pick <b>‘Real estate’</b> as the category!"}</div>
    ${rangeChipHtml()}
    ${mseg==='sell'?matchBannerHtml():''}
@@ -2410,7 +2417,6 @@ function viewShop(){
      <div>${mine.length?mine.map(storeCard).join(''):`<div class="empty" style="padding:34px 0;text-align:center;color:var(--sub)">${L().no_stores}</div>`}</div>`;
     return;
   }
-  const chips=[L().city_all].concat(L().shop_cats);
   let data=byCity(stores);
   if(shopCat>0) data=data.filter(x=>x.cat===shopCat-1);
   data=data.filter(x=>inRange(x));   // 내 위치 반경 필터 (지역 선택 시에만 적용)
@@ -2418,7 +2424,10 @@ function viewShop(){
   page.innerHTML=`
    <div class="vbanner" style="background:linear-gradient(100deg,#eafaf0,#f4fdf8);border-color:#bfe9cf">
      <span class="em">🏬</span><div><b>${L().shop_banner_t}</b><p style="color:#0d8a47">${L().shop_banner_p}</p></div></div>
-   <div class="cities" style="padding:0 0 12px;margin:0;flex-wrap:wrap;gap:6px;overflow:visible">${chips.map((c,i)=>`<button class="city ${shopCat===i?'on':''}" data-shopcat="${i}">${c}</button>`).join('')}</div>
+   <div style="display:flex;gap:8px;margin:0 0 12px">
+     <select onchange="window.__setShopCat(this.value)" style="flex:1;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff"><option value="0" ${shopCat===0?'selected':''}>${L().city_all}</option>${L().shop_cats.map((c,i)=>`<option value="${i+1}" ${shopCat===i+1?'selected':''}>${c}</option>`).join('')}</select>
+     <div style="flex:0 0 134px">${radiusSelectHtml()}</div>
+   </div>
    <button class="gbtn primary" data-newstore style="width:100%;margin:2px 0 10px">🏬 ${L().fab_shop}</button>
    ${rangeChipHtml()}
    <div>${data.map(storeCard).join('')||`<div class="empty">—</div>`}</div>`;
