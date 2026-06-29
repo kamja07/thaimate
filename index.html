@@ -1808,7 +1808,7 @@ const JOB_META_FIELDS=[
 function mktSubLabel(c){ const x=MKT_SUBCATS.find(s=>s.c===c); return x?tcc(x):''; }
 function jobCatLabel(c){ const x=JOB_CATS.find(s=>s.c===c); return x?tcc(x):''; }
 function jobMetaLabel(key,v){ const f=JOB_META_FIELDS.find(f=>f.key===key); if(!f)return''; const o=f.opts.find(o=>o.v===v); return o?tcc(o):''; }
-let mktSubFilter='', jobCatFilter='';
+let mktSubFilter='', jobCatFilter='', clubRegF='';
 window.__mktSubF=function(v){ mktSubFilter=v; viewMarket(); };
 window.__jobCatF=function(v){ jobCatFilter=v; viewJobs(); };
 const STORE_CATS=[
@@ -2655,7 +2655,12 @@ function clubsInner(){
   const gm=clubs.find(c=>c.flag);
   const gmCard=gm?`<div class="club" data-golf="1" style="cursor:pointer"><div class="banner" style="background:${gm.grad}">${gm.emo} ${tx(gm.nm)}</div><div class="cbody2"><div class="desc">${tx(gm.d)}</div><div class="cfoot"><span class="flag">★ ${L().flagship}</span><button class="join" data-golf="1">${enter}</button></div></div></div>`:'';
   const allDb=dbClubs.filter(c=>c.category!=='golf');   // 골프 동호회는 ⛳골프 허브에만 표시
-  const visible=allDb.filter(c=>c.approved!==false || c.leader_id===uid || isAdmin);   // 공개=승인됨 + 본인개설 대기 + 관리자
+  const visibleAll=allDb.filter(c=>c.approved!==false || c.leader_id===uid || isAdmin);   // 공개=승인됨 + 본인개설 대기 + 관리자
+  const regList=[...new Set(visibleAll.map(c=>(c.region||'').trim()).filter(Boolean))].sort();
+  if(clubRegF && !regList.includes(clubRegF)) clubRegF='';   // 필터값이 사라지면 전체로
+  const visible=clubRegF?visibleAll.filter(c=>(c.region||'').trim()===clubRegF):visibleAll;
+  const regAll=lang==='ko'?'전체':lang==='th'?'ทั้งหมด':'All';
+  const regBar=regList.length?`<div class="cities" style="padding:0 0 12px;margin:0"><button class="city ${!clubRegF?'on':''}" data-clubreg="">${regAll}</button>${regList.map(r=>`<button class="city ${clubRegF===r?'on':''}" data-clubreg="${escA(r)}">📍 ${escT(r)}</button>`).join('')}</div>`:'';
   const pendingClubs=allDb.filter(c=>c.approved===false);
   const adminSec=(isAdmin&&pendingClubs.length)?`<div style="background:#fff7e8;border:1px solid #ffe6b3;border-radius:14px;padding:12px;margin-bottom:12px"><b style="font-size:14px">🛎️ ${lang==='ko'?'개설 승인 대기':lang==='th'?'รออนุมัติ':'Pending approval'} (${pendingClubs.length})</b>`+pendingClubs.map(c=>`<div style="display:flex;align-items:center;gap:8px;margin-top:9px"><span style="flex:1;min-width:0;font-size:13px">${c.emoji||'👥'} <b>${escT(c.name||'')}</b>${c.intro?` <span style="color:var(--sub);font-size:12px">· ${escT(c.intro)}</span>`:''}</span><button class="join" style="background:#16a34a;padding:6px 12px" data-clubok="${c.id}">${lang==='ko'?'승인':lang==='th'?'อนุมัติ':'OK'}</button><button class="join" style="background:#e5e7eb;color:#374151;padding:6px 12px" data-clubno="${c.id}">${lang==='ko'?'거절':lang==='th'?'ปฏิเสธ':'No'}</button></div>`).join('')+`</div>`:'';
   const dbCards=visible.map(c=>{
@@ -2670,7 +2675,7 @@ function clubsInner(){
   }).join('');
   const note=(authed&&!clubCreateOpen)?`<div style="font-size:12px;color:var(--sub);text-align:center;margin:0 0 12px">${lang==='ko'?'새 모임은 관리자 승인 후 공개됩니다':lang==='th'?'ชมรมใหม่จะเปิดหลังแอดมินอนุมัติ':'New clubs go live after admin approval'}</div>`:'';
   const createUI = authed ? (clubCreateOpen ? clubCreateForm() : `<button class="gbtn primary" data-clnew style="width:100%;margin-bottom:14px">➕ ${lang==='ko'?'모임 개설':lang==='th'?'สร้างชมรม':'Create a club'}</button>`) : '';
-  return createUI+adminSec+note+gmCard+dbCards;
+  return createUI+adminSec+note+gmCard+regBar+dbCards;
 }
 /* ── 동반자 모집 (golf_matches 보드 + 네이티브 1:1 채팅) ── */
 async function openGolfMatches(){ golfSub='match'; golfMatchForm=false; golfMatchEdit=null; golfMatchOpen=null; render(); page.scrollTo(0,0); await loadGolfMatches(); }
@@ -3981,6 +3986,7 @@ document.addEventListener('click',e=>{
   const js=e.target.closest('[data-jseg]'); if(js){jseg=js.dataset.jseg;viewJobs();return;}
   const cm=e.target.closest('[data-comm]'); if(cm){commSeg=cm.dataset.comm;golfOpen=false;renderFab();viewCommunity();return;}
   const ic=e.target.closest('[data-icat]'); if(ic){icat=+ic.dataset.icat;viewCommunity();return;}
+  const creg=e.target.closest('[data-clubreg]'); if(creg){clubRegF=creg.dataset.clubreg||'';viewCommunity();return;}
   const sc=e.target.closest('[data-shopcat]'); if(sc){shopCat=+sc.dataset.shopcat;viewShop();return;}
   const st=e.target.closest('[data-store]'); if(st){storeOpen=st.dataset.store;cart={};render();page.scrollTo(0,0);return;}
   const add=e.target.closest('[data-add]'); if(add){cart[add.dataset.add]=(cart[add.dataset.add]||0)+1;viewStore();return;}
