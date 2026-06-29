@@ -863,7 +863,7 @@ const T = {
   shop_cats:["식당","카페·베이커리","골프","마트·식자재","뷰티·헬스","생활서비스","IT·기술","기타업종"],
   live:"건 거래중", status_sale:"판매중", status_resv:"예약중", status_done:"거래완료", status_match:"매칭대기", status_give:"나눔중", status_give_done:"나눔완료",
   btn_like:"관심", btn_chat:"채팅하기", btn_apply:"문의하기", budget:"예산",
-  ad_badge:"광고", btn_order:"주문하기", btn_menu:"메뉴보기", btn_inquire:"예약·문의", min_order:"최소주문", delivery:"배달", pickup:"포장",
+  ad_badge:"광고", btn_order:"주문하기", btn_book:"예약하기", btn_menu:"메뉴보기", btn_inquire:"예약·문의", min_order:"최소주문", delivery:"배달", pickup:"포장",
   shop_open:"영업중", shop_closed:"영업종료", shop_set_open:"🟢 영업 시작", shop_set_closed:"⛔ 영업 종료", shop_closed_msg:"지금은 영업종료 상태예요",
   holiday_set:"🚫 휴업 공지", holiday_clear:"휴업 해제", holiday_badge:"휴업", holiday_prompt:"휴업 안내를 입력하세요 (예: 오늘 휴무 / 1.1~1.3 휴업)", holiday_default:"오늘 휴무", store_edit:"가게 정보 수정", my_stores:"내 가게 관리", store_new:"+ 새 가게 등록", no_stores:"등록한 가게가 없어요", closedown:"폐업", closedown_confirm:"정말 폐업하시겠어요?\n가게·메뉴 정보가 모두 삭제되며 되돌릴 수 없습니다.", closedown_done:"폐업 처리되었습니다",
   cart:"장바구니", total:"합계", menu_label:"메뉴", products_label:"상품", services_label:"주요 서비스", order_done:"주문이 접수되었습니다 (프로토타입)", order_summary:"🧾 주문 내역",
@@ -920,7 +920,7 @@ const T = {
   shop_cats:["Restaurant","Cafe·Bakery","Golf","Mart·Grocery","Beauty·Health","Services","IT·Tech","Other"],
   live:" on sale now", status_sale:"For sale", status_resv:"Reserved", status_done:"Sold", status_match:"Matching", status_give:"Available", status_give_done:"Gone",
   btn_like:"Save", btn_chat:"Chat", btn_apply:"Apply", budget:"Budget",
-  ad_badge:"AD", btn_order:"Order", btn_menu:"Menu", btn_inquire:"Book·Ask", min_order:"Min", delivery:"Delivery", pickup:"Pickup",
+  ad_badge:"AD", btn_order:"Order", btn_book:"Book now", btn_menu:"Menu", btn_inquire:"Book·Ask", min_order:"Min", delivery:"Delivery", pickup:"Pickup",
   shop_open:"Open", shop_closed:"Closed", shop_set_open:"🟢 Open now", shop_set_closed:"⛔ Close", shop_closed_msg:"This store is currently closed",
   holiday_set:"🚫 Holiday notice", holiday_clear:"Cancel holiday", holiday_badge:"On holiday", holiday_prompt:"Enter holiday notice (e.g. Closed today)", holiday_default:"Closed today", store_edit:"Edit store info", my_stores:"My stores", store_new:"+ New store", no_stores:"No stores yet", closedown:"Close down", closedown_confirm:"Permanently close this store?\nAll store/menu info will be deleted and cannot be undone.", closedown_done:"Store closed down",
   cart:"Cart", total:"Total", menu_label:"Menu", products_label:"Products", services_label:"Services", order_done:"Order placed (prototype)", order_summary:"🧾 Order",
@@ -977,7 +977,7 @@ const T = {
   shop_cats:["ร้านอาหาร","คาเฟ่·เบเกอรี่","กอล์ฟ","มาร์ท·ของชำ","บิวตี้·สุขภาพ","บริการ","ไอที·เทค","อื่นๆ"],
   live:" รายการขายอยู่", status_sale:"ขายอยู่", status_resv:"จองแล้ว", status_done:"ขายแล้ว", status_match:"รอจับคู่", status_give:"แจกอยู่", status_give_done:"หมดแล้ว",
   btn_like:"บันทึก", btn_chat:"แชท", btn_apply:"สอบถาม", budget:"งบ",
-  ad_badge:"โฆษณา", btn_order:"สั่งซื้อ", btn_menu:"ดูเมนู", btn_inquire:"จอง·สอบถาม", min_order:"ขั้นต่ำ", delivery:"เดลิเวอรี", pickup:"รับเอง",
+  ad_badge:"โฆษณา", btn_order:"สั่งซื้อ", btn_book:"จองเลย", btn_menu:"ดูเมนู", btn_inquire:"จอง·สอบถาม", min_order:"ขั้นต่ำ", delivery:"เดลิเวอรี", pickup:"รับเอง",
   shop_open:"เปิด", shop_closed:"ปิด", shop_set_open:"🟢 เปิดร้าน", shop_set_closed:"⛔ ปิดร้าน", shop_closed_msg:"ร้านปิดอยู่ในขณะนี้",
   holiday_set:"🚫 ประกาศหยุด", holiday_clear:"ยกเลิกหยุด", holiday_badge:"หยุดทำการ", holiday_prompt:"ใส่ประกาศวันหยุด (เช่น วันนี้หยุด)", holiday_default:"วันนี้หยุด", store_edit:"แก้ไขข้อมูลร้าน", my_stores:"ร้านของฉัน", store_new:"+ เพิ่มร้าน", no_stores:"ยังไม่มีร้าน", closedown:"ปิดกิจการ", closedown_confirm:"ปิดกิจการถาวรหรือไม่?\nข้อมูลร้าน/เมนูจะถูกลบและกู้คืนไม่ได้", closedown_done:"ปิดกิจการแล้ว",
   cart:"ตะกร้า", total:"รวม", menu_label:"เมนู", products_label:"สินค้า", services_label:"บริการ", order_done:"สั่งซื้อสำเร็จ (ต้นแบบ)", order_summary:"🧾 รายการสั่งซื้อ",
@@ -2372,7 +2372,7 @@ function storeCard(s){
   if(s.pickup) opts.push('🥡 '+L().pickup);
   if(s.dinein) opts.push('🍽️ '+ws('dinein'));
   if(s.visit) opts.push('🏬 '+ws('visit_store'));
-  if(s.service && !opts.length) opts.push('📅 '+L().btn_inquire);
+  if(s.service && !opts.length) opts.push('📅 '+L().btn_book);
   const optPills=opts.slice(0,2).map(o=>`<span class="pill">${o}</span>`).join('');
   const hoursPill = s.hours?`<span class="pill" style="color:var(--sub)">🕒 ${s.hours}</span>`:'';
   const promoLine = s.promo?`<div class="spills" style="margin-top:3px"><span class="pill" style="color:#c2410c;background:#fff1e8">🎉 ${s.promo.length>22?s.promo.slice(0,22)+'…':s.promo}</span></div>`:'';
@@ -2508,7 +2508,7 @@ function viewStore(){
       <div style="padding:6px 14px 16px">
         ${canManage?`<div style="display:flex;gap:8px;margin-bottom:10px"><button class="gbtn line" data-storeedit style="flex:1">✏️ ${L().store_edit}</button><button class="gbtn line" data-closedown style="flex:0 0 auto;color:#d33;padding:0 14px">🗑️ ${L().closedown}</button></div>`:''}
         <div class="secure" style="border-radius:11px">🔒 ${L().chat_secure}</div>
-        <button class="bigbtn" id="sinq">💬 ${L().btn_inquire}</button>
+        <button class="bigbtn" id="sinq">${_cdf.svc?'📅 '+L().btn_book:'💬 '+L().btn_inquire}</button>
         ${s.payQr?'':`<button class="gbtn line" id="spay" style="width:100%;margin-top:10px">📷 ${L().pay_info}</button>`}
       </div>
       ${storePhotoGrid(s)}`;
