@@ -1135,6 +1135,7 @@ const REGIONS={
 function hoodById(id){for(const r in REGIONS){const h=REGIONS[r].hoods.find(x=>x.id===id);if(h)return h;}return null;}
 function regName(v){ return (v&&REGIONS[v])?tx(REGIONS[v].nm):(v||''); }   // 지역키→현지표시명, 레거시 자유문자열은 그대로
 function regKey(v){ if(!v) return ''; if(REGIONS[v]) return v; v=String(v).trim(); for(const k in REGIONS){const n=REGIONS[k].nm; if(n.ko===v||n.en===v||n.th===v) return k;} return v; }   // 레거시 지역명→키 정규화
+function mapHref(v){ v=String(v||'').trim(); if(!v) return ''; return /^https?:\/\//i.test(v)?v:('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(v)); }   // 구글맵 링크는 그대로, 주소는 검색 링크로
 function distanceKm(a,b){
   if(!a||!b||a.lat==null||b.lat==null) return 9999;
   const R=6371,toR=d=>d*Math.PI/180;
@@ -1900,7 +1901,7 @@ function storeForm(){
        <label style="display:inline-flex;align-items:center;gap:8px;border:1px dashed var(--line);border-radius:10px;padding:7px 11px;cursor:pointer">${s.introPhoto?`<img src="${escA(s.introPhoto)}" style="width:38px;height:38px;object-fit:cover;border-radius:7px">`:'<span style="font-size:18px">📷</span>'}<span style="font-size:12px;color:var(--sub)">${s.introPhoto?(lang==='ko'?'사진 변경':lang==='th'?'เปลี่ยนรูป':'Change'):(lang==='ko'?'소개 사진 첨부 (선택)':lang==='th'?'แนบรูปแนะนำร้าน':'Attach intro photo')}</span><input type="file" accept="image/*" data-introphoto style="display:none"></label>
        ${s.introPhoto?`<button data-rmintrophoto style="border:none;background:#f0f1f4;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#d33">✕</button>`:''}
      </div></div>
-   <div class="gfield"><label>${ws('map')}</label><input id="wMap" placeholder="${ws('map_ph')}" value="${escA(s.mapUrl)}">${s.mapUrl?`<iframe src="https://www.google.com/maps?q=${encodeURIComponent(s.mapUrl)}&output=embed" style="width:100%;height:140px;border:0;border-radius:8px;margin-top:6px" loading="lazy"></iframe>`:''}</div>
+   <div class="gfield"><label>${ws('map')}</label><input id="wMap" placeholder="${ws('map_ph')}" value="${escA(s.mapUrl)}">${s.mapUrl?`<a href="${escA(mapHref(s.mapUrl))}" target="_blank" rel="noopener" style="display:inline-block;margin-top:7px;font-size:13px;color:#2f6df0;text-decoration:underline">🔎 ${lang==='ko'?'입력한 위치 열어보기':lang==='th'?'เปิดดูตำแหน่งที่กรอก':'Open this location'}</a>`:''}</div>
    <div class="gfield"><label>🎉 ${ws('promo')}</label><textarea class="wta" id="wPromo" placeholder="${ws('promo_ph')}" style="min-height:52px">${escT(s.promo)}</textarea>
      <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
        <label style="display:inline-flex;align-items:center;gap:8px;border:1px dashed var(--line);border-radius:10px;padding:7px 11px;cursor:pointer">${s.promoPhoto?`<img src="${escA(s.promoPhoto)}" style="width:38px;height:38px;object-fit:cover;border-radius:7px">`:'<span style="font-size:18px">📷</span>'}<span style="font-size:12px;color:var(--sub)">${s.promoPhoto?(lang==='ko'?'사진 변경':lang==='th'?'เปลี่ยนรูป':'Change'):(lang==='ko'?'프로모션 사진 첨부 (선택)':lang==='th'?'แนบรูปโปรโมชั่น':'Attach promo photo')}</span><input type="file" accept="image/*" data-promophoto style="display:none"></label>
@@ -2441,7 +2442,7 @@ function storeInfoSection(s){
   if(s.hours) lines.push(`<div style="font-size:13px;margin:3px 0;color:#333">🕒 ${s.hours}</div>`);
   if(s.phone) lines.push(`<div style="font-size:13px;margin:3px 0;color:#333">📞 ${s.phone}</div>`);
   if(s.web){ var _wh=/^https?:\/\//i.test(s.web)?s.web:('https://'+s.web); lines.push(`<div style="font-size:13px;margin:3px 0;color:#333">🌐 <a href="${escA(_wh)}" target="_blank" rel="noopener" style="color:#2f6df0;text-decoration:underline;word-break:break-all">${escA(s.web)}</a></div>`); }
-  const map=s.mapUrl?`<iframe src="https://www.google.com/maps?q=${encodeURIComponent(s.mapUrl)}&output=embed" style="width:100%;height:160px;border:0;border-radius:10px;margin:8px 0" loading="lazy"></iframe>`:'';
+  const map=s.mapUrl?`<a href="${escA(mapHref(s.mapUrl))}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;color:#2f6df0;text-decoration:none;background:#eef4ff;border:1px solid #cfe0ff;border-radius:10px;padding:10px 13px;margin:8px 0;word-break:break-all">📍 ${/^https?:\/\//i.test(String(s.mapUrl).trim())?(lang==='ko'?'구글맵에서 위치 보기':lang==='th'?'ดูตำแหน่งบน Google Maps':'View on Google Maps'):escT(s.mapUrl)}</a>`:'';
   const qr=s.payQr?`<div style="margin:10px 0 2px"><div style="font-size:12px;color:var(--sub);margin-bottom:5px">💳 ${ws('pay')}</div><img src="${s.payQr}" style="width:150px;border-radius:10px;border:1px solid var(--line)"></div>`:'';
   return `<div style="padding:8px 14px 2px">${promoBanner}${badges}${lines.join('')}${map}${qr}</div>`;
 }
