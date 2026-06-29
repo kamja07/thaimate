@@ -1839,11 +1839,11 @@ const WS={
 function ws(k){return (WS[lang]||WS.ko)[k]||(WS.ko[k]||k);}
 function escA(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 function escT(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
-function resetStore(){ wStoreEditId=null; wStore={cat:0,delivery:false,pickup:false,dinein:false,visit:false,menu:[],name:'',phone:'',intro:'',hoursAll:false,hoursDays:[],hoursOpen:'',hoursClose:'',mapUrl:'',promo:'',promptpay:'',holder:'',payQr:'',logo:'',photo:'',web:'',photos:[],promoPhoto:'',introPhoto:''}; }
+function resetStore(){ wStoreEditId=null; wStore={cat:0,hoodId:(hood?hood.id:null),delivery:false,pickup:false,dinein:false,visit:false,menu:[],name:'',phone:'',intro:'',hoursAll:false,hoursDays:[],hoursOpen:'',hoursClose:'',mapUrl:'',promo:'',promptpay:'',holder:'',payQr:'',logo:'',photo:'',web:'',photos:[],promoPhoto:'',introPhoto:''}; }
 function openStoreEdit(store){
   if(!store) return;
   wStore={
-    cat:(store.cat!=null?store.cat:5), name:store.nm||'', phone:store.phone||'', intro:store.intro||'',
+    cat:(store.cat!=null?store.cat:5), hoodId:store.hoodId||null, name:store.nm||'', phone:store.phone||'', intro:store.intro||'',
     hoursAll:!!store.hoursAll, hoursDays:(store.hoursDays||[]).slice(), hoursOpen:store.hoursOpen||'', hoursClose:store.hoursClose||'',
     mapUrl:store.mapUrl||'', promo:store.promo||'',
     delivery:!!store.delivery, pickup:!!store.pickup, dinein:!!store.dinein, visit:!!store.visit,
@@ -1858,6 +1858,7 @@ function snapStore(){
   const g=id=>(document.getElementById(id)||{}).value||'';
   wStore.name=g('wSubject'); wStore.phone=g('wPhone'); wStore.intro=g('wDesc'); wStore.mapUrl=g('wMap'); wStore.web=g('wWeb');
   wStore.hoursOpen=g('wHopen'); wStore.hoursClose=g('wHclose'); wStore.promo=g('wPromo'); wStore.promptpay=g('wPromptpay'); wStore.holder=g('wHolder');
+  if(document.getElementById('wHood')) wStore.hoodId=g('wHood')||null;
   document.querySelectorAll('[data-mname]').forEach(el=>{const i=+el.dataset.mname; if(wStore.menu[i]) wStore.menu[i].name=el.value;});
   document.querySelectorAll('[data-mprice]').forEach(el=>{const i=+el.dataset.mprice; if(wStore.menu[i]) wStore.menu[i].price=el.value;});
 }
@@ -1894,6 +1895,9 @@ function storeForm(){
    <div class="gfield"><label>${lang==='ko'?'가게 로고 (선택)':lang==='th'?'โลโก้ร้าน (ไม่บังคับ)':'Store logo (optional)'}</label>
      <label style="display:inline-flex;align-items:center;gap:10px;border:1px dashed var(--line);border-radius:10px;padding:8px 12px;cursor:pointer">${s.logo?`<img src="${escA(s.logo)}" style="width:48px;height:48px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:10px">`:'<span style="font-size:24px">🏷️</span>'}<span style="font-size:13px;color:var(--sub)">${s.logo?(lang==='ko'?'로고 변경':lang==='th'?'เปลี่ยนโลโก้':'Change logo'):(lang==='ko'?'로고 이미지 올리기':lang==='th'?'อัปโหลดโลโก้':'Upload logo')}</span><input type="file" accept="image/*" data-storelogo style="display:none"></label></div>
    <div class="gfield"><label>${ws('cat')}</label><div class="wtypes" style="margin:2px 0 2px">${cats.map((c,i)=>`<button class="wtype ${s.cat===i?'on':''}" data-scat="${i}">${c}</button>`).join('')}</div></div>
+   <div class="gfield"><label>${lang==='ko'?'가게 위치 (동네)':lang==='th'?'พื้นที่ร้าน (ย่าน)':'Store area (neighborhood)'}</label>
+     <select id="wHood" style="width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff"><option value="">${lang==='ko'?'— 지역 선택 —':lang==='th'?'— เลือกพื้นที่ —':'— Select area —'}</option>${Object.keys(REGIONS).map(rk=>`<optgroup label="${tx(REGIONS[rk].nm)}">${REGIONS[rk].hoods.map(h=>`<option value="${h.id}" ${s.hoodId===h.id?'selected':''}>${tx(h)}</option>`).join('')}</optgroup>`).join('')}</select>
+     <div style="font-size:12px;color:var(--sub);margin-top:4px">📍 ${lang==='ko'?'손님이 거리(반경)로 찾을 수 있게 동네를 정해주세요':lang==='th'?'เลือกย่านเพื่อให้ลูกค้าค้นหาตามระยะได้':'Set your area so customers can find you by distance'}</div></div>
    <div class="gfield"><label>${ws('phone')}</label><input id="wPhone" placeholder="${ws('phone_ph')}" value="${escA(s.phone)}"></div>
    <div class="gfield"><label>${lang==='ko'?'웹사이트 (선택)':lang==='th'?'เว็บไซต์ (ไม่บังคับ)':'Website (optional)'}</label><input id="wWeb" inputmode="url" placeholder="https://..." value="${escA(s.web)}"></div>
    <div class="gfield"><label>${ws('intro')}</label><textarea class="wta" id="wDesc" placeholder="${ws('intro_ph')}">${escT(s.intro)}</textarea>
@@ -3828,7 +3832,7 @@ document.addEventListener('click',e=>{
       const scat=STORE_CATS[wStore.cat]||STORE_CATS[5];
       let _hrs=null;
       if(wStore.hoursOpen&&wStore.hoursClose){const _days=(WS[lang]||WS.ko).days||WS.ko.days;const _dl=wStore.hoursAll?ws('everyday'):(wStore.hoursDays||[]).slice().sort((a,b)=>a-b).map(i=>_days[i]).join('·');if(_dl)_hrs=_dl+' '+wStore.hoursOpen+'~'+wStore.hoursClose;}
-      const srow={owner_id:uid, name:(wStore.name||'').trim()||L().w_store, category:scat.code, hood_id:hoodDbId(hid),
+      const srow={owner_id:uid, name:(wStore.name||'').trim()||L().w_store, category:scat.code, hood_id:(wStore.hoodId?hoodDbId(wStore.hoodId):hoodDbId(hid)),
         is_service:!!scat.svc, phone:(wStore.phone||'').trim()||null, intro:(wStore.intro||'').trim()||null,
         hours:_hrs, hours_all:!!wStore.hoursAll, hours_days:(wStore.hoursDays||[]), hours_open:(wStore.hoursOpen||null), hours_close:(wStore.hoursClose||null),
         map_url:(wStore.mapUrl||'').trim()||null, promo:(wStore.promo||'').trim()||null,
