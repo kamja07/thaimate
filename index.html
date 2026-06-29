@@ -1906,7 +1906,7 @@ function storeForm(){
     h+=`<div style="font-size:12px;color:var(--sub);background:#f3f4f6;border-radius:8px;padding:8px 10px;margin:0 0 8px">💬 ${ws('book')}</div>
        <div class="gfield"><label>${ws('order')}</label><div class="wtypes" style="margin:2px 0 2px"><button class="wtype ${s.visit?'on':''}" data-stoggle="visit">🏬 ${ws('visit_store')}</button><button class="wtype ${s.delivery?'on':''}" data-stoggle="delivery">🚗 ${ws('visit_home')}</button></div></div>`+storePayHtml()+storeMenuHtml(ws('svc_items'),ws('addsvc'));
   } else {
-    h+=`<div class="gfield"><label>${ws('order')}</label><div class="wtypes" style="margin:2px 0 2px"><button class="wtype ${s.visit?'on':''}" data-stoggle="visit">🏬 ${ws('visit_store')}</button></div></div>`;
+    h+=`<div class="gfield"><label>${ws('order')}</label><div class="wtypes" style="margin:2px 0 2px"><button class="wtype ${s.visit?'on':''}" data-stoggle="visit">🏬 ${ws('visit_store')}</button></div></div>`+storePayHtml();
   }
   // 맨 아래: 매장 사진(여러 장)
   h+=`<div class="gfield"><label>${lang==='ko'?'매장 사진 (여러 장 추가 가능)':lang==='th'?'รูปร้าน (เพิ่มได้หลายรูป)':'Store photos (add multiple)'}</label>
