@@ -1130,6 +1130,8 @@ const REGIONS={
  ]}
 };
 function hoodById(id){for(const r in REGIONS){const h=REGIONS[r].hoods.find(x=>x.id===id);if(h)return h;}return null;}
+function regName(v){ return (v&&REGIONS[v])?tx(REGIONS[v].nm):(v||''); }   // 지역키→현지표시명, 레거시 자유문자열은 그대로
+function regKey(v){ if(!v) return ''; if(REGIONS[v]) return v; v=String(v).trim(); for(const k in REGIONS){const n=REGIONS[k].nm; if(n.ko===v||n.en===v||n.th===v) return k;} return v; }   // 레거시 지역명→키 정규화
 function distanceKm(a,b){
   if(!a||!b||a.lat==null||b.lat==null) return 9999;
   const R=6371,toR=d=>d*Math.PI/180;
@@ -1506,9 +1508,13 @@ function clubCreateForm(){
     </div>
     <label style="${lab}">${lang==='ko'?'한 줄 소개':lang==='th'?'แนะนำสั้นๆ':'Intro'}</label>
     <input id="clIntro" value="${escA(wClub.intro||'')}" placeholder="${lang==='ko'?'어떤 모임인가요?':lang==='th'?'เกี่ยวกับอะไร?':'What is it about?'}" style="${inp};margin-bottom:13px">
-    <div style="display:flex;gap:10px;margin-bottom:13px">
-      <div style="flex:1"><label style="${lab}">${lang==='ko'?'카테고리':lang==='th'?'หมวดหมู่':'Category'}</label><select id="clCat" style="${inp}">${CLUB_CATS.map(c=>`<option value="${c.k}" ${wClub.cat===c.k?'selected':''}>${tx(c.l)}</option>`).join('')}</select></div>
-      <div style="flex:1"><label style="${lab}">${lang==='ko'?'지역':lang==='th'?'ภูมิภาค':'Region'}</label><input id="clRegion" value="${escA(wClub.region||'')}" placeholder="${lang==='ko'?'예: 방콕':lang==='th'?'เช่น กรุงเทพ':'e.g. Bangkok'}" style="${inp}"></div>
+    <div style="margin-bottom:13px">
+      <label style="${lab}">${lang==='ko'?'카테고리':lang==='th'?'หมวดหมู่':'Category'}</label>
+      <select id="clCat" style="${inp}">${CLUB_CATS.map(c=>`<option value="${c.k}" ${wClub.cat===c.k?'selected':''}>${tx(c.l)}</option>`).join('')}</select>
+    </div>
+    <div style="margin-bottom:13px">
+      <label style="${lab}">${lang==='ko'?'지역 (선택)':lang==='th'?'ภูมิภาค (ไม่บังคับ)':'Region (optional)'}</label>
+      <div class="wtypes" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px">${Object.keys(REGIONS).map(k=>`<button type="button" class="wtype ${regKey(wClub.region)===k?'on':''}" data-clreg="${k}">${tx(REGIONS[k].nm)}</button>`).join('')}</div>
     </div>
     <label style="${lab}">${lang==='ko'?'배너 색':lang==='th'?'สีแบนเนอร์':'Banner color'}</label>
     <div style="display:flex;gap:8px;margin-bottom:16px">${CLUB_GRADS.map(g=>`<button type="button" data-clgrad="${g}" style="flex:1;height:34px;border-radius:9px;border:${wClub.grad===g?'3px solid var(--ink,#111)':'1px solid #e0e2e6'};background:${g};cursor:pointer;padding:0"></button>`).join('')}</div>
@@ -1524,7 +1530,7 @@ function clubCreateForm(){
 }
 function openClubEdit(c){
   if(!c) return;
-  wClub={name:c.name||'', emoji:c.emoji||'👥', intro:c.intro||'', cat:c.category||'etc', region:c.region||'', grad:c.grad||CLUB_GRADS[0], requireRealname:!!c.require_realname};
+  wClub={name:c.name||'', emoji:c.emoji||'👥', intro:c.intro||'', cat:c.category||'etc', region:regKey(c.region||''), grad:c.grad||CLUB_GRADS[0], requireRealname:!!c.require_realname};
   clubEditId=c.id; clubCreateOpen=true; render(); page.scrollTo(0,0);
 }
 async function updateClub(){
@@ -1534,7 +1540,7 @@ async function updateClub(){
   const emoji=(((document.getElementById('clEmoji')||{}).value||'').trim())||'👥';
   const intro=((document.getElementById('clIntro')||{}).value||'').trim();
   const cat=(document.getElementById('clCat')||{}).value||'etc';
-  const region=((document.getElementById('clRegion')||{}).value||'').trim();
+  const region=(wClub.region||'').trim();
   const requireRealname=!!((document.getElementById('clRealname')||{}).checked);
   const id=clubEditId; clubBusy=true;
   try{
@@ -1553,7 +1559,7 @@ async function createClub(){
   const emoji=(((document.getElementById('clEmoji')||{}).value||'').trim())||'👥';
   const intro=((document.getElementById('clIntro')||{}).value||'').trim();
   const cat=(document.getElementById('clCat')||{}).value||'etc';
-  const region=((document.getElementById('clRegion')||{}).value||'').trim();
+  const region=(wClub.region||'').trim();
   const requireRealname=!!((document.getElementById('clRealname')||{}).checked);
   clubBusy=true;
   try{
@@ -2660,7 +2666,7 @@ function clubsInner(){
   if(clubRegF && !regList.includes(clubRegF)) clubRegF='';   // 필터값이 사라지면 전체로
   const visible=clubRegF?visibleAll.filter(c=>(c.region||'').trim()===clubRegF):visibleAll;
   const regAll=lang==='ko'?'전체':lang==='th'?'ทั้งหมด':'All';
-  const regBar=regList.length?`<div class="cities" style="padding:0 0 12px;margin:0"><button class="city ${!clubRegF?'on':''}" data-clubreg="">${regAll}</button>${regList.map(r=>`<button class="city ${clubRegF===r?'on':''}" data-clubreg="${escA(r)}">📍 ${escT(r)}</button>`).join('')}</div>`:'';
+  const regBar=regList.length?`<div class="cities" style="padding:0 0 12px;margin:0"><button class="city ${!clubRegF?'on':''}" data-clubreg="">${regAll}</button>${regList.map(r=>`<button class="city ${clubRegF===r?'on':''}" data-clubreg="${escA(r)}">📍 ${escT(regName(r))}</button>`).join('')}</div>`:'';
   const pendingClubs=allDb.filter(c=>c.approved===false);
   const adminSec=(isAdmin&&pendingClubs.length)?`<div style="background:#fff7e8;border:1px solid #ffe6b3;border-radius:14px;padding:12px;margin-bottom:12px"><b style="font-size:14px">🛎️ ${lang==='ko'?'개설 승인 대기':lang==='th'?'รออนุมัติ':'Pending approval'} (${pendingClubs.length})</b>`+pendingClubs.map(c=>`<div style="display:flex;align-items:center;gap:8px;margin-top:9px"><span style="flex:1;min-width:0;font-size:13px">${c.emoji||'👥'} <b>${escT(c.name||'')}</b>${c.intro?` <span style="color:var(--sub);font-size:12px">· ${escT(c.intro)}</span>`:''}</span><button class="join" style="background:#16a34a;padding:6px 12px" data-clubok="${c.id}">${lang==='ko'?'승인':lang==='th'?'อนุมัติ':'OK'}</button><button class="join" style="background:#e5e7eb;color:#374151;padding:6px 12px" data-clubno="${c.id}">${lang==='ko'?'거절':lang==='th'?'ปฏิเสธ':'No'}</button></div>`).join('')+`</div>`:'';
   const dbCards=visible.map(c=>{
@@ -2670,7 +2676,7 @@ function clubsInner(){
     else if(isAdmin||st==='leader'||st==='vice'||st==='member') btn=`<button class="join" data-clubenter="${c.id}">${pend?'⏳ ':''}${lang==='ko'?'입장':enter}</button>`;
     else if(st==='pending') btn=`<button class="join" disabled style="background:#cbd5e1;cursor:default">${lang==='ko'?'승인 대기':lang==='th'?'รออนุมัติ':'Pending'}</button>`;
     else btn=`<button class="join" data-clubapply="${c.id}">${lang==='ko'?'가입 신청':lang==='en'?'Apply':'สมัคร'}</button>`;   // 거절(rejected)도 다시 '가입 신청' 노출 → 재신청 가능
-    const left=pend?`<span class="flag" style="color:#b45309;background:#fff7e8;border-color:#ffe6b3">⏳ ${lang==='ko'?'관리자 승인 대기중':lang==='th'?'รอแอดมินอนุมัติ':'Awaiting approval'}</span>`:(st==='leader'?`<span class="flag">👑 ${lang==='ko'?'방장':lang==='th'?'หัวหน้า':'Leader'}</span>`:(st==='vice'?`<span class="flag" style="color:#2f6df0;background:#eef4ff;border-color:#cfe0ff">⭐ ${lang==='ko'?'부방장':lang==='th'?'รองหัวหน้า':'Vice'}</span>`:(c.region?`<span>📍 ${escT(c.region)}</span>`:`<span>👥 ${lang==='ko'?'모임':lang==='th'?'ชมรม':'Club'}</span>`)));
+    const left=pend?`<span class="flag" style="color:#b45309;background:#fff7e8;border-color:#ffe6b3">⏳ ${lang==='ko'?'관리자 승인 대기중':lang==='th'?'รอแอดมินอนุมัติ':'Awaiting approval'}</span>`:(st==='leader'?`<span class="flag">👑 ${lang==='ko'?'방장':lang==='th'?'หัวหน้า':'Leader'}</span>`:(st==='vice'?`<span class="flag" style="color:#2f6df0;background:#eef4ff;border-color:#cfe0ff">⭐ ${lang==='ko'?'부방장':lang==='th'?'รองหัวหน้า':'Vice'}</span>`:(c.region?`<span>📍 ${escT(regName(c.region))}</span>`:`<span>👥 ${lang==='ko'?'모임':lang==='th'?'ชมรม':'Club'}</span>`)));
     return `<div class="club"${pend?' style="opacity:.75"':''}><div class="banner" style="background:${c.grad||'linear-gradient(120deg,#64748b,#94a3b8)'}">${c.emoji||'👥'} ${escT(c.name||'')}</div><div class="cbody2"><div class="desc">${escT(c.intro||'')}</div><div class="cfoot">${left}${c.require_realname?'<span class="flag" style="color:#2f6df0;background:#eef4ff;border-color:#cfe0ff">🪪 '+(lang==='ko'?'실명방':lang==='th'?'ชื่อจริง':'Real-name')+'</span>':''}${btn}</div></div></div>`;
   }).join('');
   const note=(authed&&!clubCreateOpen)?`<div style="font-size:12px;color:var(--sub);text-align:center;margin:0 0 12px">${lang==='ko'?'새 모임은 관리자 승인 후 공개됩니다':lang==='th'?'ชมรมใหม่จะเปิดหลังแอดมินอนุมัติ':'New clubs go live after admin approval'}</div>`:'';
@@ -3914,6 +3920,7 @@ document.addEventListener('click',e=>{
   const cled=e.target.closest('[data-cledit]'); if(cled){const cc=dbClubs.find(x=>x.id===cled.dataset.cledit);if(cc)openClubEdit(cc);return;}
   if(e.target.closest('[data-clcancel]')){clubCreateOpen=false;clubEditId=null;render();return;}
   const clg=e.target.closest('[data-clgrad]'); if(clg){ wClub.emoji=((document.getElementById('clEmoji')||{}).value||wClub.emoji); wClub.grad=clg.dataset.clgrad; const par=clg.parentElement; par.querySelectorAll('[data-clgrad]').forEach(b=>b.style.border='1px solid #ddd'); clg.style.border='3px solid #111'; return; }
+  const clr=e.target.closest('[data-clreg]'); if(clr){ const k=clr.dataset.clreg; wClub.region=(wClub.region===k?'':k); const par=clr.parentElement; par.querySelectorAll('[data-clreg]').forEach(b=>b.classList.remove('on')); if(wClub.region) clr.classList.add('on'); return; }
   if(e.target.closest('[data-clcreate]')){if(clubEditId)updateClub();else createClub();return;}
   if(e.target.closest('[data-myclubs]')){myClubsOpen=true;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-myclubsback]')){myClubsOpen=false;render();page.scrollTo(0,0);return;}
