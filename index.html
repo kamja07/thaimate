@@ -2257,8 +2257,9 @@ function radiusSelectHtml(){
   const selSty='box-sizing:border-box;width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff';
   return `<select onchange="window.__setRad(this.value)" style="${selSty}">${RADII.map(v=>`<option value="${v}" ${radiusKm===v?'selected':''}>📍 ${v}km ${L().within}</option>`).join('')}<option value="999" ${radiusKm===999?'selected':''}>📍 ${L().r_all}</option></select>`;
 }
-window.__setRad=function(v){ radiusKm=+v; render(); };
+window.__setRad=function(v){ radiusKm=+v; if(radiusKm!==999 && (city==='all'||!hood)){ locPickerOpen=true; pickRegion=(city!=='all'?city:'bkk'); toast(lang==='ko'?'내 위치(동네)를 선택하면 거리 반경이 적용돼요':lang==='th'?'เลือกพื้นที่ของคุณเพื่อใช้รัศมีระยะทาง':'Pick your area to apply the distance radius'); } render(); };
 window.__setShopCat=function(v){ shopCat=+v; viewShop(); };
+function locHintHtml(){ return (city==='all'||!hood)?`<div data-openloc="1" style="font-size:12px;color:#b45309;background:#fff7e8;border:1px solid #ffe6b3;border-radius:8px;padding:8px 11px;margin:0 0 10px;cursor:pointer">📍 ${lang==='ko'?'위치(동네)를 선택하면 거리 반경으로 필터됩니다 ›':lang==='th'?'แตะเพื่อเลือกพื้นที่ แล้วกรองตามระยะ ›':'Tap to set your area, then filter by distance ›'}</div>`:''; }
 function matchBannerHtml(){
   const m=byCity(listings).filter(x=>x.kind==='buy'&&inRange(x))[0];
   if(!m) return '';
@@ -2321,6 +2322,7 @@ function viewMarket(){
    </div>
    <button class="gbtn primary" data-newpost style="width:100%;margin:2px 0 10px">📝 ${L().nav_market} ${lang==='ko'?'글쓰기':lang==='th'?'โพสต์':'Post'}</button>
    <div style="display:flex;gap:8px;margin:0 0 10px"><div style="flex:1">${subFilter}</div><div style="flex:0 0 134px">${radiusSelectHtml()}</div></div>
+   ${locHintHtml()}
    <div style="background:#eef5ff;border:1px solid #cfe0f7;border-radius:9px;padding:8px 11px;font-size:12px;color:#33557a;margin:0 0 10px;line-height:1.5">${lang==='ko'?"💡 중고 물건뿐 아니라 <b>부동산 임대·임차(방·콘도·상가)</b> 매물도 올릴 수 있어요. 글쓰기 → 분류에서 <b>‘부동산’</b> 선택!":lang==='th'?"💡 ไม่ใช่แค่ของมือสอง — โพสต์ <b>เช่า/ให้เช่าอสังหาฯ (ห้อง/คอนโด/ร้าน)</b> ได้ เลือกหมวด <b>‘อสังหาฯ’</b> ตอนโพสต์":"💡 Not just second-hand — you can also post <b>real-estate rentals/leases (rooms, condos, shops)</b>. When posting, pick <b>‘Real estate’</b> as the category!"}</div>
    ${rangeChipHtml()}
    ${mseg==='sell'?matchBannerHtml():''}
@@ -2428,6 +2430,7 @@ function viewShop(){
      <select onchange="window.__setShopCat(this.value)" style="flex:1;box-sizing:border-box;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff"><option value="0" ${shopCat===0?'selected':''}>${L().city_all}</option>${L().shop_cats.map((c,i)=>`<option value="${i+1}" ${shopCat===i+1?'selected':''}>${c}</option>`).join('')}</select>
      <div style="flex:0 0 134px">${radiusSelectHtml()}</div>
    </div>
+   ${locHintHtml()}
    <button class="gbtn primary" data-newstore style="width:100%;margin:2px 0 10px">🏬 ${L().fab_shop}</button>
    ${rangeChipHtml()}
    <div>${data.map(storeCard).join('')||`<div class="empty">—</div>`}</div>`;
@@ -3886,7 +3889,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(e.target.closest('[data-pall]')){city='all';hood=null;verified=false;locPickerOpen=false;render();return;}
-  if(e.target.closest('.rangechip')){locPickerOpen=true;pickRegion=(city!=='all'?city:'bkk');render();return;}
+  if(e.target.closest('.rangechip')||e.target.closest('[data-openloc]')){locPickerOpen=true;pickRegion=(city!=='all'?city:'bkk');render();return;}
   const nv=e.target.closest('[data-tab]'); if(nv){tab=nv.dataset.tab;chatOpen=null;storeOpen=null;cart={};golfOpen=false;listingOpen=null;myStores=false;render();page.scrollTo(0,0);return;}
   if(e.target.closest('[data-gohome]')){tab='home';chatOpen=null;storeOpen=null;cart={};golfOpen=false;listingOpen=null;myStores=false;clubOpen=null;render();page.scrollTo(0,0);return;}
   const hb=e.target.closest('[data-hub]'); if(hb){const v=hb.dataset.hub;chatOpen=null;storeOpen=null;cart={};golfOpen=false;listingOpen=null;myStores=false;clubOpen=null;
