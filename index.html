@@ -866,7 +866,7 @@ const T = {
   ad_badge:"광고", btn_order:"주문하기", btn_menu:"메뉴보기", btn_inquire:"예약·문의", min_order:"최소주문", delivery:"배달", pickup:"포장",
   shop_open:"영업중", shop_closed:"영업종료", shop_set_open:"🟢 영업 시작", shop_set_closed:"⛔ 영업 종료", shop_closed_msg:"지금은 영업종료 상태예요",
   holiday_set:"🚫 휴업 공지", holiday_clear:"휴업 해제", holiday_badge:"휴업", holiday_prompt:"휴업 안내를 입력하세요 (예: 오늘 휴무 / 1.1~1.3 휴업)", holiday_default:"오늘 휴무", store_edit:"가게 정보 수정", my_stores:"내 가게 관리", store_new:"+ 새 가게 등록", no_stores:"등록한 가게가 없어요", closedown:"폐업", closedown_confirm:"정말 폐업하시겠어요?\n가게·메뉴 정보가 모두 삭제되며 되돌릴 수 없습니다.", closedown_done:"폐업 처리되었습니다",
-  cart:"장바구니", total:"합계", menu_label:"메뉴", products_label:"상품", order_done:"주문이 접수되었습니다 (프로토타입)", order_summary:"🧾 주문 내역",
+  cart:"장바구니", total:"합계", menu_label:"메뉴", products_label:"상품", services_label:"주요 서비스", order_done:"주문이 접수되었습니다 (프로토타입)", order_summary:"🧾 주문 내역",
   chat_secure:"1:1 비공개 대화 · 단톡방처럼 공개되지 않아요", input_ph:"메시지 보내기…",
   r_help:"도움돼요", r_save:"저장", r_ask:"1:1 질문", official:"공지",
   sec_chats:"진행 중인 매칭", flagship:"대표 모임", join:"가입", members:"명",
@@ -923,7 +923,7 @@ const T = {
   ad_badge:"AD", btn_order:"Order", btn_menu:"Menu", btn_inquire:"Book·Ask", min_order:"Min", delivery:"Delivery", pickup:"Pickup",
   shop_open:"Open", shop_closed:"Closed", shop_set_open:"🟢 Open now", shop_set_closed:"⛔ Close", shop_closed_msg:"This store is currently closed",
   holiday_set:"🚫 Holiday notice", holiday_clear:"Cancel holiday", holiday_badge:"On holiday", holiday_prompt:"Enter holiday notice (e.g. Closed today)", holiday_default:"Closed today", store_edit:"Edit store info", my_stores:"My stores", store_new:"+ New store", no_stores:"No stores yet", closedown:"Close down", closedown_confirm:"Permanently close this store?\nAll store/menu info will be deleted and cannot be undone.", closedown_done:"Store closed down",
-  cart:"Cart", total:"Total", menu_label:"Menu", products_label:"Products", order_done:"Order placed (prototype)", order_summary:"🧾 Order",
+  cart:"Cart", total:"Total", menu_label:"Menu", products_label:"Products", services_label:"Services", order_done:"Order placed (prototype)", order_summary:"🧾 Order",
   chat_secure:"Private 1:1 — never public like a group chat", input_ph:"Send a message…",
   r_help:"Helpful", r_save:"Save", r_ask:"Ask 1:1", official:"Notice",
   sec_chats:"Active matches", flagship:"Flagship club", join:"Join", members:"members",
@@ -980,7 +980,7 @@ const T = {
   ad_badge:"โฆษณา", btn_order:"สั่งซื้อ", btn_menu:"ดูเมนู", btn_inquire:"จอง·สอบถาม", min_order:"ขั้นต่ำ", delivery:"เดลิเวอรี", pickup:"รับเอง",
   shop_open:"เปิด", shop_closed:"ปิด", shop_set_open:"🟢 เปิดร้าน", shop_set_closed:"⛔ ปิดร้าน", shop_closed_msg:"ร้านปิดอยู่ในขณะนี้",
   holiday_set:"🚫 ประกาศหยุด", holiday_clear:"ยกเลิกหยุด", holiday_badge:"หยุดทำการ", holiday_prompt:"ใส่ประกาศวันหยุด (เช่น วันนี้หยุด)", holiday_default:"วันนี้หยุด", store_edit:"แก้ไขข้อมูลร้าน", my_stores:"ร้านของฉัน", store_new:"+ เพิ่มร้าน", no_stores:"ยังไม่มีร้าน", closedown:"ปิดกิจการ", closedown_confirm:"ปิดกิจการถาวรหรือไม่?\nข้อมูลร้าน/เมนูจะถูกลบและกู้คืนไม่ได้", closedown_done:"ปิดกิจการแล้ว",
-  cart:"ตะกร้า", total:"รวม", menu_label:"เมนู", products_label:"สินค้า", order_done:"สั่งซื้อสำเร็จ (ต้นแบบ)", order_summary:"🧾 รายการสั่งซื้อ",
+  cart:"ตะกร้า", total:"รวม", menu_label:"เมนู", products_label:"สินค้า", services_label:"บริการ", order_done:"สั่งซื้อสำเร็จ (ต้นแบบ)", order_summary:"🧾 รายการสั่งซื้อ",
   chat_secure:"แชทส่วนตัว 1:1 · ไม่เปิดเผยเหมือนกลุ่ม", input_ph:"พิมพ์ข้อความ…",
   r_help:"มีประโยชน์", r_save:"บันทึก", r_ask:"ถาม 1:1", official:"ประกาศ",
   sec_chats:"กำลังจับคู่", flagship:"ชมรมหลัก", join:"เข้าร่วม", members:"คน",
@@ -2503,6 +2503,7 @@ function viewStore(){
       ${storeBanner(s)}
       ${statusRow}
       ${storeInfoSection(s)}
+      ${(s.menu&&s.menu.length)?`<div style="padding:2px 14px 10px"><div class="msec">${L().services_label}</div>${s.menu.map(m=>`<div class="mrow2"><div class="memo" style="overflow:hidden">${m.photo?`<img src="${escA(m.photo)}" style="width:100%;height:100%;object-fit:cover">`:(m.emo||'🔧')}</div><div class="mmid"><div class="mnm">${tx(m.nm)}</div><div class="mpr">${m.pr!=null?'฿'+m.pr.toLocaleString():(lang==='ko'?'문의':lang==='th'?'สอบถาม':'Ask')}</div></div></div>`).join('')}</div>`:''}
       <div style="padding:6px 14px 16px">
         ${canManage?`<div style="display:flex;gap:8px;margin-bottom:10px"><button class="gbtn line" data-storeedit style="flex:1">✏️ ${L().store_edit}</button><button class="gbtn line" data-closedown style="flex:0 0 auto;color:#d33;padding:0 14px">🗑️ ${L().closedown}</button></div>`:''}
         <div class="secure" style="border-radius:11px">🔒 ${L().chat_secure}</div>
