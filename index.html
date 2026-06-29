@@ -2413,6 +2413,7 @@ function viewShop(){
   const chips=[L().city_all].concat(L().shop_cats);
   let data=byCity(stores);
   if(shopCat>0) data=data.filter(x=>x.cat===shopCat-1);
+  data=data.filter(x=>inRange(x));   // 내 위치 반경 필터 (지역 선택 시에만 적용)
   data=data.sort((a,b)=>itemDist(a)-itemDist(b));
   page.innerHTML=`
    <div class="vbanner" style="background:linear-gradient(100deg,#eafaf0,#f4fdf8);border-color:#bfe9cf">
