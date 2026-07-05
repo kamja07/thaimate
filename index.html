@@ -2043,7 +2043,7 @@ function langToggle(){return `<div class="lang" id="lang">
    <button data-l="ko" class="${lang==='ko'?'on':''}">한</button>
    <button data-l="en" class="${lang==='en'?'on':''}">EN</button>
    <button data-l="th" class="${lang==='th'?'on':''}">ไทย</button></div>`;}
-function detectLang(){ try{ var s=localStorage.getItem('mateLang'); if(s==='ko'||s==='en'||s==='th') return s; }catch(e){} var n=((navigator.language||navigator.userLanguage||'')+'').toLowerCase(); if(n.indexOf('ko')===0) return 'ko'; if(n.indexOf('th')===0) return 'th'; if(n.indexOf('en')===0) return 'en'; return 'ko'; }   // 저장된 선택 우선, 없으면 폰 언어 감지(한/태/영), 그 외 기본 한국어
+function detectLang(){ try{ var s=localStorage.getItem('mateLang'); if(s==='ko'||s==='en'||s==='th') return s; }catch(e){} var n=((navigator.language||navigator.userLanguage||'')+'').toLowerCase(); if(n.indexOf('ko')===0) return 'ko'; if(n.indexOf('th')===0) return 'th'; return 'en'; }   // 저장된 선택 우선, 없으면 폰 언어 감지: 한국어→한/태국어→태/그 외 전부 영어
 function toast(msg){
   let t=document.getElementById('toast');
   if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.querySelector('.device').appendChild(t);}
