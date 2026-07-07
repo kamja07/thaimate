@@ -826,6 +826,8 @@ async function doAuth(mode){
   toast(mode==='signup'?L().e_signup_ok:L().e_login_ok);
 }
 async function doLogout(){ try{if(globalChatSub){sb.removeChannel(globalChatSub);globalChatSub=null;}}catch(e){} try{await sb.auth.signOut();}catch(e){} authed=false; emailVerified=false; isAdmin=false; acctId=''; myClubMem={}; clubOpen=null; clubData=null; screen='gate'; gateMode='home'; render(); loadClubs(); }
+let __presCh=null;
+function joinPresence(){ try{ if(__presCh) return; var key=(typeof uid!=='undefined'&&uid)?uid:('g_'+Math.random().toString(36).slice(2)); __presCh=sb.channel('online',{config:{presence:{key:key}}}); __presCh.on('presence',{event:'sync'},function(){}); __presCh.subscribe(function(st){ if(st==='SUBSCRIBED'){ try{ __presCh.track({at:new Date().toISOString(), auth:!!(typeof authed!=='undefined'&&authed)}); }catch(e){} } }); }catch(e){} }
 let myInquiries=[];
 async function loadMyInquiries(){ if(!uid){ myInquiries=[]; return; } try{ const {data}=await sb.from('reports').select('id,context,reason,status,admin_reply,answered_at,created_at').eq('reporter_id',uid).order('created_at',{ascending:false}).limit(50); myInquiries=data||[]; }catch(e){ myInquiries=[]; } if(fsView==='inquiry') renderFsView(); }
 async function openInquiry(){
@@ -4107,7 +4109,7 @@ try{ sb.auth.onAuthStateChange((event,session)=>{
   try{ const qp=new URLSearchParams(location.search); if(qp.get('goline')==='1'){ try{ history.replaceState({},'',location.origin+'/'); }catch(e){} if(!authed && !window.__inApp){ lineLogin(); return; } } }catch(e){}
   // 로그인(구글/라인) 직후엔 이전 탭 복원하지 말고 홈 허브로
   try{ if(localStorage.getItem('loginGoHome')){ localStorage.removeItem('loginGoHome'); tab='home'; } else { restoreNav(); } }catch(e){ try{ restoreNav(); }catch(_){} }
-  render(); loadListings(); loadStores(); loadPosts(); loadJobs(); loadClubs(); })();
+  render(); loadListings(); loadStores(); loadPosts(); loadJobs(); loadClubs(); joinPresence(); })();
 /* 뒤로가기: 서브화면이면 한 단계 앱 내 뒤로, 메인화면이면 종료 확인(실수 방지)
    설계: 들어갈 때(깊어질 때) 미리 history 트랩을 쌓는다(=프로액티브).
    popstate 안에서 트랩을 다시 심지 않으므로 모바일에서도 안정적. */
