@@ -160,7 +160,7 @@
     <div class="topbar">
       <div><h1 id="secTitle">대시보드</h1><div class="date" id="secDate"></div></div>
       <div class="sp"></div>
-      <span class="live"><span class="dot"></span>실시간 412명 접속</span>
+      <span class="live"><span class="dot"></span>실시간 <span id="liveOnline">0</span>명 접속</span>
       <button class="act" onclick="toast('새로고침했습니다')">↻ 새로고침</button>
       <div class="av">서</div>
     </div>
@@ -690,7 +690,8 @@ async function loadAdminData(){
   }catch(e){}
 }
 let __adminPres=null;
-function watchOnline(){ try{ if(__adminPres) return; __adminPres=sb.channel('online'); __adminPres.on('presence',{event:'sync'},function(){ try{ ONLINE=Object.keys(__adminPres.presenceState()).length; var el=document.getElementById('onlineNow'); if(el) el.textContent=ONLINE; }catch(e){} }); __adminPres.subscribe(); }catch(e){} }
+function watchOnline(){ try{ if(__adminPres) return; __adminPres=sb.channel('online'); __adminPres.on('presence',{event:'sync'},function(){ try{ ONLINE=Object.keys(__adminPres.presenceState()).length; var el=document.getElementById('onlineNow'); if(el) el.textContent=ONLINE; var hd=document.getElementById('liveOnline'); if(hd) hd.textContent=ONLINE; }catch(e){} }); __adminPres.subscribe(); }catch(e){} }
+setTimeout(watchOnline,1200);   // 로그인 전에도 헤더 실시간 접속 수 표시
 async function unlockConsole(){ document.getElementById('adminLogin').style.display='none'; loadAdminData(); watchOnline(); }
 (async()=>{ try{ const {data}=await sb.auth.getSession(); if(data.session){ const {data:isA}=await sb.rpc('is_admin'); if(isA){ unlockConsole(); } } }catch(e){} })();
 document.getElementById('alBtn').addEventListener('click', async()=>{
