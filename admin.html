@@ -363,9 +363,12 @@ function secTickets(){
   return `<p class="sec-sub">앱의 <b>‘관리자에게 문의’</b> 및 신고 접수함. 미처리 항목을 우선 처리하세요.</p>
    <div class="filters"><button class="on">전체</button><button onclick="toast('필터: 미처리')">미처리</button><button onclick="toast('필터: 문의')">문의</button><button onclick="toast('필터: 신고')">신고</button></div>
    ${table(['번호','유형','보낸이','내용','상태','시간','관리'],
-     TICKETS.map(t=>`<tr style="${t[4]==='미처리'?'background:#fffdf6':''}"><td class="mono">${t[0]}</td><td>${badge(t[1])}</td><td>${t[2]}</td><td>${t[3]}</td><td>${badge(t[4])}</td><td style="color:var(--sub)">${t[5]}</td>
-       <td><button class="act pri" onclick="toast('${t[0]} 답변하기')">답변</button><button class="act" onclick="toast('${t[0]} 처리완료')">완료</button></td></tr>`).join(''))}`;
+     TICKETS.length?TICKETS.map(t=>{const id=t[0],status=t[6],reply=t[7],done=(status==='closed');const answered=(status==='answered');
+       return `<tr style="${status==='open'?'background:#fffdf6':''}"><td class="mono">${String(id).slice(0,6)}</td><td>${badge(t[1])}</td><td>${t[2]}</td><td>${esc(t[3])}${reply?`<div style="font-size:11.5px;color:#2f6df0;margin-top:4px">💬 ${esc(reply)}</div>`:''}</td><td>${badge(t[4])}</td><td style="color:var(--sub)">${t[5]}</td>
+       <td>${done?'<span style="color:var(--sub)">완료</span>':`<button class="act pri" onclick="adminAnswerTicket('${id}')">${answered?'답변수정':'답변'}</button><button class="act" onclick="adminCloseTicket('${id}',this)">완료</button>`}</td></tr>`;}).join(''):`<tr><td colspan="7" style="text-align:center;color:var(--sub);padding:26px">문의·신고가 없습니다</td></tr>`)}`;
 }
+async function adminAnswerTicket(id){ const reply=(prompt('답변 내용을 입력하세요 (문의자에게 앱 “내 문의·답변” 화면에 표시됩니다)')||'').trim(); if(!reply) return; const {data,error}=await sb.from('reports').update({admin_reply:reply, answered_at:new Date().toISOString(), status:'answered'}).eq('id',id).select('id'); if(error){toast(error.message);return;} if(!data||!data.length){toast('권한 없음 — db/reports_reply.sql 적용 필요');return;} toast('답변을 저장했어요'); loadAdminData(); }
+async function adminCloseTicket(id,btn){ if(btn){btn.disabled=true;btn.textContent='처리중…';} const {data,error}=await sb.from('reports').update({status:'closed'}).eq('id',id).select('id'); if(error){toast(error.message);if(btn){btn.disabled=false;btn.textContent='완료';}return;} if(!data||!data.length){toast('권한 없음 — db/reports_reply.sql 적용 필요');if(btn){btn.disabled=false;btn.textContent='완료';}return;} toast('처리완료로 변경'); loadAdminData(); }
 const CCAT={golf:'골프',hobby:'취미',sports:'스포츠',study:'스터디',social:'친목',food:'맛집',etc:'기타'};
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function secClubMgr(){
@@ -659,15 +662,15 @@ async function loadAdminData(){
       const [or,bk,rp]=await Promise.all([
         sb.from('orders').select('id,total,status,created_at,store_id,customer_id').order('created_at',{ascending:false}).limit(200),
         sb.from('bookings').select('id,detail,status,created_at,store_id,customer_id').order('created_at',{ascending:false}).limit(200),
-        sb.from('reports').select('id,reason,context,status,created_at,reporter_id').order('created_at',{ascending:false}).limit(200)
+        sb.from('reports').select('id,reason,context,status,created_at,reporter_id,admin_reply').order('created_at',{ascending:false}).limit(200)
       ]);
       const stMap={}; (st.data||[]).forEach(s=>stMap[s.id]={nm:s.name,cat:CATNM[s.category]||s.category,hood:hn[s.hood_id]||'-'});
       const cIds=[...new Set([...(or.data||[]).map(o=>o.customer_id),...(bk.data||[]).map(b=>b.customer_id),...(rp.data||[]).map(r=>r.reporter_id)].filter(Boolean))];
       let cn={}; if(cIds.length){ const {data:cu}=await sb.from('profiles').select('id,username,nickname').in('id',cIds); (cu||[]).forEach(c=>cn[c.id]=c.nickname||c.username); }
-      const OSTAT={placed:'결제대기',preparing:'조리중',delivering:'배달중',done:'완료',canceled:'취소'}, RSTAT={open:'미처리',reviewing:'처리중',closed:'답변완료'};
+      const OSTAT={placed:'결제대기',preparing:'조리중',delivering:'배달중',done:'완료',canceled:'취소'}, RSTAT={open:'미처리',reviewing:'처리중',answered:'답변완료',closed:'처리완료'};
       if(Array.isArray(or.data)){ ordC=or.data.length; ORDERS=or.data.map(o=>{const s=stMap[o.store_id]||{};return ['#'+String(o.id).slice(0,5), s.nm||'-', s.cat||'-', cn[o.customer_id]||'-', s.hood||'-', '฿'+(+(o.total||0)).toLocaleString(), o.status==='canceled'?'취소':'완료', OSTAT[o.status]||o.status, (o.created_at||'').slice(11,16)];}); }
       if(Array.isArray(bk.data)){ BOOKINGS=bk.data.map(b=>{const s=stMap[b.store_id]||{};return ['B-'+String(b.id).slice(0,4), s.nm||'-', s.cat||'-', cn[b.customer_id]||'-', b.detail||'-', b.status==='confirmed'?'확정':(b.status==='canceled'?'취소':'대기')];}); }
-      if(Array.isArray(rp.data)){ repC=rp.data.filter(r=>r.status==='open').length; TICKETS=rp.data.map(r=>['R-'+String(r.id).slice(0,4), '신고', cn[r.reporter_id]||'-', r.reason||r.context||'-', RSTAT[r.status]||'미처리', (r.created_at||'').slice(5,16).replace('T',' ')]); }
+      if(Array.isArray(rp.data)){ repC=rp.data.filter(r=>r.status==='open').length; TICKETS=rp.data.map(r=>[r.id, (r.context==='문의'?'문의':'신고'), cn[r.reporter_id]||'-', r.reason||r.context||'-', RSTAT[r.status]||'미처리', (r.created_at||'').slice(5,16).replace('T',' '), r.status||'open', r.admin_reply||'']); }
     }catch(e){}
     KPI=[
       {h:'총 회원',v:memC+'명',d:'이메일 인증 '+verC+'명',c:'up',i:'👥'},

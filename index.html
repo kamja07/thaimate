@@ -826,6 +826,8 @@ async function doAuth(mode){
   toast(mode==='signup'?L().e_signup_ok:L().e_login_ok);
 }
 async function doLogout(){ try{if(globalChatSub){sb.removeChannel(globalChatSub);globalChatSub=null;}}catch(e){} try{await sb.auth.signOut();}catch(e){} authed=false; emailVerified=false; isAdmin=false; acctId=''; myClubMem={}; clubOpen=null; clubData=null; screen='gate'; gateMode='home'; render(); loadClubs(); }
+let myInquiries=[];
+async function loadMyInquiries(){ if(!uid){ myInquiries=[]; return; } try{ const {data}=await sb.from('reports').select('id,context,reason,status,admin_reply,answered_at,created_at').eq('reporter_id',uid).order('created_at',{ascending:false}).limit(50); myInquiries=data||[]; }catch(e){ myInquiries=[]; } if(fsView==='inquiry') renderFsView(); }
 async function openInquiry(){
   if(!authed||!uid){ toast(L().v_need_login); return; }
   const txt=(window.prompt(L().inquiry_prompt)||'').trim();
@@ -1764,6 +1766,28 @@ function renderFsView(){
     fsEl.innerHTML=`
      <div class="fshead"><button class="back" data-fsback>‹</button><b>🔔 ${L().noti_title}</b></div>
      <div class="fsbody">${NOTI.length?NOTI.map(n=>`<div class="notirow ${n.unread?'un':''}" data-notigo="${n.go}"><div class="nic" style="background:${n.bg}">${n.ic}</div><div class="nbd"><div class="nt">${tx(n.t)}</div><div class="nb">${tx(n.b)}</div></div><div class="ntm">${tx(n.tm)}</div></div>`).join(''):`<div class="empty">${L().noti_empty}</div>`}</div>`;
+  }else if(fsView==='inquiry'){
+    const T=(ko,en,th)=>lang==='ko'?ko:lang==='th'?th:en;
+    const stLbl=s=>s==='answered'?T('답변완료','Answered','ตอบแล้ว'):s==='closed'?T('처리완료','Closed','ปิดแล้ว'):T('접수됨','Received','รับเรื่องแล้ว');
+    const stCol=s=>s==='answered'?'#16a34a':s==='closed'?'#64748b':'#d97706';
+    fsEl.innerHTML=`
+     <div class="fshead"><button class="back" data-fsback>‹</button><b>📩 ${T('내 문의·답변','My inquiries','คำถามของฉัน')}</b></div>
+     <div class="fsbody">
+       <div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px">
+         <div style="font-weight:800;font-size:14px;margin-bottom:8px">✍️ ${T('새 문의 작성','New inquiry','เขียนคำถามใหม่')}</div>
+         <textarea id="inqNew" placeholder="${T('궁금한 점·불편한 점을 적어주세요','Write your question or issue','เขียนคำถามหรือปัญหา')}" style="width:100%;box-sizing:border-box;min-height:72px;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px;resize:vertical"></textarea>
+         <button class="gbtn primary" data-inqsend style="width:100%;margin-top:8px">${T('문의 보내기','Send','ส่ง')}</button>
+       </div>
+       ${myInquiries.length?myInquiries.map(q=>`
+         <div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px">
+           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+             <span style="font-size:11.5px;color:var(--sub)">${(q.created_at||'').slice(0,10)}${q.context&&q.context!=='문의'?' · '+escT(q.context):''}</span>
+             <span style="font-size:11.5px;font-weight:800;color:${stCol(q.status)}">${stLbl(q.status)}</span>
+           </div>
+           <div style="font-size:14px;line-height:1.5;white-space:pre-wrap">${escT(q.reason||'')}</div>
+           ${q.admin_reply?`<div style="margin-top:10px;background:#f3f7ff;border:1px solid #cfe0f7;border-radius:10px;padding:10px"><div style="font-size:12px;font-weight:800;color:#2f6df0;margin-bottom:4px">💬 ${T('관리자 답변','Admin reply','คำตอบจากแอดมิน')}</div><div style="font-size:13.5px;line-height:1.5;white-space:pre-wrap">${escT(q.admin_reply)}</div></div>`:''}
+         </div>`).join(''):`<div class="empty">${T('아직 문의 내역이 없어요','No inquiries yet','ยังไม่มีคำถาม')}</div>`}
+     </div>`;
   }else{
     const res=searchAll(searchQ);
     fsEl.innerHTML=`
@@ -3781,7 +3805,7 @@ document.addEventListener('click',e=>{
   const meRow=e.target.closest('[data-me]'); if(meRow){ const i=+meRow.dataset.me;
     if(i===0){ tab='chat'; chatOpen=null; render(); }                       // 판매·구매내역 → 거래 대화
     else if(i===1){ if(!canAct())return; myStores=true; storeOpen=null; tab='shop'; render(); page.scrollTo(0,0); }  // 내 가게 관리
-    else if(i===4){ openInquiry(); }                                        // 관리자에게 문의
+    else if(i===4){ if(!authed||!uid){ toast(L().v_need_login); return; } fsView='inquiry'; myInquiries=[]; render(); loadMyInquiries(); }   // 관리자에게 문의 → 내 문의·답변 화면
     else { toast(L().soon); }                                               // 관심목록·받은 매너후기
     return; }
   /* email verification */
@@ -3799,6 +3823,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-noti]')){NOTI.forEach(n=>n.unread=false);fsView='noti';render();return;}
   if(e.target.closest('[data-search]')){fsView='search';searchQ='';render();return;}
   if(e.target.closest('[data-fsback]')){fsView=null;render();return;}
+  if(e.target.closest('[data-inqsend]')){ const el=document.getElementById('inqNew'); const txt=((el&&el.value)||'').trim(); if(!txt){ toast(lang==='ko'?'문의 내용을 입력하세요':lang==='th'?'กรอกคำถาม':'Enter your inquiry'); return; } sb.from('reports').insert({reporter_id:uid,context:'문의',reason:txt,status:'open'}).then(({error})=>{ if(error){toast(error.message);return;} if(el)el.value=''; toast(L().inquiry_sent||(lang==='ko'?'문의가 접수됐어요':lang==='th'?'ส่งแล้ว':'Sent')); loadMyInquiries(); }); return; }
   const ng=e.target.closest('[data-notigo]'); if(ng){fsView=null;tab=ng.dataset.notigo;chatOpen=null;storeOpen=null;golfOpen=false;render();page.scrollTo(0,0);return;}
   const sg=e.target.closest('[data-srchgo]'); if(sg){fsView=null;tab=sg.dataset.srchgo;chatOpen=null;storeOpen=null;golfOpen=false;listingOpen=null;
     const _sid=sg.dataset.srchid||'', _sk=sg.dataset.srchkind||'';
