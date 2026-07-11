@@ -453,9 +453,13 @@ function dbToListing(row){
   return { id:row.id, author_id:row.author_id, kind:row.kind, st, emo:give?'🎁':(buy?'🔎':'🆕'), city:h?h.region:'all', hoodId:h?h.id:null, like:0, chats:0, live:false,
     t:row.title||'', pr:give?{ko:'무료나눔',en:'Free',th:'แจกฟรี'}:(row.price_text||{ko:'가격문의',en:'Ask',th:'สอบถาม'}), prRaw:(row.price_text||''), loc:h?tx(h):'', desc:row.body||'', sub:row.subcat||'', photos:(Array.isArray(row.photos)&&row.photos.length)?row.photos:(row.photo_url?[row.photo_url]:[]), ago:relTime(row.created_at) };
 }
+let listingNames={};   // author_id → 닉네임 (매물 판매자 표시용)
 async function loadListings(){
   try{ const {data,error}=await sb.from('listings').select('*').in('kind',['sell','buy','give']).order('created_at',{ascending:false}).limit(100);
-    if(!error && Array.isArray(data)){ listings.length=0; data.forEach(r=>listings.push(dbToListing(r))); if(screen==='app') render(); }
+    if(!error && Array.isArray(data)){ listings.length=0; data.forEach(r=>listings.push(dbToListing(r)));
+      try{ const ids=[...new Set(data.map(r=>r.author_id).filter(Boolean))]; if(ids.length){ const {data:ps}=await sb.from('profiles').select('id,nickname,username').in('id',ids); (ps||[]).forEach(p=>{listingNames[p.id]=p.nickname||p.username||'';}); } }catch(e){}
+      if(screen==='app') render();
+    }
   }catch(e){}
 }
 const SEMO={restaurant:'🍲',cafe:'🥐',mart:'🛒',beauty:'💇',service:'🧹',it:'💻',etc:'🏪',golf:'⛳'};
@@ -2313,7 +2317,7 @@ function viewListingDetail(){
      <button class="icon-btn" data-report style="font-size:21px">⋮</button>
    </div>
    ${listingPhotoGrid(it)}
-   <div class="ldseller"><div class="avatar">😀</div><div><b>${acctId||tx(L().me_name)}</b><div class="lds">🌡️ 36.5°C · 📍 ${tx(it.loc)}${mine?` · <b class="myhood">${L().my_hood}</b>`:''}</div></div></div>
+   <div class="ldseller"><div class="avatar">😀</div><div><b>${isMine?(acctId||tx(L().me_name)):(listingNames[it.author_id]||(lang==='ko'?'판매자':lang==='th'?'ผู้ขาย':'Seller'))}</b><div class="lds">🌡️ 36.5°C · 📍 ${tx(it.loc)}${mine?` · <b class="myhood">${L().my_hood}</b>`:''}</div></div></div>
    <h2 class="ldtitle">${tx(it.t)} <span class="badge ${stCls}" style="position:static;display:inline-block;vertical-align:middle">${stTxt}</span></h2>
    <div class="ldmeta">${tx(it.ago)}</div>
    <div class="ldprice" style="${give?'color:var(--green)':''}">${tx(it.pr)}</div>
