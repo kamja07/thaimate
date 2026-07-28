@@ -2210,7 +2210,7 @@ function renderPay(){
        <div class="qrppt">🇹🇭 ${L().pay_pp}</div><br>
        <img src="${qrImg}" alt="QR" />
        <div class="qrcap"><i class="ti ti-qrcode" style="font-size:15px;vertical-align:-2px"></i> ${L().pay_scan}</div>
-     </div>`:`<div class="qrbox"><div class="qrcap" style="padding:16px 10px;line-height:1.5">${lang==='ko'?'판매자가 등록한 결제 QR이 아직 없어요. 채팅으로 결제 방법을 물어보세요.':lang==='th'?'ผู้ขายยังไม่ได้ลงทะเบียน QR ชำระเงิน โปรดสอบถามผ่านแชท':'The seller hasn\\'t registered a payment QR yet. Ask them via chat.'}</div></div>`}
+     </div>`:`<div class="qrbox"><div class="qrcap" style="padding:16px 10px;line-height:1.5">${lang==='ko'?'판매자가 등록한 결제 QR이 아직 없어요. 채팅으로 결제 방법을 물어보세요.':lang==='th'?'ผู้ขายยังไม่ได้ลงทะเบียน QR ชำระเงิน โปรดสอบถามผ่านแชท':'The seller has not registered a payment QR yet. Ask them via chat.'}</div></div>`}
      <div class="payrows">
        ${hasNum?`<div class="payrow"><span>${L().pay_pp}</span><b>${p.pp}</b></div>`:''}
        <div class="payrow"><span>${L().pay_holder}</span><b>${p.holder}</b></div>
