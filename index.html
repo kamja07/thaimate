@@ -2194,7 +2194,9 @@ function renderPay(){
   payEl.classList.remove('hidden');
   const s=stores.find(x=>x.id===payStore); const p=PAY[payStore]||{pp:'-',holder:tx(s.nm)};
   const amt=payAmount>0?('฿'+payAmount.toLocaleString()):'';
-  const qrData=encodeURIComponent('promptpay://'+p.pp.replace(/[^0-9]/g,'')+(payAmount>0?('?amount='+payAmount):''));
+  const ppNum=(p.pp||'').replace(/[^0-9]/g,'');
+  const hasNum=ppNum.length>0 && p.pp!=='-';
+  const qrImg=s.payQr ? s.payQr : (hasNum ? ('https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data='+encodeURIComponent('promptpay://'+ppNum+(payAmount>0?('?amount='+payAmount):''))) : '');
   const _items=(s.menu||[]).filter(m=>cart[m.id]>0);
   const itemsHtml=_items.length?`<div style="padding:2px 0 6px"><div class="msec" style="margin:2px 2px 6px">${L().order_summary}</div>${_items.map(m=>`<div class="payrow"><span>${tx(m.nm)} <b style="color:var(--pri)">×${cart[m.id]}</b></span><b>฿${(m.pr*cart[m.id]).toLocaleString()}</b></div>`).join('')}</div>`:'';
   payEl.innerHTML=`
@@ -2204,13 +2206,13 @@ function renderPay(){
      <div class="paywarn"><b>⚠️ ${L().pay_warn_t}</b><p>${L().pay_warn_p}</p></div>
      <div class="paystore">${s.emo} ${tx(s.nm)}${amt?`<span class="payamt">${amt}</span>`:''}</div>
      ${itemsHtml}
-     <div class="qrbox">
+     ${qrImg?`<div class="qrbox">
        <div class="qrppt">🇹🇭 ${L().pay_pp}</div><br>
-       <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${qrData}" alt="PromptPay QR" />
-       <div class="qrcap">📷 ${L().pay_scan}</div>
-     </div>
+       <img src="${qrImg}" alt="QR" />
+       <div class="qrcap"><i class="ti ti-qrcode" style="font-size:15px;vertical-align:-2px"></i> ${L().pay_scan}</div>
+     </div>`:`<div class="qrbox"><div class="qrcap" style="padding:16px 10px;line-height:1.5">${lang==='ko'?'판매자가 등록한 결제 QR이 아직 없어요. 채팅으로 결제 방법을 물어보세요.':lang==='th'?'ผู้ขายยังไม่ได้ลงทะเบียน QR ชำระเงิน โปรดสอบถามผ่านแชท':'The seller hasn\\'t registered a payment QR yet. Ask them via chat.'}</div></div>`}
      <div class="payrows">
-       <div class="payrow"><span>${L().pay_pp}</span><b>${p.pp}</b></div>
+       ${hasNum?`<div class="payrow"><span>${L().pay_pp}</span><b>${p.pp}</b></div>`:''}
        <div class="payrow"><span>${L().pay_holder}</span><b>${p.holder}</b></div>
        ${amt?`<div class="payrow"><span>${L().pay_amount}</span><b style="color:var(--pri)">${amt}</b></div>`:''}
      </div>
