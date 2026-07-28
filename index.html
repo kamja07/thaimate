@@ -44,14 +44,15 @@
   });
 }</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendard-dynamic-subset.min.css" />
 <style>
   :root{
-    --bg:#f6f6f4; --card:#ffffff; --ink:#191b1d; --sub:#8a9099; --line:#ececec;
-    --pri:#ff7a33; --pri-soft:#fff1e8; --blue:#2f6df0; --green:#15a05a; --gold:#f5a524; --red:#ef4444;
-    --shadow:0 1px 2px rgba(20,24,30,.05),0 8px 22px rgba(20,24,30,.05);
+    --bg:#f7f7f5; --card:#ffffff; --ink:#17181a; --sub:#8b9198; --line:#eeeeec;
+    --pri:#ff7a33; --pri-soft:#fff2ea; --blue:#2f6df0; --green:#15a05a; --gold:#f5a524; --red:#ef4444;
+    --shadow:0 1px 2px rgba(20,24,30,.04),0 5px 14px rgba(20,24,30,.05);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;background:#d7dae0;font-family:"Apple SD Gothic Neo","Noto Sans KR","Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  html,body{margin:0;height:100%;background:#d7dae0;font-family:"Pretendard Variable","Pretendard","Apple SD Gothic Neo","Noto Sans KR","Segoe UI",system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;letter-spacing:-.01em}
   .device{max-width:430px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(0,0,0,.18)}
   .top{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line)}
   .top-row{display:flex;align-items:center;gap:8px;padding:12px 14px 10px}
