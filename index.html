@@ -3867,7 +3867,7 @@ document.addEventListener('click',e=>{
     if(writeType<=2){const kind=['sell','buy','give'][writeType];
       const subcat=((document.getElementById('wSubcat')||{}).value||'')||null;
       const _lrow={author_id:uid, kind, title:subj||L().w_subject, price_text:(kind==='give'?'무료':(price||null)), body:desc||null, subcat, hood_id:hoodDbId(hid), photos:wPhotos.slice(), photo_url:(wPhotos[0]||null)};
-      if(wListingEditId){ const _u=Object.assign({},_lrow); delete _u.author_id; sb.from('listings').update(_u).eq('id',wListingEditId).select('id').then(({data,error})=>{ if(error){toast(error.message);return;} if(!data||!data.length){toast(lang==='ko'?'수정 권한이 없어요':lang==='th'?'ไม่มีสิทธิ์แก้ไข':'No permission');return;} loadListings(); }); }
+      if(wListingEditId){ const _u=Object.assign({},_lrow); delete _u.author_id; _u.created_at=new Date().toISOString(); sb.from('listings').update(_u).eq('id',wListingEditId).select('id').then(({data,error})=>{ if(error){toast(error.message);return;} if(!data||!data.length){toast(lang==='ko'?'수정 권한이 없어요':lang==='th'?'ไม่มีสิทธิ์แก้ไข':'No permission');return;} loadListings(); }); }
       else { sb.from('listings').insert(Object.assign({status:'selling'},_lrow)).then(({error})=>{ if(error){toast(error.message);} else {loadListings();} }); }
       tab='market'; mseg=kind; listingOpen=null;
     }else if(writeType===6){
@@ -3894,7 +3894,7 @@ document.addEventListener('click',e=>{
       const subcat=((document.getElementById('wJobCat')||{}).value||'')||null;
       const meta={}; JOB_META_FIELDS.forEach(f=>{ const v=(document.getElementById('wMeta_'+f.key)||{}).value; if(v)meta[f.key]=v; });
       const _jrow={author_id:uid, kind, title:subj||L().w_subject, price_text:price||null, body:desc||null, subcat, meta:Object.keys(meta).length?meta:null, hood_id:hoodDbId(hid), photos:wPhotos.slice(), photo_url:(wPhotos[0]||null)};
-      if(wListingEditId){ const _u=Object.assign({},_jrow); delete _u.author_id; sb.from('listings').update(_u).eq('id',wListingEditId).select('id').then(({data,error})=>{ if(error){toast(error.message);return;} if(!data||!data.length){toast(lang==='ko'?'수정 권한이 없어요':lang==='th'?'ไม่มีสิทธิ์แก้ไข':'No permission');return;} loadJobs(); }); }
+      if(wListingEditId){ const _u=Object.assign({},_jrow); delete _u.author_id; _u.created_at=new Date().toISOString(); sb.from('listings').update(_u).eq('id',wListingEditId).select('id').then(({data,error})=>{ if(error){toast(error.message);return;} if(!data||!data.length){toast(lang==='ko'?'수정 권한이 없어요':lang==='th'?'ไม่มีสิทธิ์แก้ไข':'No permission');return;} loadJobs(); }); }
       else { sb.from('listings').insert(Object.assign({status:'selling'},_jrow)).then(({error})=>{ if(error){toast(error.message);} else {loadJobs();} }); }
       tab='jobs'; jseg=kind;
     }else if(writeType===5){
